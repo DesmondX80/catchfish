@@ -38,14 +38,15 @@ GROUND_REEDS = 5
 # Aloituspaikat (ETRS-TM35FIN): maamerkki rannalla, jonka viereen vene laitetaan.
 # Lintutorni on maastotietokannassa. Uimalaiturin paikka on käyttäjän merkitsemä
 # (pohjoisranta, tien päässä). Veneenlaskupaikka on päätelty tiestä ja rannan
-# rakennuksista. dock_width = laiturin leveys (m), parking = parkkipaikka rannalle.
+# rakennuksista. dock_width = laiturin leveys (m), parking = parkkipaikka rannalle,
+# ramp = veneenlaskuluiska laiturin viereen.
 MML_STARTS = [
     {'id': 'kota', 'name': 'Haapajärven kota ja lintutorni', 'description': 'Lounaisrannalla lintutornin vieressä',
      'e': 380147, 'n': 7167913},
     {'id': 'uimalaituri', 'name': 'Uimalaituri ja parkkipaikka', 'description': 'Järven pohjoisrannalla tien päässä',
      'e': 381080, 'n': 7170642, 'dock_width': 3.2, 'parking': True},
-    {'id': 'veneenlasku', 'name': 'Veneenlaskupaikka', 'description': 'Järven länsirannalla',
-     'e': 380396, 'n': 7169095},
+    {'id': 'veneenlasku', 'name': 'Veneenlaskupaikka', 'description': 'Järven länsirannalla, betoninen luiska',
+     'e': 380396, 'n': 7169095, 'ramp': True},
 ]
 
 MML_GROUND_LAYERS = [
@@ -275,7 +276,8 @@ def mml_lake(folder):
         r = (gt[3] - spot['n']) / cell
         starts.append({**start_near(water, shore_dist_water, heights, cell, c, r),
                        'id': spot['id'], 'name': spot['name'], 'description': spot['description'],
-                       'dock_width': spot.get('dock_width', 1.8), 'parking': spot.get('parking', False)})
+                       'dock_width': spot.get('dock_width', 1.8), 'parking': spot.get('parking', False),
+                       'ramp': spot.get('ramp', False)})
     start = starts[0]
     map_image(heights, water, ground, cell, vec, gt, ds.GetProjection())
     lake_area = water.sum() * cell * cell

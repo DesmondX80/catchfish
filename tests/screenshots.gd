@@ -104,6 +104,13 @@ func _ready() -> void:
 			"ready": func(): return _frame > 90},
 		{"name": "24-pisararenkaat", "hour": 11.0, "yaw": PI / 2.0, "pitch": 0.75, "distance": 3.0,
 			"ready": func(): return _frame > 30},
+		{"name": "25-veneenlaskuluiska", "hour": 12.0, "yaw": PI - 0.9, "pitch": 0.45, "distance": 24.0,
+			"setup": func():
+				main.weather.set_kind(Weather.Kind.CLEAR, true)
+				_go_to_start(2),
+			"ready": func(): return _frame > 40},
+		{"name": "26-luiska-lahelta", "hour": 12.0, "yaw": PI - 1.5, "pitch": 0.2, "distance": 11.0,
+			"ready": func(): return _frame > 20},
 	]
 
 
@@ -214,3 +221,15 @@ func _hook(sp: String, weight: float) -> void:
 	f._run_timer = 10.0
 	f.drag_kg = 6.0
 	f.state = Fishing.State.FIGHT
+
+
+
+func _go_to_start(i: int) -> void:
+	var boat: Boat = main.boat
+	main.lake.select_start(i)
+	boat.pos = Vector2(main.lake.start_position.x, main.lake.start_position.z)
+	boat.yaw = main.lake.start_yaw
+	boat.velocity = Vector2.ZERO
+	boat.motor_running = false
+	boat.throttle = 0.0
+	Input.action_release("boat_forward")

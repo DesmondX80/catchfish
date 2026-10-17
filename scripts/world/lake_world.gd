@@ -11,6 +11,7 @@ var water_material: ShaderMaterial
 
 func build(lake_data: LakeData) -> void:
 	lake = lake_data
+	_carve_ramps() # maasto ja pohja luiskan muotoon ennen maaston rakentamista
 	_build_terrain()
 	_build_water()
 	_build_trees()
@@ -295,6 +296,8 @@ func _build_buildings() -> void:
 		for p in pts:
 			center += p
 		center /= pts.size()
+		if _on_ramp_area(center, pts):
+			continue # luiska ja kääntöpaikka tarvitsevat tilan
 		var base := lake.height_at(center.x, center.y) - 0.3
 		var top: float = base + 0.3 + b["height"]
 		for i in pts.size():
@@ -362,6 +365,8 @@ func _build_dock() -> void:
 		var dock := _dock(Vector3(s["x"], 0.0, s["z"]), _dock_yaw(s), s.get("dock_length", 10.0), s.get("dock_width", 1.8))
 		if s.get("parking", false):
 			_parking(dock, s.get("dock_length", 10.0), s.get("dock_width", 1.8))
+		if s.get("ramp", false):
+			_build_ramp(dock, s)
 
 
 ## Laiturin suunta: rakennettu laituri jatkuu veneeltä paikallisen +Z:n suuntaan rantaan
@@ -435,6 +440,169 @@ func _dock(at: Vector3, yaw: float, length: float, width := 1.8) -> Node3D:
 			dock.add_child(bar)
 	dock.set_meta("side_x", side_x)
 	return dock
+
+
+# --- Veneenlaskuluiska ---------------------------------------------------------
+# Luiska on laiturin vieressä veneen toisella puolella. Paikallisissa
+# koordinaateissa (laiturin solmu): x sivulle, z rantaa kohti; rantaviiva on
+# kohdassa z = laiturin pituus - 6 m (laituri alkaa 6 m ennen rantaa).
+
+const RAMP_X := 3.8 # luiskan keskilinja veneestä sivulle
+const RAMP_WIDTH := 4.0
+const RAMP_UNDERWATER := 10.0 # m rantaviivasta veteen päin
+const RAMP_ON_LAND := 9.0 # m rantaviivasta maalle
+const RAMP_BOTTOM := -1.3 # alapään korkeus vedenpinnasta
+
+
+func _ramp_transform(s: Dictionary) -> Transform3D:
+	return Transform3D(Basis(Vector3.UP, _dock_yaw(s)), Vector3(s["x"], 0.0, s["z"]))
+
+
+## Luiskan pinnan korkeus paikallisessa z:ssa (suora kaltevuus ala- ja yläpään välillä)
+func _ramp_profile(s: Dictionary, z: float) -> float:
+	var shore_z: float = s.get("dock_length", 10.0) - 6.0
+	var z0 := shore_z - RAMP_UNDERWATER
+	var z1 := shore_z + RAMP_ON_LAND
+	var top: float = s.get("_ramp_top", 0.4)
+	return lerpf(RAMP_BOTTOM, top, clampf((z - z0) / (z1 - z0), 0.0, 1.0))
+
+
+## Muotoilee maaston ja pohjan luiskan kohdalta hieman luiskan pinnan alle
+func _carve_ramps() -> void:
+	for s in lake.starts:
+		if not s.get("ramp", false):
+			continue
+		var t := _ramp_transform(s)
+		var shore_z: float = s.get("dock_length", 10.0) - 6.0
+		var top_world := t * Vector3(RAMP_X, 0.0, shore_z + RAMP_ON_LAND)
+		s["_ramp_top"] = maxf(lake.height_at(top_world.x, top_world.z), 0.3) + 0.05
+		var inv := t.affine_inverse()
+		var reach := RAMP_ON_LAND + RAMP_UNDERWATER + 20.0
+		var c0 := floori((s["x"] - reach - lake.origin_x) / lake.cell_size)
+		var r0 := floori((s["z"] - reach - lake.origin_z) / lake.cell_size)
+		var n := ceili(reach * 2.0 / lake.cell_size)
+		for r in range(r0, r0 + n):
+			for c in range(c0, c0 + n):
+				if c < 0 or r < 0 or c >= lake.cols or r >= lake.rows:
+					continue
+				var p := Vector3(lake.origin_x + c * lake.cell_size, 0.0, lake.origin_z + r * lake.cell_size)
+				var local := inv * p
+				var dx := absf(local.x - RAMP_X)
+				var z0 := shore_z - RAMP_UNDERWATER - 2.0
+				var z1 := shore_z + RAMP_ON_LAND + 2.0
+				if dx > RAMP_WIDTH / 2.0 + 3.0 or local.z < z0 or local.z > z1:
+					continue
+				var target := _ramp_profile(s, local.z) - 0.12
+				var i := r * lake.cols + c
+				# Luiskan kohdalla tarkasti, reunoilla liukuva siirtymä ympäröivään maastoon
+				var blend := clampf(1.0 - (dx - RAMP_WIDTH / 2.0) / 3.0, 0.0, 1.0)
+				lake.heights[i] = lerpf(lake.heights[i], minf(lake.heights[i], target) if dx > RAMP_WIDTH / 2.0 else target, blend)
+
+
+## Osuuko rakennus luiskan tai sen kääntöpaikan alueelle
+func _on_ramp_area(center: Vector2, pts: PackedVector2Array) -> bool:
+	for s in lake.starts:
+		if not s.get("ramp", false):
+			continue
+		var inv := _ramp_transform(s).affine_inverse()
+		var shore_z: float = s.get("dock_length", 10.0) - 6.0
+		for p in [center] + Array(pts):
+			var local := inv * Vector3(p.x, 0.0, p.y)
+			if absf(local.x - RAMP_X) < 9.0 and local.z > shore_z - 2.0 and local.z < shore_z + RAMP_ON_LAND + 14.0:
+				return true
+	return false
+
+
+func _build_ramp(dock: Node3D, s: Dictionary) -> void:
+	var shore_z: float = s.get("dock_length", 10.0) - 6.0
+	var z0 := shore_z - RAMP_UNDERWATER
+	var z1 := shore_z + RAMP_ON_LAND
+	var y0 := _ramp_profile(s, z0)
+	var y1 := _ramp_profile(s, z1)
+	var length := Vector2(z1 - z0, y1 - y0).length()
+	var slope := atan2(y1 - y0, z1 - z0)
+	var concrete := StandardMaterial3D.new()
+	concrete.albedo_color = Color(0.5, 0.5, 0.48)
+	concrete.roughness = 0.95
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.45, 0.45, 0.44)
+	dark.roughness = 1.0
+	var ramp := Node3D.new()
+	# Luiskan solmu kallistetaan kaltevuuden mukaan: paikallinen z kulkee pintaa pitkin
+	ramp.position = Vector3(RAMP_X, (y0 + y1) / 2.0, (z0 + z1) / 2.0)
+	ramp.rotation.x = -slope
+	dock.add_child(ramp)
+	# Veden alla oleva osa on levän ja liejun tummentama, kuiva osa vaaleaa betonia
+	var algae := StandardMaterial3D.new()
+	algae.albedo_color = Color(0.2, 0.22, 0.14)
+	algae.roughness = 1.0
+	var wet_len := clampf((0.05 - y0) / (y1 - y0), 0.0, 1.0) * length # vesirajaan asti
+	var dry_len := length - wet_len
+	_slab(ramp, Vector3(RAMP_WIDTH, 0.35, wet_len), Vector3(0, -0.175, -length / 2.0 + wet_len / 2.0), algae)
+	_slab(ramp, Vector3(RAMP_WIDTH, 0.35, dry_len), Vector3(0, -0.175, length / 2.0 - dry_len / 2.0), concrete)
+	# Matalat liukuesteurat kuivassa osassa, reunakivet sivuilla
+	var rib := -length / 2.0 + wet_len + 0.3
+	while rib < length / 2.0 - 0.2:
+		_slab(ramp, Vector3(RAMP_WIDTH - 0.4, 0.012, 0.05), Vector3(0, 0.006, rib), dark)
+		rib += 0.35
+	for side in [-1.0, 1.0]:
+		_slab(ramp, Vector3(0.22, 0.18, wet_len), Vector3(side * (RAMP_WIDTH / 2.0 + 0.11), 0.0, -length / 2.0 + wet_len / 2.0), algae)
+		_slab(ramp, Vector3(0.22, 0.18, dry_len), Vector3(side * (RAMP_WIDTH / 2.0 + 0.11), 0.0, length / 2.0 - dry_len / 2.0), dark)
+	# Kääntöpaikka yläpäähän: soraa, auto ja tyhjä venetraileri
+	var apron_z := z1 + 6.0
+	var apron_world := dock.global_transform * Vector3(RAMP_X, 0.0, apron_z)
+	var apron_y: float = maxf(lake.height_at(apron_world.x, apron_world.z), y1 - 0.05)
+	var gravel := StandardMaterial3D.new()
+	gravel.albedo_color = Color(0.42, 0.4, 0.35)
+	gravel.roughness = 1.0
+	_slab(dock, Vector3(12.0, 1.2, 12.0), Vector3(RAMP_X, apron_y - 0.55, apron_z), gravel)
+	var trailer := _trailer()
+	trailer.position = Vector3(RAMP_X, apron_y + 0.05, apron_z - 2.2)
+	dock.add_child(trailer)
+	var car := _car(Color(0.15, 0.3, 0.2))
+	car.position = Vector3(RAMP_X, apron_y + 0.05, apron_z + 3.3)
+	dock.add_child(car)
+
+
+func _slab(parent: Node3D, size: Vector3, at: Vector3, mat: Material) -> MeshInstance3D:
+	var mi := MeshInstance3D.new()
+	var box := BoxMesh.new()
+	box.size = size
+	box.material = mat
+	mi.mesh = box
+	mi.position = at
+	parent.add_child(mi)
+	return mi
+
+
+## Tyhjä venetraileri: runko, kölitelat, pyörät ja aisa autoon päin (+z)
+func _trailer() -> Node3D:
+	var t := Node3D.new()
+	var galv := StandardMaterial3D.new()
+	galv.albedo_color = Color(0.7, 0.72, 0.74)
+	galv.metallic = 0.7
+	galv.roughness = 0.4
+	var rubber := StandardMaterial3D.new()
+	rubber.albedo_color = Color(0.06, 0.06, 0.06)
+	for x in [-0.6, 0.6]:
+		_slab(t, Vector3(0.08, 0.1, 4.2), Vector3(x, 0.55, 0), galv)
+	for z in [-1.6, -0.4, 0.8, 1.9]:
+		_slab(t, Vector3(1.3, 0.08, 0.08), Vector3(0, 0.55, z), galv)
+	_slab(t, Vector3(0.1, 0.1, 1.6), Vector3(0, 0.5, 2.9), galv) # aisa
+	for z in [-1.2, 0.0, 1.2]:
+		_slab(t, Vector3(0.12, 0.12, 0.3), Vector3(0, 0.68, z), rubber) # kölitelat
+	for x in [-0.85, 0.85]:
+		var wheel := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.3
+		cyl.bottom_radius = 0.3
+		cyl.height = 0.18
+		cyl.material = rubber
+		wheel.mesh = cyl
+		wheel.rotation.z = PI / 2.0
+		wheel.position = Vector3(x, 0.3, 0.1)
+		t.add_child(wheel)
+	return t
 
 
 ## Parkkipaikka laiturin rannanpuoleisen pään taakse: sorakenttä ja pari autoa
