@@ -1,0 +1,2 @@
+Koordinaatisto: etrs-tm35fin 
+Tiedostomuoto: GPKG 

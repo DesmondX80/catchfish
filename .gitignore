@@ -1,0 +1,11 @@
+# Godot
+.godot/
+export/
+
+# Windowsin latausmerkinnät
+*:Zone.Identifier
+
+# MML:n raakadata (ladataan Karttapaikasta, ks. README)
+data/mml/*.tif
+data/mml/*.gpkg
+data/mml/*.aux.xml
