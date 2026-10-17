@@ -496,13 +496,9 @@ func _build_visuals() -> void:
 	add_child(_lure_node)
 
 	_fish_node = MeshInstance3D.new()
-	var fish_mesh := SphereMesh.new()
-	fish_mesh.radius = 0.5
-	fish_mesh.height = 1.0
-	_fish_node.mesh = fish_mesh
-	_fish_node.material_override = StandardMaterial3D.new()
 	_fish_node.top_level = true
 	_fish_node.visible = false
+	_fish_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_fish_node)
 
 
@@ -523,14 +519,19 @@ func _update_visuals() -> void:
 		_line_mesh.surface_add_vertex(p)
 	_line_mesh.surface_end()
 
-	# Koukussa oleva kala näkyy, kun se on lähellä pintaa
-	var show_fish := state == State.FIGHT and _fish_pos.y > -0.8 and boat.global_position.distance_to(_fish_pos) < 12.0
+	# Koukussa oleva kala: lajin malli rimpuilee nopealla uintiliikkeellä.
+	# Humusvesi haalistaa syvällä olevan kalan (fish.gdshader).
+	var show_fish := state == State.FIGHT and boat.global_position.distance_to(_fish_pos) < 15.0
 	_fish_node.visible = show_fish
 	if show_fish:
-		var len_m := Species.length_cm(_fish["sp"], _fish["weight"]) / 100.0
+		var sp: String = _fish["sp"]
+		if _fish_node.mesh != FishModels.mesh(sp):
+			_fish_node.mesh = FishModels.mesh(sp)
+			_fish_node.material_override = FishModels.material(sp).duplicate()
+		_fish_node.material_override.set_shader_parameter("swim_rate", 6.0 + _run_intensity * 14.0)
+		var len_m := Species.length_cm(sp, _fish["weight"]) / 100.0
 		var dir := Vector3(_run_dir.x, 0, _run_dir.y)
 		_fish_node.global_position = _fish_pos
 		if dir.length() > 0.01:
 			_fish_node.look_at(_fish_pos + dir, Vector3.UP)
-		_fish_node.scale = Vector3(len_m * 0.16, len_m * 0.2, len_m)
-		_fish_node.material_override.albedo_color = Species.DATA[_fish["sp"]]["color"]
+		_fish_node.scale = Vector3.ONE * len_m

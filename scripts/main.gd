@@ -11,6 +11,7 @@ var boat: Boat
 var camera_rig: CameraRig
 var population: FishPopulation
 var fishing: Fishing
+var fish_visuals: FishVisuals
 var hud: Hud
 var audio: GameAudio
 var load_ms := 0
@@ -64,6 +65,10 @@ func _ready() -> void:
 	fishing = Fishing.new()
 	add_child(fishing)
 	fishing.setup(boat, camera_rig, lake, population, weather, sky)
+
+	fish_visuals = FishVisuals.new()
+	add_child(fish_visuals)
+	fish_visuals.setup(population, boat, fishing, lake)
 
 	hud = Hud.new()
 	add_child(hud)

@@ -38,6 +38,15 @@ func _ready() -> void:
 			"setup": func(): boat.throttle = 0.15,
 			"ready": func(): return _frame > 90},
 		{"name": "8-ilta", "hour": 22.5, "yaw": 2.8, "pitch": 0.2, "distance": 10.0},
+		{"name": "9-kalamallit", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.35, "distance": 1.6,
+			"setup": func(): _showcase(0.25),
+			"ready": func(): return _frame > 20},
+		{"name": "10-kalat-pinnan-alla", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.6, "distance": 1.6,
+			"setup": func(): _showcase(-0.35),
+			"ready": func(): return _frame > 20},
+		{"name": "11-matalikko", "hour": 12.0, "yaw": 0.4, "pitch": 1.1, "distance": 5.0,
+			"setup": func(): _clear_showcase(); _move_near_fish(),
+			"ready": func(): return _frame > 60},
 	]
 
 
@@ -66,3 +75,60 @@ func _process(_delta: float) -> void:
 		print("kuva ", shot["name"], " ruutu ", _frame)
 		_index += 1
 		_frame = 0
+
+
+var _showcase_nodes: Array[Node3D] = []
+
+
+## Neljä lajia rinnakkain veneen vieressä annetulla korkeudella (y)
+func _showcase(y: float) -> void:
+	_clear_showcase()
+	main.boat.motor_running = false
+	main.boat.throttle = 0.0
+	main.boat.velocity = Vector2.ZERO
+	var boat: Boat = main.boat
+	var side := boat.right()
+	var fwd := boat.forward()
+	var i := 0
+	for sp in Species.DATA:
+		var node := MeshInstance3D.new()
+		node.mesh = FishModels.mesh(sp)
+		node.material_override = FishModels.material(sp).duplicate()
+		node.material_override.set_shader_parameter("swim_rate", 3.0)
+		add_child(node)
+		var p := boat.pos - side * 1.7 + fwd * (1.5 - i * 1.0)
+		node.global_position = Vector3(p.x, y, p.y)
+		node.look_at(node.global_position + Vector3(fwd.x, 0, fwd.y), Vector3.UP)
+		node.scale = Vector3.ONE * 0.85
+		_showcase_nodes.append(node)
+		i += 1
+
+
+func _clear_showcase() -> void:
+	for n in _showcase_nodes:
+		n.queue_free()
+	_showcase_nodes.clear()
+
+
+## Vene paikkaan, jonka lähellä on matalassa kaloja
+func _move_near_fish() -> void:
+	var pop: FishPopulation = main.population
+	var lake: LakeData = main.lake
+	var best := -1
+	var best_count := 0
+	for i in range(0, pop.fish.size(), 7):
+		var f: Dictionary = pop.fish[i]
+		if f["depth"] > 0.9:
+			continue
+		var near := 0
+		for j in pop.fish_near(f["pos"], 6.0):
+			if pop.fish[j]["depth"] < 1.2:
+				near += 1
+		if near > best_count and lake.depth_at(f["pos"].x, f["pos"].y) > 0.6:
+			best_count = near
+			best = i
+	if best >= 0:
+		var boat: Boat = main.boat
+		boat.pos = pop.fish[best]["pos"] + Vector2(3, 0)
+		boat.velocity = Vector2.ZERO
+		print("Matalikko: %d kalaa alle 1,2 m syvyydessä 6 m säteellä" % best_count)

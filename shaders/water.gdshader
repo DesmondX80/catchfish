@@ -45,5 +45,6 @@ void fragment() {
 	ROUGHNESS = clamp(0.18 + footprint * 0.4 + wave_strength * 0.08, 0.18, 0.5);
 	METALLIC = 0.0;
 	SPECULAR = 0.4;
-	ALPHA = mix(0.85, 0.98, fresnel);
+	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa
+	ALPHA = mix(0.55, 0.97, fresnel);
 }
