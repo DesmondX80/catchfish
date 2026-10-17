@@ -9,34 +9,13 @@ render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
 uniform vec3 deep_color : source_color = vec3(0.05, 0.05, 0.03);
 uniform vec3 shallow_color : source_color = vec3(0.13, 0.12, 0.07);
 uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
-uniform float wave_strength = 0.3; // 0 = tyyni, 1 = kova tuuli (muuttuu hitaasti)
-uniform float wind_angle = 0.0; // aallokon pääsuunta radiaaneina (kiinteä)
-
-const float GRAVITY = 9.81;
-const int WAVES = 6;
-// aallonpituus (m), suunta suhteessa tuuleen (rad), jyrkkyys
-const vec3 WAVE_DATA[WAVES] = vec3[](
-	vec3(14.0, 0.0, 0.010),
-	vec3(8.5, 0.55, 0.012),
-	vec3(5.2, -0.4, 0.014),
-	vec3(3.1, 0.9, 0.015),
-	vec3(2.0, -0.85, 0.016),
-	vec3(1.3, 0.25, 0.016)
-);
+#include "res://shaders/waves.gdshaderinc"
 
 varying vec3 world_pos;
 
-vec2 wave_dir(int i) {
-	float a = wind_angle + WAVE_DATA[i].y;
-	return vec2(sin(a), -cos(a));
-}
-
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	// Vain pisin aalto liikuttaa pintaa: verkko on 4 m välein
-	float k = 2.0 * PI / WAVE_DATA[0].x;
-	float amp = WAVE_DATA[0].z * WAVE_DATA[0].x * (0.2 + wave_strength);
-	VERTEX.y += amp * sin(dot(world_pos.xz, wave_dir(0)) * k - sqrt(GRAVITY * k) * TIME);
+	VERTEX.y += swell_height(world_pos.xz);
 }
 
 void fragment() {
@@ -53,7 +32,7 @@ void fragment() {
 		// Häivytys, kun aalto kutistuu muutaman pikselin kokoiseksi
 		float aa = 1.0 - smoothstep(wavelength * 0.08, wavelength * 0.3, footprint);
 		vec2 d = wave_dir(i);
-		slope += d * k * amp * aa * cos(dot(p, d) * k - omega * TIME);
+		slope += d * k * amp * aa * cos(dot(p, d) * k - omega * wave_time);
 	}
 	vec3 n = normalize(vec3(-slope.x, 1.0, -slope.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);

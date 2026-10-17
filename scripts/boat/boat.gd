@@ -35,9 +35,12 @@ var anchor_rope := 0.0
 var angler: Node3D # kalastaja kääntyy heittosuuntaan
 var hull: Node3D # aaltojen keinuttama osa
 var _motor: Node3D
-var _oars: Array[Node3D] = []
+var wake: Wake
+var _oars: Array[Dictionary] = [] # {side, pivot, blade}
 var _row_phase := 0.0
 var _rowing := false
+var _oar_activity := [0.0, 0.0] # vasen, oikea: 1 = soutaa eteen, -1 = taakse, 0 = lepää
+var _unstow_timer := 0.0
 var _bump_cooldown := 0.0
 var _time := 0.0
 
@@ -73,10 +76,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			motor_running = false
 			motor_starting = 0.0
 			throttle = 0.0
-			message.emit("Moottori sammutettu – airot käyttöön")
+			_unstow_timer = 1.5
+			message.emit("Moottori sammutettu – airot hankaimiin")
 		else:
-			motor_starting = 1.2
-			message.emit("Nykäiset käynnistysnarusta...")
+			motor_starting = 1.6
+			message.emit("Airot veneeseen ja nykäiset käynnistysnarusta...")
 	elif event.is_action_pressed("anchor_toggle"):
 		if anchored:
 			anchored = false
@@ -117,13 +121,22 @@ func _physics_process(dt: float) -> void:
 		_rowing = false
 	else:
 		tiller = move_toward(tiller, 0.0, 2.0 * dt)
-		_rowing = drive != 0.0 or steer != 0.0
+		# Käännös soudetaan toisella airolla: oikea airo eteen kääntää vasemmalle
+		_oar_activity = [clampf(drive - steer, -1.0, 1.0), clampf(drive + steer, -1.0, 1.0)]
+		_rowing = motor_starting <= 0.0 and _unstow_timer <= 0.0 and (_oar_activity[0] != 0.0 or _oar_activity[1] != 0.0)
 		if _rowing:
+			var before := fmod(_row_phase, 1.0)
 			_row_phase += dt / STROKE_TIME
 			var f := fmod(_row_phase, 1.0)
 			var power := sin(PI * f / 0.45) if f < 0.45 else 0.0
-			force += fwd * drive * ROW_FORCE * power
-			torque += steer * ROW_TURN * power
+			var left: float = _oar_activity[0]
+			var right_oar: float = _oar_activity[1]
+			force += fwd * (left + right_oar) * 0.5 * ROW_FORCE * power
+			torque += (right_oar - left) * 0.5 * ROW_TURN * power
+			if before < 0.45 and f >= 0.45:
+				_leave_swirls()
+		else:
+			_row_phase = 0.0
 
 	# Veden vastus
 	force -= fwd * (v_fwd * absf(v_fwd) * 13.0 + v_fwd * 10.0)
@@ -157,6 +170,9 @@ func _physics_process(dt: float) -> void:
 	else:
 		pos = new_pos
 
+	_unstow_timer = maxf(0.0, _unstow_timer - dt)
+	var stern := pos - fwd * LENGTH * 0.5
+	wake.track(stern, side, velocity.length())
 	_animate(dt)
 	_apply_transform()
 
@@ -173,17 +189,96 @@ func _apply_transform() -> void:
 
 
 func _animate(dt: float) -> void:
-	var wave := 0.004 + weather.speed() * 0.004
-	hull.position.y = sin(_time * 1.3) * wave * 2.0
-	hull.rotation.x = sin(_time * 1.1 + 0.5) * wave + clampf(velocity.dot(forward()) * 0.012 * throttle, -0.05, 0.06)
-	hull.rotation.z = sin(_time * 0.9) * wave * 1.5 + clampf(yaw_rate * velocity.length() * 0.05, -0.08, 0.08)
+	# Vene keinuu samoissa aalloissa kuin vesipinta: korkeus keskeltä,
+	# keulan ja perän sekä laitojen korkeuserosta kallistukset
+	var fwd := forward()
+	var side := right()
+	var h_bow := Waves.swell_height(pos + fwd * LENGTH * 0.45)
+	var h_stern := Waves.swell_height(pos - fwd * LENGTH * 0.45)
+	var h_left := Waves.swell_height(pos - side * 0.7)
+	var h_right := Waves.swell_height(pos + side * 0.7)
+	var planing := clampf(velocity.dot(fwd) * 0.012 * throttle, -0.05, 0.06) # keula nousee kaasulla
+	var heel := clampf(yaw_rate * velocity.length() * 0.05, -0.08, 0.08) # kallistus käännöksessä
+	hull.position.y = lerpf(hull.position.y, Waves.swell_height(pos), minf(1.0, dt * 6.0))
+	hull.rotation.x = lerpf(hull.rotation.x, atan2(h_bow - h_stern, LENGTH * 0.9) + planing, minf(1.0, dt * 4.0))
+	hull.rotation.z = lerpf(hull.rotation.z, atan2(h_left - h_right, 1.4) + heel, minf(1.0, dt * 4.0))
 	_motor.rotation.y = -tiller * 0.6
-	var row := fmod(_row_phase, 1.0) if _rowing else 0.0
-	for i in _oars.size():
-		var s := 1.0 if i == 0 else -1.0
-		_oars[i].rotation = Vector3(0.0, s * (0.5 - sin(row * TAU) * 0.6), s * -0.25 - cos(row * TAU) * 0.1 * s)
 	if motor_running:
 		_motor.position.y = 0.55 + sin(_time * 60.0) * 0.004
+	_animate_oars(dt)
+
+
+# --- Airot -------------------------------------------------------------------
+
+const OAR_LENGTH := 2.2
+const BLADE_OUT := 1.85 # lavan keskikohdan etäisyys hankaimesta
+const OARLOCK := Vector3(0.68, 0.45, 0.2)
+
+
+## Soutuvaiheet (soutaja istuu selkä keulaan päin):
+##  0.00–0.45 veto: lapa pystyssä veden alla, liikkuu keulan puolelta perään
+##  0.45–0.55 irrotus: lapa nousee pinnasta ja kääntyy vaakatasoon
+##  0.55–0.93 palautus: lapa ilmassa takaisin keulan puolelle
+##  0.93–1.00 otto: lapa kääntyy pystyyn ja painuu veteen
+## Palauttaa [pyyhkäisykulma (rad, + = perään päin), laskukulma (rad), lavan kierto (rad)]
+func _stroke_pose(f: float) -> Array:
+	var catch_sweep := deg_to_rad(-35.0)
+	var finish_sweep := deg_to_rad(30.0)
+	var deep := deg_to_rad(21.0) # lapa n. 15 cm veden alla
+	var high := deg_to_rad(8.0) # lapa ilmassa
+	var square := PI / 2.0
+	if f < 0.45:
+		var u := f / 0.45
+		return [lerpf(catch_sweep, finish_sweep, u), deep + deg_to_rad(3.0) * sin(PI * u), square]
+	elif f < 0.55:
+		var u := (f - 0.45) / 0.1
+		return [finish_sweep, lerpf(deep, high, u), lerpf(square, 0.0, u)]
+	elif f < 0.93:
+		var u := smoothstep(0.0, 1.0, (f - 0.55) / 0.38)
+		return [lerpf(finish_sweep, catch_sweep, u), high, 0.0]
+	var u := (f - 0.93) / 0.07
+	return [catch_sweep, lerpf(high, deep, u), lerpf(0.0, square, u)]
+
+
+func _animate_oars(dt: float) -> void:
+	var stowed := motor_running or motor_starting > 0.0
+	var f := fmod(_row_phase, 1.0)
+	for i in _oars.size():
+		var oar: Dictionary = _oars[i]
+		var s: float = oar["side"]
+		var target: Transform3D
+		var feather := 0.0
+		if stowed:
+			# Pitkittäin tuhtojen päällä, lavat keulaan päin
+			target = Transform3D(Basis(Vector3.UP, s * PI / 2.0), Vector3(s * 0.36, 0.25, 1.15))
+		else:
+			var activity: float = _oar_activity[i] if _rowing else 0.0
+			var sweep := 0.0
+			var dip := deg_to_rad(15.0) # lepoasennossa lapa lepää pinnalla
+			if activity != 0.0:
+				var pose := _stroke_pose(f)
+				sweep = pose[0] * signf(activity) # taaksepäin soudettaessa liike menee toisin päin
+				dip = pose[1]
+				feather = pose[2]
+			# Vasen airo osoittaa -X, oikea +X: kulmien etumerkit peilataan
+			var basis := Basis(Vector3.UP, -s * sweep) * Basis(Vector3.BACK, -s * dip)
+			target = Transform3D(basis, Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z))
+		var pivot: Node3D = oar["pivot"]
+		var rate := 3.5 if stowed or _unstow_timer > 0.0 else 18.0
+		pivot.transform = pivot.transform.interpolate_with(target, minf(1.0, dt * rate))
+		# Lavan malli on pystyssä; feather 0 = vaakatasossa, PI/2 = pystyssä
+		var blade: Node3D = oar["blade"]
+		blade.rotation.x = lerp_angle(blade.rotation.x, PI / 2.0 - feather, minf(1.0, dt * rate))
+
+
+## Vedon lopussa lavat jättävät pyörteen veteen
+func _leave_swirls() -> void:
+	for i in _oars.size():
+		if _oar_activity[i] == 0.0:
+			continue
+		var blade: Node3D = _oars[i]["blade"]
+		var p := blade.global_position
+		wake.add_swirl(Vector2(p.x, p.z), 1.0 + absf(_oar_activity[i]) * 0.3)
 
 
 # --- Ulkonäkö ---------------------------------------------------------------
@@ -229,15 +324,19 @@ func _build_visuals() -> void:
 	_box(_motor, Vector3(0.08, 1.1, 0.12), Vector3(0, -0.5, 0.15), Color(0.2, 0.2, 0.2))
 	_box(_motor, Vector3(0.05, 0.05, 0.6), Vector3(0, 0.2, -0.35), Color(0.1, 0.1, 0.1)) # ohjausaisa
 
-	# Airot hankaimissa
+	# Airot hankaimissa: vasen (-X) ja oikea (+X). Airon varsi alkaa hieman
+	# hankaimen sisäpuolelta (kahva) ja lapa on varren ulkopäässä.
 	for s in [-1.0, 1.0]:
 		var pivot := Node3D.new()
-		pivot.position = Vector3(0.68 * s, 0.45, 0.2)
+		pivot.position = Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z)
 		hull.add_child(pivot)
-		var oar := _box(pivot, Vector3(2.2, 0.05, 0.05), Vector3(0.9 * s, 0, 0), wood)
-		var blade := _box(oar, Vector3(0.45, 0.02, 0.14), Vector3(0.95 * s, 0, 0), wood)
-		blade.rotation.x = 0.2
-		_oars.append(pivot)
+		var shaft := _box(pivot, Vector3(OAR_LENGTH, 0.045, 0.045), Vector3((OAR_LENGTH / 2.0 - 0.45) * s, 0, 0), wood)
+		var blade := _box(pivot, Vector3(0.5, 0.14, 0.02), Vector3(BLADE_OUT * s, 0, 0), wood)
+		shaft.name = "Shaft"
+		_oars.append({"side": s, "pivot": pivot, "blade": blade})
+
+	wake = Wake.new()
+	add_child(wake)
 
 	# Kalastaja pelastusliivissä keskituhdolla
 	angler = Node3D.new()

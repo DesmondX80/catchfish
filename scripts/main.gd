@@ -108,7 +108,11 @@ func _process(delta: float) -> void:
 	var target := clampf(weather.wind_base / 8.0, 0.0, 1.0)
 	if _wave_strength < 0.0:
 		_wave_strength = target
-		world.water_material.set_shader_parameter("wind_angle", weather.wind_direction)
+		Waves.angle = weather.wind_direction
 	_wave_strength = move_toward(_wave_strength, target, delta * 0.02)
-	world.water_material.set_shader_parameter("wave_strength", _wave_strength)
+	Waves.strength = _wave_strength
+	Waves.time = fmod(Waves.time + delta, 3600.0)
+	Waves.apply(world.water_material)
+	Waves.apply(boat.wake.material)
+	boat.wake.material.set_shader_parameter("light", sky.daylight())
 	world.water_material.set_shader_parameter("sky_color", sky.sky_material.sky_horizon_color)
