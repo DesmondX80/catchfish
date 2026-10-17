@@ -68,6 +68,16 @@ func _process(_delta: float) -> void:
 				_frame = 1000
 				var s: Dictionary = main.lake.starts[1]
 				_check("peli alkoi paikasta %s" % s["name"], main.boat.pos.distance_to(Vector2(s["x"], s["z"])) < 1.0)
+			if _frame == 1030:
+				main.hud.set_paused_view(false)
+				main.camera_rig.yaw = main.boat.yaw + PI + 0.5 # katse rantaan päin
+				main.camera_rig.pitch = 0.55
+				main.camera_rig.distance = 26.0
+			if _frame == 1050:
+				_shot("m3b-laituri-ja-parkkipaikka")
+				main.camera_rig.yaw = main.boat.yaw + 0.6
+				main.camera_rig.pitch = 0.25
+				main.camera_rig.distance = 9.0
 			if _frame == 1060:
 				_shot("m3-peli-alkoi")
 				var ev := InputEventAction.new()

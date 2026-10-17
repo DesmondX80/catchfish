@@ -359,7 +359,9 @@ func _near_dock(p: Vector2, radius: float) -> bool:
 ## Laiturit kaikkiin aloituspaikkoihin, veneen kohdalta rantaan päin
 func _build_dock() -> void:
 	for s in lake.starts:
-		_dock(Vector3(s["x"], 0.0, s["z"]), _dock_yaw(s), s.get("dock_length", 10.0))
+		var dock := _dock(Vector3(s["x"], 0.0, s["z"]), _dock_yaw(s), s.get("dock_length", 10.0), s.get("dock_width", 1.8))
+		if s.get("parking", false):
+			_parking(dock, s.get("dock_length", 10.0), s.get("dock_width", 1.8))
 
 
 ## Laiturin suunta: rakennettu laituri jatkuu veneeltä paikallisen +Z:n suuntaan rantaan
@@ -367,7 +369,8 @@ func _dock_yaw(s: Dictionary) -> float:
 	return deg_to_rad(s.get("dock_yaw_deg", s["yaw_deg"]))
 
 
-func _dock(at: Vector3, yaw: float, length: float) -> void:
+## Laituri: kansi paaluilla. Leveä laituri saa tiheämmät paalut ja kaiteet.
+func _dock(at: Vector3, yaw: float, length: float, width := 1.8) -> Node3D:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.45, 0.36, 0.25)
 	mat.roughness = 0.9
@@ -377,20 +380,117 @@ func _dock(at: Vector3, yaw: float, length: float) -> void:
 	add_child(dock)
 	var deck := MeshInstance3D.new()
 	var box := BoxMesh.new()
-	box.size = Vector3(1.8, 0.12, length)
+	box.size = Vector3(width, 0.12, length)
 	box.material = mat
 	deck.mesh = box
 	# Vene on laiturin vieressä, laituri jatkuu taaksepäin rantaan
-	deck.position = Vector3(-2.0, 0.55, length / 2.0 - 2.0)
+	var side_x := -1.1 - width / 2.0 # laituri veneen vasemmalla kyljellä
+	deck.position = Vector3(side_x, 0.55, length / 2.0 - 2.0)
 	dock.add_child(deck)
 	var post_mesh := CylinderMesh.new()
 	post_mesh.top_radius = 0.09
 	post_mesh.bottom_radius = 0.09
 	post_mesh.height = 3.0
 	post_mesh.material = mat
-	for z in range(-2, int(length) - 2, 3):
-		for x in [-2.8, -1.2]:
+	var post_xs := [side_x - width / 2.0 + 0.1, side_x + width / 2.0 - 0.1]
+	if width > 2.5:
+		post_xs.append(side_x) # leveä laituri: keskipaalurivi
+	for z in range(-2, int(length) - 2, 2 if width > 2.5 else 3):
+		for x in post_xs:
 			var post := MeshInstance3D.new()
 			post.mesh = post_mesh
 			post.position = Vector3(x, -0.9, z)
 			dock.add_child(post)
+	if width > 2.5:
+		# Tukeva uimalaituri: kaiteet rannan puoleiseen päähän ja uimatikkaat kärkeen
+		for x in [side_x - width / 2.0 + 0.05, side_x + width / 2.0 - 0.05]:
+			var rail := MeshInstance3D.new()
+			var rail_mesh := BoxMesh.new()
+			rail_mesh.size = Vector3(0.08, 0.08, length * 0.4)
+			rail_mesh.material = mat
+			rail.mesh = rail_mesh
+			rail.position = Vector3(x, 1.5, length * 0.8 - 2.0)
+			dock.add_child(rail)
+			for z in [length * 0.6 - 2.0, length - 2.2]:
+				var stand := MeshInstance3D.new()
+				var stand_mesh := BoxMesh.new()
+				stand_mesh.size = Vector3(0.08, 0.95, 0.08)
+				stand_mesh.material = mat
+				stand.mesh = stand_mesh
+				stand.position = Vector3(x, 1.05, z)
+				dock.add_child(stand)
+		var steel := StandardMaterial3D.new()
+		steel.albedo_color = Color(0.75, 0.77, 0.8)
+		steel.metallic = 0.8
+		steel.roughness = 0.3
+		for x in [side_x - 0.25, side_x + 0.25]:
+			var bar := MeshInstance3D.new()
+			var bar_mesh := CylinderMesh.new()
+			bar_mesh.top_radius = 0.025
+			bar_mesh.bottom_radius = 0.025
+			bar_mesh.height = 1.6
+			bar_mesh.material = steel
+			bar.mesh = bar_mesh
+			bar.position = Vector3(x, 0.15, -2.05)
+			dock.add_child(bar)
+	dock.set_meta("side_x", side_x)
+	return dock
+
+
+## Parkkipaikka laiturin rannanpuoleisen pään taakse: sorakenttä ja pari autoa
+func _parking(dock: Node3D, length: float, width: float) -> void:
+	var side_x: float = dock.get_meta("side_x")
+	var center_local := Vector3(side_x, 0.0, length + 10.0)
+	var center := dock.global_transform * center_local
+	var ground_y := lake.height_at(center.x, center.z)
+	var lot := MeshInstance3D.new()
+	var lot_mesh := BoxMesh.new()
+	lot_mesh.size = Vector3(18.0, 1.2, 12.0) # paksu laatta upotetaan rinteeseen
+	var gravel := StandardMaterial3D.new()
+	gravel.albedo_color = Color(0.42, 0.4, 0.35)
+	gravel.roughness = 1.0
+	lot_mesh.material = gravel
+	lot.mesh = lot_mesh
+	lot.position = Vector3(center_local.x, ground_y - 0.55, center_local.z)
+	dock.add_child(lot)
+	var colors := [Color(0.62, 0.08, 0.06), Color(0.2, 0.25, 0.32), Color(0.85, 0.85, 0.82)]
+	for i in colors.size():
+		var car := _car(colors[i])
+		car.position = Vector3(center_local.x - 5.5 + i * 3.4, ground_y + 0.1, center_local.z + 2.0)
+		dock.add_child(car)
+
+
+## Yksinkertainen henkilöauto: kori, ohjaamo ja renkaat
+func _car(color: Color) -> Node3D:
+	var car := Node3D.new()
+	var paint := StandardMaterial3D.new()
+	paint.albedo_color = color
+	paint.metallic = 0.4
+	paint.roughness = 0.35
+	var glass := StandardMaterial3D.new()
+	glass.albedo_color = Color(0.12, 0.15, 0.18)
+	glass.metallic = 0.6
+	glass.roughness = 0.15
+	var tire := StandardMaterial3D.new()
+	tire.albedo_color = Color(0.06, 0.06, 0.06)
+	for part in [[Vector3(1.75, 0.6, 4.3), Vector3(0, 0.6, 0), paint], [Vector3(1.6, 0.55, 2.2), Vector3(0, 1.17, 0.3), glass]]:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = part[0]
+		box.material = part[2]
+		mi.mesh = box
+		mi.position = part[1]
+		car.add_child(mi)
+	for x in [-0.82, 0.82]:
+		for z in [-1.35, 1.35]:
+			var wheel := MeshInstance3D.new()
+			var cyl := CylinderMesh.new()
+			cyl.top_radius = 0.32
+			cyl.bottom_radius = 0.32
+			cyl.height = 0.22
+			cyl.material = tire
+			wheel.mesh = cyl
+			wheel.rotation.z = PI / 2.0
+			wheel.position = Vector3(x, 0.32, z)
+			car.add_child(wheel)
+	return car
