@@ -157,6 +157,17 @@ func _build() -> void:
 	help.text = _help_text()
 	_help_panel.visible = true
 
+	# HUD:ssa ei ole painikkeita: klikkausten pitää mennä peliin. Kaapattu hiiri
+	# on ruudun keskellä, joten muuten keskelle avautuva saalisikkuna söisi ne.
+	_ignore_mouse(self)
+
+
+func _ignore_mouse(node: Node) -> void:
+	for child in node.get_children():
+		if child is Control:
+			child.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		_ignore_mouse(child)
+
 
 func _help_text() -> String:
 	var lines := [

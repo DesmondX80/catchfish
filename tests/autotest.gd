@@ -14,7 +14,25 @@ var catches := []
 func _ready() -> void:
 	main = get_parent()
 
+## --mouse: vasemman hiiren toiminnot oikeina hiiren klikkauksina, hiiri kaapattuna
+var _real_mouse := "--mouse" in OS.get_cmdline_user_args()
+var _mouse_down := false
+
+
 func press(action: String, pressed := true) -> void:
+	if _real_mouse and action == "cast":
+		if pressed == _mouse_down:
+			return
+		_mouse_down = pressed
+		var mb := InputEventMouseButton.new()
+		mb.button_index = MOUSE_BUTTON_LEFT
+		mb.pressed = pressed
+		var center := Vector2(DisplayServer.window_get_size()) / 2.0
+		Input.warp_mouse(center)
+		mb.position = center
+		mb.global_position = center
+		Input.parse_input_event(mb)
+		return
 	var ev := InputEventAction.new()
 	ev.action = action
 	ev.pressed = pressed
@@ -26,7 +44,11 @@ func _process(delta: float) -> void:
 	frame += 1
 	phase_t += delta
 	if frame == 2:
-		GameInput.force_active = true
+		if _real_mouse:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+			main.hud.set_paused_view(false)
+		else:
+			GameInput.force_active = true
 		main.fishing.message.connect(func(t): stats["messages"][t.split("!")[0].left(40)] = stats["messages"].get(t.split("!")[0].left(40), 0) + 1)
 		main.boat.message.connect(func(t): print("  vene: ", t))
 		main.fishing.caught.connect(func(e, r): catches.append(e))

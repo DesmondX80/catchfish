@@ -4,6 +4,8 @@ extends Node
 const SAVE_PATH := "user://saaliskirja.json"
 
 var entries: Array = []
+## Automaattitestit kalastavat oikeaa peliä, mutta niiden saaliita ei tallenneta
+var persist := true
 
 
 func _ready() -> void:
@@ -38,6 +40,8 @@ func count(species: String) -> int:
 
 
 func _save() -> void:
+	if not persist:
+		return
 	var f := FileAccess.open(SAVE_PATH, FileAccess.WRITE)
 	if f:
 		f.store_string(JSON.stringify(entries, "  "))

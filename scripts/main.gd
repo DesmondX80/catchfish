@@ -82,10 +82,15 @@ func _ready() -> void:
 	load_ms = Time.get_ticks_msec() - t0
 
 	var args := OS.get_cmdline_user_args()
+	for arg in args:
+		if arg.begins_with("--"):
+			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
 	if "--autotest" in args:
 		add_child(load("res://tests/autotest.gd").new())
 	elif "--flicker" in args:
 		add_child(load("res://tests/flicker.gd").new())
+	elif "--inputtest" in args:
+		add_child(load("res://tests/input_test.gd").new())
 	elif "--perftest" in args:
 		add_child(load("res://tests/perf.gd").new())
 	else:
@@ -98,7 +103,7 @@ func _ready() -> void:
 
 func _input(event: InputEvent) -> void:
 	# Ensimmäinen klikkaus vain kaappaa hiiren, ei heitä
-	if event is InputEventMouseButton and event.pressed and Input.mouse_mode != Input.MOUSE_MODE_CAPTURED:
+	if event is InputEventMouseButton and event.pressed and not GameInput.active():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		hud.set_paused_view(false)
 		get_viewport().set_input_as_handled()
