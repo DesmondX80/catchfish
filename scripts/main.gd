@@ -74,6 +74,8 @@ func _ready() -> void:
 	var args := OS.get_cmdline_user_args()
 	if "--autotest" in args:
 		add_child(load("res://tests/autotest.gd").new())
+	elif "--flicker" in args:
+		add_child(load("res://tests/flicker.gd").new())
 	elif "--perftest" in args:
 		add_child(load("res://tests/perf.gd").new())
 	else:
@@ -96,9 +98,17 @@ func _input(event: InputEvent) -> void:
 		hud.show_message("Ajan nopeus x%d" % int(sky.time_scale()))
 
 
-func _process(_delta: float) -> void:
-	var wind := weather.vector()
-	world.water_material.set_shader_parameter("wave_strength", clampf(weather.speed() / 8.0, 0.0, 1.0))
-	if wind.length() > 0.01:
-		world.water_material.set_shader_parameter("wind_dir", wind.normalized())
+var _wave_strength := -1.0
+
+
+func _process(delta: float) -> void:
+	# Aallokko seuraa tuulen perusvoimakkuutta hitaasti (ei puuskia). Aaltojen
+	# suunta asetetaan kerran: suunnan muuttaminen kesken siirtäisi aaltoja
+	# kaukana veneestä holtittomasti.
+	var target := clampf(weather.wind_base / 8.0, 0.0, 1.0)
+	if _wave_strength < 0.0:
+		_wave_strength = target
+		world.water_material.set_shader_parameter("wind_angle", weather.wind_direction)
+	_wave_strength = move_toward(_wave_strength, target, delta * 0.02)
+	world.water_material.set_shader_parameter("wave_strength", _wave_strength)
 	world.water_material.set_shader_parameter("sky_color", sky.sky_material.sky_horizon_color)
