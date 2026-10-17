@@ -2074,6 +2074,38 @@
       "z": 1014.9
     }
   ],
+  "starts": [
+    {
+      "dock_yaw_deg": 0.0,
+      "x": -1314.0,
+      "z": 990.0,
+      "yaw_deg": 41.2,
+      "dock_length": 14.0,
+      "id": "kota",
+      "name": "Haapajärven kota ja lintutorni",
+      "description": "Lounaisrannalla lintutornin vieressä"
+    },
+    {
+      "dock_yaw_deg": -153.4,
+      "x": -738.0,
+      "z": -1554.0,
+      "yaw_deg": -131.2,
+      "dock_length": 14.9,
+      "id": "uimalaituri",
+      "name": "Uimalaituri ja parkkipaikka",
+      "description": "Järven luoteisosassa"
+    },
+    {
+      "dock_yaw_deg": -90.0,
+      "x": -1034.0,
+      "z": -166.0,
+      "yaw_deg": -48.8,
+      "dock_length": 14.0,
+      "id": "veneenlasku",
+      "name": "Veneenlaskupaikka",
+      "description": "Järven länsirannalla"
+    }
+  ],
   "name": "Haapajärven tekoallas, Raahe",
   "source": "mml",
   "attribution": "Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m -aineistoa (CC BY 4.0)",
@@ -2091,10 +2123,14 @@
   "origin_z": -2154.0,
   "max_depth": 4.0,
   "start": {
-    "x": -1242.7,
-    "z": 1874.7,
-    "yaw_deg": -24.4,
-    "dock_length": 14.0
+    "dock_yaw_deg": 0.0,
+    "x": -1314.0,
+    "z": 990.0,
+    "yaw_deg": 41.2,
+    "dock_length": 14.0,
+    "id": "kota",
+    "name": "Haapajärven kota ja lintutorni",
+    "description": "Lounaisrannalla lintutornin vieressä"
   },
   "rocks": [
     {

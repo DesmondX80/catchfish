@@ -1,5 +1,6 @@
 extends Node3D
-## Kokoaa pelin: järvi, ympäristö, vene, kamera, kalat, virveli ja käyttöliittymä.
+## Aloitusvalikko ja pelin kokoaminen: järvi, ympäristö, vene, kamera, kalat,
+## virveli ja käyttöliittymä rakennetaan, kun aloituspaikka on valittu.
 
 const LAKE_DIR := "res://assets/lake"
 
@@ -14,12 +15,48 @@ var fishing: Fishing
 var fish_visuals: FishVisuals
 var hud: Hud
 var audio: GameAudio
+var menu: StartMenu
+var running := false # peli käynnissä (valikko ohitettu)
 var load_ms := 0
 
 
 func _ready() -> void:
-	var t0 := Time.get_ticks_msec()
 	lake = LakeData.load_from(LAKE_DIR)
+	var args := OS.get_cmdline_user_args()
+	for arg in args:
+		if arg.begins_with("--menutest="):
+			CatchLog.persist = false
+			_show_menu()
+			add_child(load("res://tests/menu_test.gd").new())
+			return
+		if arg.begins_with("--"):
+			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
+			_start_game(0) # testit ohittavat valikon
+			return
+	_show_menu()
+
+
+func _show_menu() -> void:
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	menu = StartMenu.new()
+	add_child(menu)
+	menu.setup(lake)
+	menu.start_selected.connect(_on_start_selected)
+
+
+func _on_start_selected(index: int) -> void:
+	menu.show_loading(lake.starts[index]["name"])
+	# Annetaan latausviestin piirtyä ennen raskasta järven rakentamista
+	await get_tree().process_frame
+	await get_tree().process_frame
+	menu.queue_free()
+	menu = null
+	_start_game(index)
+
+
+func _start_game(start_index: int) -> void:
+	var t0 := Time.get_ticks_msec()
+	lake.select_start(start_index)
 
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
@@ -82,18 +119,16 @@ func _ready() -> void:
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(boat, fishing, weather, sky, lake, population)
-	hud.show_message("Tervetuloa: %s" % lake.name)
+	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
 
 	audio = GameAudio.new()
 	add_child(audio)
 	audio.setup(boat, fishing, weather, sky, lake)
 
 	load_ms = Time.get_ticks_msec() - t0
+	running = true
 
 	var args := OS.get_cmdline_user_args()
-	for arg in args:
-		if arg.begins_with("--"):
-			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
 	if "--autotest" in args:
 		add_child(load("res://tests/autotest.gd").new())
 	elif "--flicker" in args:
@@ -111,6 +146,8 @@ func _ready() -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if not running:
+		return # valikossa hiiri on vapaana
 	# Ensimmäinen klikkaus vain kaappaa hiiren, ei heitä
 	if event is InputEventMouseButton and event.pressed and not GameInput.active():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
@@ -132,6 +169,8 @@ var _wave_strength := -1.0
 
 
 func _process(delta: float) -> void:
+	if not running:
+		return
 	# Aallokko seuraa tuulen perusvoimakkuutta hitaasti (ei puuskia). Aaltojen
 	# suunta asetetaan kerran: suunnan muuttaminen kesken siirtäisi aaltoja
 	# kaukana veneestä holtittomasti.

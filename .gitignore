@@ -9,3 +9,4 @@ export/
 data/mml/*.tif
 data/mml/*.gpkg
 data/mml/*.aux.xml
+assets/lake/*.aux.xml

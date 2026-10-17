@@ -19,6 +19,8 @@ var start_yaw := 0.0
 var dock_length := 10.0
 var rocks: Array = []
 var places: Array = [] # [{name, x, z}]
+var starts: Array = [] # aloituspaikat: [{id, name, description, x, z, yaw_deg, dock_length}]
+var start_index := 0
 var buildings: Array = [] # [{points: [[x, z], ...], height}]
 var towers: Array = []
 
@@ -46,6 +48,7 @@ static func load_from(dir: String) -> LakeData:
 	lake.dock_length = start.get("dock_length", 10.0)
 	lake.rocks = meta.get("rocks", [])
 	lake.places = meta.get("places", [])
+	lake.starts = meta.get("starts", [meta["start"]])
 	lake.buildings = meta.get("buildings", [])
 	lake.towers = meta.get("towers", [])
 
@@ -55,6 +58,15 @@ static func load_from(dir: String) -> LakeData:
 	lake.shore = FileAccess.get_file_as_bytes(dir.path_join("shore.bin"))
 	assert(lake.heights.size() == lake.cols * lake.rows, "heights.bin on väärän kokoinen")
 	return lake
+
+
+## Valitsee aloituspaikan (vene laiturin viereen)
+func select_start(index: int) -> void:
+	start_index = clampi(index, 0, starts.size() - 1)
+	var s: Dictionary = starts[start_index]
+	start_position = Vector3(s["x"], 0.0, s["z"])
+	start_yaw = deg_to_rad(s["yaw_deg"])
+	dock_length = s.get("dock_length", 10.0)
 
 
 func world_size() -> Vector2:

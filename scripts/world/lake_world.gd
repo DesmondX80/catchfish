@@ -145,6 +145,8 @@ func _build_trees() -> void:
 				if rng.randf() > chance:
 					continue
 				var p := lake.cell_center(c, r) + Vector2(rng.randf_range(-3.5, 3.5), rng.randf_range(-3.5, 3.5))
+				if _near_dock(p, 28.0):
+					continue
 				var y := lake.height_at(p.x, p.y)
 				var size := rng.randf_range(0.7, 1.3) * (0.6 if ground == LakeData.Ground.BOG else 1.0)
 				var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * size), Vector3(p.x, y, p.y))
@@ -225,6 +227,8 @@ func _build_reeds() -> void:
 			if not (reed_land or shallow_water) or rng.randf() > 0.6:
 				continue
 			var p := lake.cell_center(c, r) + Vector2(rng.randf_range(-2, 2), rng.randf_range(-2, 2))
+			if _near_dock(p, 12.0):
+				continue
 			var y := minf(lake.height_at(p.x, p.y), 0.0) if shallow_water else lake.height_at(p.x, p.y)
 			var s := rng.randf_range(0.8, 1.3)
 			transforms.append(Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3(s, s * rng.randf_range(0.8, 1.2), s)), Vector3(p.x, y, p.y)))
@@ -339,16 +343,38 @@ func _build_towers() -> void:
 		tower.add_child(deck)
 
 
-## Laituri aloituspaikasta rantaan päin
+## Laiturin ja aloituspaikan ympärille jätetään avoin ranta (puut eivät
+## peitä näkymää eikä kamera osu niihin)
+func _near_dock(p: Vector2, radius: float) -> bool:
+	for s in lake.starts:
+		var boat := Vector2(s["x"], s["z"])
+		var yaw := _dock_yaw(s)
+		var to_shore := Vector2(sin(yaw), cos(yaw))
+		var shore_end: Vector2 = boat + to_shore * float(s.get("dock_length", 10.0))
+		if Geometry2D.get_closest_point_to_segment(p, boat, shore_end).distance_to(p) < radius:
+			return true
+	return false
+
+
+## Laiturit kaikkiin aloituspaikkoihin, veneen kohdalta rantaan päin
 func _build_dock() -> void:
+	for s in lake.starts:
+		_dock(Vector3(s["x"], 0.0, s["z"]), _dock_yaw(s), s.get("dock_length", 10.0))
+
+
+## Laiturin suunta: rakennettu laituri jatkuu veneeltä paikallisen +Z:n suuntaan rantaan
+func _dock_yaw(s: Dictionary) -> float:
+	return deg_to_rad(s.get("dock_yaw_deg", s["yaw_deg"]))
+
+
+func _dock(at: Vector3, yaw: float, length: float) -> void:
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = Color(0.45, 0.36, 0.25)
 	mat.roughness = 0.9
 	var dock := Node3D.new()
-	dock.position = lake.start_position
-	dock.rotation.y = lake.start_yaw
+	dock.position = at
+	dock.rotation.y = yaw
 	add_child(dock)
-	var length := lake.dock_length
 	var deck := MeshInstance3D.new()
 	var box := BoxMesh.new()
 	box.size = Vector3(1.8, 0.12, length)

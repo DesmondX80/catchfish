@@ -19,6 +19,7 @@ const KEYS := {
 	"help": [KEY_F1, KEY_H],
 	"pause": [KEY_ESCAPE],
 	"mute": [KEY_M],
+	"map": [KEY_K],
 }
 
 const MOUSE := {

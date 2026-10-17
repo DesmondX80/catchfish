@@ -9,6 +9,7 @@ Tuloste (assets/lake/), kaikki ruudukot rivi kerrallaan pohjoisesta etelään:
   water.bin    uint8: 1 = järveä
   ground.bin   uint8: maastotyyppi (GROUND_*)
   shore.bin    uint16: etäisyys rantaviivaan metreinä (vedessä maahan, maalla veteen)
+  map.png      järven kartta pelin karttanäkymään (pohjoinen ylhäällä)
 
 Käyttö:
   python3 tools/build_lake.py --mml data/mml    MML:n maastotietokannasta ja korkeusmallista
@@ -34,6 +35,18 @@ GROUND_ROCK = 4
 GROUND_REEDS = 5
 
 # Maastotietokannan tasot -> maastotyyppi (myöhempi voittaa päällekkäisyyksissä)
+# Aloituspaikat (ETRS-TM35FIN): maamerkki rannalla, jonka viereen vene laitetaan.
+# Uimalaiturin ja veneenlaskupaikan sijainnit on päätelty teistä ja rannan
+# rakennuksista, koska maastotietokannassa ei ole niistä omia kohteita.
+MML_STARTS = [
+    {'id': 'kota', 'name': 'Haapajärven kota ja lintutorni', 'description': 'Lounaisrannalla lintutornin vieressä',
+     'e': 380147, 'n': 7167913},
+    {'id': 'uimalaituri', 'name': 'Uimalaituri ja parkkipaikka', 'description': 'Järven luoteisosassa',
+     'e': 380690, 'n': 7170500},
+    {'id': 'veneenlasku', 'name': 'Veneenlaskupaikka', 'description': 'Järven länsirannalla',
+     'e': 380396, 'n': 7169095},
+]
+
 MML_GROUND_LAYERS = [
     ('suo', GROUND_BOG),
     ('soistuma', GROUND_BOG),
@@ -255,10 +268,18 @@ def mml_lake(folder):
             x, z = to_world(geom.GetX(), geom.GetY())
             rocks.append({'x': round(x, 1), 'z': round(z, 1), 'size': 1.6 if layer_name == 'kivi' else 0.8})
 
-    start = find_start(water, shore_dist_water, cell)
+    starts = []
+    for spot in MML_STARTS:
+        c = (spot['e'] - gt[0]) / cell
+        r = (gt[3] - spot['n']) / cell
+        starts.append({**start_near(water, shore_dist_water, heights, cell, c, r),
+                       'id': spot['id'], 'name': spot['name'], 'description': spot['description']})
+    start = starts[0]
+    map_image(heights, water, ground, cell, vec, gt, ds.GetProjection())
     lake_area = water.sum() * cell * cell
     return heights, water, ground, cell, start, rocks, {
         **extras,
+        'starts': starts,
         'name': 'Haapajärven tekoallas, Raahe',
         'source': 'mml',
         'attribution': 'Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m -aineistoa (CC BY 4.0)',
@@ -315,6 +336,112 @@ def sieve(mask, min_cells):
     band.WriteArray(mask.astype(np.uint8))
     gdal.SieveFilter(band, None, band, min_cells, 4)
     return band.ReadAsArray() == 1
+
+
+def start_near(water, shore_dist_water, heights, cell, c, r):
+    """Aloituspaikka maamerkin (solu c, r) viereen: lähin vesisolu, joka on
+    8–14 m rannasta ja vähintään 0,6 m syvä. Keula osoittaa reittiä pitkin
+    kohti avovettä (vähintään 50 m rannasta): reitti haetaan leveyshaulla
+    soluja pitkin, joissa on vähintään 0,45 m vettä (veneen syväys 0,3 m) ja
+    jotka ovat vähintään 8 m rannasta."""
+    rows, cols = water.shape
+    rr, cc = np.mgrid[0:rows, 0:cols]
+    depth = np.where(water, -heights, 0.0)
+    passable = (depth >= 0.45) & (shore_dist_water >= 8)
+    goal = shore_dist_water >= 50
+    # Laituripaikan pitää olla yhteydessä avoveteen riittävän leveää reittiä pitkin
+    connected = flood_fill(passable, goal)
+    ok = water & connected & (shore_dist_water >= 8) & (shore_dist_water <= 14) & (depth >= 0.6)
+    dist = np.where(ok, np.hypot(rr - r, cc - c), np.inf)
+    sr, sc = np.unravel_index(np.argmin(dist), dist.shape)
+    print(f'  aloituspaikka {math.hypot(sr - r, sc - c) * cell:.0f} m maamerkistä')
+    path = water_path(passable, goal, (sr, sc))
+    if path is None:
+        raise SystemExit('Aloituspaikalta ei löytynyt reittiä avovedelle')
+    # Suunta noin 30 m päässä olevaan reitin pisteeseen
+    tr, tc = path[min(len(path) - 1, 8)]
+    yaw = math.degrees(math.atan2(-(tc - sc), -(tr - sr)))
+    # Laituri osoittaa veneeltä lähimpään rantaan (maailmassa: +Z = etelä, +X = itä)
+    land = np.where(~water, np.hypot(rr - sr, cc - sc), np.inf)
+    lr, lc = np.unravel_index(np.argmin(land), land.shape)
+    dock_yaw = math.degrees(math.atan2(lc - sc, lr - sr))
+    return {
+        'dock_yaw_deg': round(dock_yaw, 1),
+        'x': round((sc - cols / 2) * cell, 1),
+        'z': round((sr - rows / 2) * cell, 1),
+        'yaw_deg': round(yaw, 1),
+        'dock_length': round(float(shore_dist_water[sr, sc]) + 6.0, 1),
+    }
+
+
+def flood_fill(passable, seeds):
+    """Solut, joihin pääsee seed-soluista passable-soluja pitkin (8-naapurusto)."""
+    from collections import deque
+    rows, cols = passable.shape
+    seen = seeds & passable
+    queue = deque(zip(*np.nonzero(seen)))
+    while queue:
+        r, c = queue.popleft()
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                nr, nc = r + dr, c + dc
+                if 0 <= nr < rows and 0 <= nc < cols and passable[nr, nc] and not seen[nr, nc]:
+                    seen[nr, nc] = True
+                    queue.append((nr, nc))
+    return seen
+
+
+def water_path(passable, goal, start):
+    """Lyhin reitti (8-naapurusto) solusta start lähimpään goal-soluun."""
+    from collections import deque
+    rows, cols = passable.shape
+    came = {start: None}
+    queue = deque([start])
+    while queue:
+        cur = queue.popleft()
+        if goal[cur]:
+            path = []
+            while cur is not None:
+                path.append(cur)
+                cur = came[cur]
+            return path[::-1]
+        r, c = cur
+        for dr in (-1, 0, 1):
+            for dc in (-1, 0, 1):
+                n = (r + dr, c + dc)
+                if (dr or dc) and 0 <= n[0] < rows and 0 <= n[1] < cols and passable[n] and n not in came:
+                    came[n] = cur
+                    queue.append(n)
+    return None
+
+
+def map_image(heights, water, ground, cell, vec, gt, projection):
+    """Karttakuva: vesi syvyyden mukaan, maastotyypit, tiet ja rakennukset."""
+    rows, cols = water.shape
+    depth = np.clip(-heights / 4.0, 0, 1)[..., None]
+    shallow = np.array([150, 190, 225], float)
+    deep = np.array([40, 95, 170], float)
+    land_colors = np.array([
+        (88, 128, 72),   # metsä
+        (205, 200, 120),  # pelto
+        (150, 140, 95),  # suo
+        (160, 185, 110),  # avoin
+        (150, 150, 145),  # kallio
+        (130, 160, 95),  # kaislikko
+    ], float)
+    img = np.where(water[..., None], shallow * (1 - depth) + deep * depth, land_colors[ground])
+    # Rantaviiva tummemmaksi
+    edge = water ^ np.roll(water, 1, 0) | water ^ np.roll(water, 1, 1)
+    img[edge] = (30, 60, 110)
+
+    mem = gdal.GetDriverByName('MEM').Create('', cols, rows, 3, gdal.GDT_Byte)
+    mem.SetGeoTransform((gt[0], cell, 0, gt[3], 0, -cell))
+    mem.SetProjection(projection)
+    for i in range(3):
+        mem.GetRasterBand(i + 1).WriteArray(img[..., i].astype(np.uint8))
+    gdal.Rasterize(mem, vec, bands=[1, 2, 3], layers=['tieviiva'], burnValues=[235, 225, 200])
+    gdal.Rasterize(mem, vec, bands=[1, 2, 3], layers=['rakennus'], burnValues=[170, 50, 40])
+    gdal.Translate(os.path.join(OUT_DIR, 'map.png'), mem, format='PNG')
 
 
 def find_start(water, shore_dist_water, cell):

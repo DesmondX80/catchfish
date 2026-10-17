@@ -23,6 +23,8 @@ var _log_panel: PanelContainer
 var _log_label: Label
 var _help_panel: PanelContainer
 var sounder: EchoSounder
+var _map_panel: PanelContainer
+var _map: LakeMap
 
 
 func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_time: SkyTime, lake_data: LakeData, population: FishPopulation) -> void:
@@ -152,6 +154,18 @@ func _build() -> void:
 	_log_label = _label(_log_panel, 16)
 	_log_panel.visible = false
 
+	# Kartta kesken pelin (K): näyttää veneen sijainnin järvellä
+	_map_panel = _panel(center, center)
+	var map_box := VBoxContainer.new()
+	_map_panel.add_child(map_box)
+	_label(map_box, 16).text = "Kartta – %s   (K sulkee)" % lake.name
+	_map = LakeMap.new()
+	_map.custom_minimum_size = Vector2(560, 760)
+	map_box.add_child(_map)
+	_map.setup(lake)
+	_map.boat = boat
+	_map_panel.visible = false
+
 	_help_panel = _panel(center, center)
 	var help := _label(_help_panel, 16)
 	help.text = _help_text()
@@ -189,7 +203,7 @@ func _help_text() -> String:
 		"  L            vaihda uistin",
 		"",
 		"MUUTA",
-		"  T            ajan nopeus   Tab  saaliskirja   F1  ohje   M  äänet   Esc  tauko",
+		"  T            ajan nopeus   Tab  saaliskirja   K  kartta   F1  ohje   M  äänet   Esc  tauko",
 		"",
 		"Klikkaa hiirellä aloittaaksesi.",
 	]
@@ -226,6 +240,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			_log_label.text = _log_text()
 	elif event.is_action_pressed("help"):
 		_help_panel.visible = not _help_panel.visible
+	elif event.is_action_pressed("map"):
+		_map_panel.visible = not _map_panel.visible
+		if _map_panel.visible:
+			_log_panel.visible = false
+			_help_panel.visible = false
 
 
 func set_paused_view(paused: bool) -> void:

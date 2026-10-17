@@ -13,6 +13,14 @@ var catches := []
 
 func _ready() -> void:
 	main = get_parent()
+	# --start=N: aloituspaikka (0 = oletus)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--start="):
+			var i := int(arg.split("=")[1])
+			main.lake.select_start(i)
+			main.boat.pos = Vector2(main.lake.start_position.x, main.lake.start_position.z)
+			main.boat.yaw = main.lake.start_yaw
+			print("Aloituspaikka: ", main.lake.starts[i]["name"])
 
 ## --mouse: vasemman hiiren toiminnot oikeina hiiren klikkauksina, hiiri kaapattuna
 var _real_mouse := "--mouse" in OS.get_cmdline_user_args()
@@ -102,7 +110,7 @@ func _process(delta: float) -> void:
 					press("cast", false)
 					press("cast"); press("cast", false)
 			if frame % 900 == 0: print("  t=%.0f s tila=%d heittoja=%d kalat=%d" % [phase_t, f.state, stats["casts"], catches.size()])
-			if phase_t > 1800.0:
+			if phase_t > (60.0 if "--short" in OS.get_cmdline_user_args() else 1800.0):
 				report()
 				get_tree().quit()
 
