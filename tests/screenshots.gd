@@ -47,6 +47,23 @@ func _ready() -> void:
 		{"name": "11-matalikko", "hour": 12.0, "yaw": 0.4, "pitch": 1.1, "distance": 5.0,
 			"setup": func(): _clear_showcase(); _move_near_fish(),
 			"ready": func(): return _frame > 60},
+		{"name": "12-loysa-siima", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.15, "distance": 7.0,
+			"setup": func():
+				main.camera_rig.yaw = main.boat.yaw
+				main.fishing.power = 0.55
+				main.fishing._cast(),
+			"ready": func(): return main.fishing.state == Fishing.State.RETRIEVING and _frame > 60},
+		{"name": "13-kelaus-kirea", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.15, "distance": 7.0,
+			"setup": func(): Input.action_press("reel"),
+			"ready": func(): return _frame > 75},
+		{"name": "14-ahven-koukussa", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.12, "distance": 6.0,
+			"setup": func():
+				Input.action_release("reel")
+				_hook("ahven", 0.2),
+			"ready": func(): return _frame > 40},
+		{"name": "15-hauki-koukussa", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.12, "distance": 6.0,
+			"setup": func(): _hook("hauki", 4.0),
+			"ready": func(): return _frame > 40},
 	]
 
 
@@ -132,3 +149,28 @@ func _move_near_fish() -> void:
 		boat.pos = pop.fish[best]["pos"] + Vector2(3, 0)
 		boat.velocity = Vector2.ZERO
 		print("Matalikko: %d kalaa alle 1,2 m syvyydessä 6 m säteellä" % best_count)
+
+
+
+## Kala koukussa veneen edessä n. 12 m päässä, ryntää täysillä
+func _hook(sp: String, weight: float) -> void:
+	var f: Fishing = main.fishing
+	var boat: Boat = main.boat
+	var idx := 0
+	for i in main.population.fish.size():
+		if main.population.fish[i]["sp"] == sp:
+			idx = i
+			break
+	main.population.fish[idx]["weight"] = weight
+	f._fish_index = idx
+	f._fish = main.population.fish[idx]
+	var p := boat.pos + boat.forward() * 12.0
+	f._fish_pos = Vector3(p.x, -0.6, p.y)
+	f.lure_pos = f._fish_pos
+	f.line_out = f.rod_tip().distance_to(f._fish_pos)
+	f._stamina = 1.0
+	f._run_intensity = 1.0
+	f._run_dir = boat.forward()
+	f._run_timer = 10.0
+	f.drag_kg = 6.0
+	f.state = Fishing.State.FIGHT

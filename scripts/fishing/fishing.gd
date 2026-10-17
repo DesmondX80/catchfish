@@ -10,6 +10,12 @@ signal sound_event(sound: String, at: Vector3)
 enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED }
 
 const ROD_LENGTH := 2.1
+const ROD_SEGMENTS := 16
+const ROD_POWER := 1.4 # kg: tällä vedolla kärki taipuu n. 2/3 maksimistaan
+const ROD_MAX_BEND := 1.75 # rad, kärjen suurin taipuma
+const ROD_STIFFNESS := 160.0 # jousivakio taipuman dynamiikalle
+const ROD_DAMPING := 7.0 # pieni vaimennus: kärki värähtää hetken
+const LINE_WEIGHT := 0.004 # N/m: siiman paino ja tuulen työntö roikkumalle
 const LINE_STRENGTH := 6.5 # kg, 0,28 mm monofiili
 const REEL_SPEED := 0.85 # m/s
 const REEL_SPEED_FAST := 1.6
@@ -54,7 +60,13 @@ var _last_catch: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 var _rod_pivot: Node3D
-var _rod_tip: Node3D
+var _rod_mesh: ImmediateMesh
+var _rod_points := PackedVector3Array()
+var _tip_world := Vector3.ZERO
+var _bend := 0.0 # kärjen taipuma (rad)
+var _bend_vel := 0.0
+var _bend_dir := Vector3.DOWN
+var _reel_handle: Node3D
 var _line_mesh: ImmediateMesh
 var _lure_node: MeshInstance3D
 var _fish_node: MeshInstance3D
@@ -69,6 +81,7 @@ func setup(boat_node: Boat, rig: CameraRig, lake_data: LakeData, fish_pop: FishP
 	sky = sky_time
 	_rng.randomize()
 	_build_visuals()
+	_update_rod(0.0) # vavan kärjen sijainti heti alussa
 
 
 func lure() -> Dictionary:
@@ -76,11 +89,12 @@ func lure() -> Dictionary:
 
 
 func lure_depth() -> float:
-	return maxf(0.0, -lure_pos.y)
+	return maxf(0.0, -lure_pos.y) + 0.0 # + 0.0 poistaa negatiivisen nollan ("-0.0 m")
 
 
+## Taipuneen vavan kärki maailmassa
 func rod_tip() -> Vector3:
-	return _rod_tip.global_position
+	return _tip_world
 
 
 func hooked_fish() -> Dictionary:
@@ -131,6 +145,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _physics_process(dt: float) -> void:
 	_aim_angler(dt)
+	_update_rod(dt)
 	_twitch = move_toward(_twitch, 0.0, dt * 3.0)
 	match state:
 		State.READY, State.LANDED:
@@ -153,6 +168,11 @@ func _physics_process(dt: float) -> void:
 
 func _aim_angler(dt: float) -> void:
 	var target := wrapf(camera_rig.yaw - boat.yaw, -PI, PI)
+	if state == State.FIGHT or state == State.BITE:
+		# Väsytyksessä vapa osoittaa kalaa kohti, ettei se taivu selän taakse
+		var to_fish := Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y)
+		if to_fish.length() > 0.5:
+			target = wrapf(atan2(-to_fish.x, -to_fish.y) - boat.yaw, -PI, PI)
 	boat.angler.rotation.y = lerp_angle(boat.angler.rotation.y, target, minf(1.0, dt * 6.0))
 	var pitch := 0.7
 	match state:
@@ -172,6 +192,7 @@ func _cast() -> void:
 	var speed: float = 6.0 + 20.0 * power * (0.7 + 0.3 * lure()["cast"])
 	_lure_vel = Vector3(dir.x * cos(CAST_ANGLE), sin(CAST_ANGLE), dir.y * cos(CAST_ANGLE)) * speed
 	lure_pos = rod_tip()
+	_bend_vel -= 9.0 * power # vapa ponnahtaa suoraksi ja kärki värähtää
 	sound_event.emit("cast_swish", rod_tip())
 	state = State.FLYING
 	snagged = false
@@ -191,6 +212,7 @@ func _fly(dt: float) -> void:
 		lure_pos.y = 0.0
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
+		_leave_slack()
 		sound_event.emit("lure_splash", lure_pos)
 		message.emit("Heitto %.0f m" % Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y).length())
 	elif not in_water and lure_pos.y <= ground:
@@ -198,6 +220,7 @@ func _fly(dt: float) -> void:
 		lure_on_land = true
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
+		_leave_slack()
 		var g := lake.ground_at(lure_pos.x, lure_pos.z)
 		if (g == LakeData.Ground.FOREST or g == LakeData.Ground.REEDS) and _rng.randf() < 0.5:
 			snagged = true
@@ -229,7 +252,7 @@ func _retrieve(dt: float) -> void:
 	var tip := rod_tip()
 	var moved := Vector2(lure_pos.x - _prev_lure.x, lure_pos.z - _prev_lure.z).length()
 	lure_speed = lerpf(lure_speed, moved / dt, minf(1.0, dt * 5.0))
-	tension = 0.2 if reel > 0.0 else 0.05
+	tension = _retrieve_tension(tip, reel)
 
 	if lure_on_land:
 		lure_pos.y = lake.height_at(lure_pos.x, lure_pos.z)
@@ -264,6 +287,60 @@ func is_reeling() -> bool:
 
 func reel_speed() -> float:
 	return _reel_speed()
+
+
+## Heiton aikana kelalta purkautuu siimaa hieman yli välimatkan, joten siima
+## jää löysälle kaarelle veden päälle. Kelaus kiristää sen ensin suoraksi.
+func _leave_slack() -> void:
+	line_out = rod_tip().distance_to(lure_pos) * 1.05 + 0.6
+
+
+## Siiman jännitys kelatessa: löysä siima ei vedä, kireällä siimalla uistimen
+## vesivastus kasvaa nopeuden neliönä. Maalla uistin laahaa maata.
+func _retrieve_tension(tip: Vector3, reel: float) -> float:
+	var slack := line_out - tip.distance_to(lure_pos)
+	if slack > 0.05:
+		return 0.0
+	if lure_on_land:
+		return 0.25 if reel > 0.0 else 0.0
+	return 0.02 + lure()["pull"] * lure_speed * lure_speed
+
+
+## Vavan taipuma: kärkeen vaikuttava veto taivuttaa vapaa siiman suuntaan.
+## Taipuma on suurin kärjessä (nopea toiminta), ja jousto värähtelee hetken.
+func _update_rod(dt: float) -> void:
+	var base := _rod_pivot.global_position
+	var dir0 := (-_rod_pivot.global_basis.z).normalized()
+	var straight_tip := base + dir0 * ROD_LENGTH
+	var load := 0.015 # uistimen paino
+	var pull_dir := Vector3.DOWN
+	match state:
+		State.CHARGING:
+			load += power * 0.25 # heiton lataus taivuttaa vapaa
+		State.FLYING, State.RETRIEVING, State.BITE, State.FIGHT:
+			var to_lure := lure_pos - straight_tip
+			if to_lure.length() > 0.05:
+				pull_dir = to_lure.normalized()
+			load = maxf(load, tension)
+	var target := ROD_MAX_BEND * (1.0 - exp(-load / ROD_POWER))
+	target = minf(target, dir0.angle_to(pull_dir) * 0.85) # ei taivu siiman suunnan ohi
+	_bend_vel += (ROD_STIFFNESS * (target - _bend) - ROD_DAMPING * _bend_vel) * dt
+	_bend = clampf(_bend + _bend_vel * dt, -0.6, ROD_MAX_BEND)
+	_bend_dir = _bend_dir.slerp(pull_dir, minf(1.0, dt * 10.0)).normalized()
+	var axis := dir0.cross(_bend_dir)
+	if axis.length() < 0.001:
+		axis = dir0.cross(Vector3.UP)
+	axis = axis.normalized()
+	_rod_points.clear()
+	var p := base
+	_rod_points.append(p)
+	for i in ROD_SEGMENTS:
+		var s := (i + 0.5) / ROD_SEGMENTS
+		p += dir0.rotated(axis, _bend * s * s) * (ROD_LENGTH / ROD_SEGMENTS)
+		_rod_points.append(p)
+	_tip_world = p
+	if _reel_handle:
+		_reel_handle.rotation.x -= _reel_speed() * dt * 8.0
 
 
 ## Siima vetää uistinta kohti vavan kärkeä, kun siimaa on kelattu sisään
@@ -334,6 +411,7 @@ func _fight(dt: float) -> void:
 		if _stamina > 0.2 and _rng.randf() < 0.45 + 0.4 * _stamina:
 			_run_dir = away.rotated(_rng.randf_range(-1.6, 1.6))
 			_run_intensity = _rng.randf_range(0.5, 1.0)
+			_bend_vel += _run_intensity * 4.0 # ryntäys nykäisee vavan kärkeä
 			_run_timer = _rng.randf_range(1.5, 4.5)
 		else:
 			_run_dir = away.rotated(_rng.randf_range(-2.5, 2.5))
@@ -453,22 +531,17 @@ func _build_visuals() -> void:
 	_rod_pivot = Node3D.new()
 	_rod_pivot.position = Vector3(0.22, 0.72, -0.1)
 	boat.angler.add_child(_rod_pivot)
+	# Vapa piirretään joka ruudulla taipuneena (ImmediateMesh maailman koordinaateissa)
+	_rod_mesh = ImmediateMesh.new()
 	var rod := MeshInstance3D.new()
-	var rod_mesh := CylinderMesh.new()
-	rod_mesh.top_radius = 0.006
-	rod_mesh.bottom_radius = 0.018
-	rod_mesh.height = ROD_LENGTH
+	rod.mesh = _rod_mesh
+	rod.top_level = true
 	var rod_mat := StandardMaterial3D.new()
-	rod_mat.albedo_color = Color(0.1, 0.1, 0.12)
-	rod_mesh.material = rod_mat
-	rod.mesh = rod_mesh
-	# Vapa osoittaa eteenpäin (-Z) ja kallistuu ylös pivotin X-kierrolla
-	rod.rotation.x = -PI / 2.0
-	rod.position = Vector3(0, 0, -ROD_LENGTH / 2.0)
-	_rod_pivot.add_child(rod)
-	_rod_tip = Node3D.new()
-	_rod_tip.position = Vector3(0, 0, -ROD_LENGTH)
-	_rod_pivot.add_child(_rod_tip)
+	rod_mat.vertex_color_use_as_albedo = true
+	rod_mat.roughness = 0.35
+	rod.material_override = rod_mat
+	add_child(rod)
+	_build_reel()
 
 	_line_mesh = ImmediateMesh.new()
 	var line := MeshInstance3D.new()
@@ -503,21 +576,9 @@ func _build_visuals() -> void:
 
 
 func _update_visuals() -> void:
-	var tip := rod_tip()
 	_lure_node.global_position = lure_pos
-	_line_mesh.clear_surfaces()
-	_line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	var slack := clampf(1.0 - tension / 2.0, 0.0, 1.0)
-	var span := tip.distance_to(lure_pos)
-	var sag := slack * minf(span * 0.06, 2.5)
-	for i in 17:
-		var t := i / 16.0
-		var p := tip.lerp(lure_pos, t)
-		p.y -= sag * 4.0 * t * (1.0 - t)
-		if p.y < 0.0 and lure_pos.y >= -0.01 and not lure_on_land:
-			p.y = maxf(p.y, -0.02) # siima lepää pinnalla
-		_line_mesh.surface_add_vertex(p)
-	_line_mesh.surface_end()
+	_draw_rod()
+	_draw_line()
 
 	# Koukussa oleva kala: lajin malli rimpuilee nopealla uintiliikkeellä.
 	# Humusvesi haalistaa syvällä olevan kalan (fish.gdshader).
@@ -535,3 +596,128 @@ func _update_visuals() -> void:
 		if dir.length() > 0.01:
 			_fish_node.look_at(_fish_pos + dir, Vector3.UP)
 		_fish_node.scale = Vector3.ONE * len_m
+
+
+## Kela vavan kahvaan: runko, kela ja pyörivä kampi
+func _build_reel() -> void:
+	var dark := StandardMaterial3D.new()
+	dark.albedo_color = Color(0.12, 0.12, 0.14)
+	dark.metallic = 0.5
+	dark.roughness = 0.4
+	var silver := StandardMaterial3D.new()
+	silver.albedo_color = Color(0.7, 0.72, 0.75)
+	silver.metallic = 0.8
+	silver.roughness = 0.3
+	var reel := Node3D.new()
+	reel.position = Vector3(0, -0.06, -0.3)
+	_rod_pivot.add_child(reel)
+	var parts := [
+		[BoxMesh.new(), Vector3(0.012, 0.05, 0.03), Vector3(0, 0.035, 0), dark], # jalka
+		[CylinderMesh.new(), Vector3(0.032, 0.05, 0.0), Vector3(0, 0, 0.005), dark], # runko
+		[CylinderMesh.new(), Vector3(0.027, 0.03, 0.0), Vector3(0, 0, -0.035), silver], # kela
+	]
+	for part in parts:
+		var mi := MeshInstance3D.new()
+		var mesh: PrimitiveMesh = part[0]
+		var size: Vector3 = part[1]
+		if mesh is BoxMesh:
+			mesh.size = size
+		else:
+			mesh.top_radius = size.x
+			mesh.bottom_radius = size.x
+			mesh.height = size.y
+			mi.rotation.x = PI / 2.0 # kelan akseli vavan suuntaan
+		mesh.material = part[3]
+		mi.mesh = mesh
+		mi.position = part[2]
+		reel.add_child(mi)
+	_reel_handle = Node3D.new()
+	_reel_handle.position = Vector3(0.04, 0, 0.005)
+	reel.add_child(_reel_handle)
+	for arm in [[Vector3(0.006, 0.06, 0.006), Vector3(0, -0.03, 0)], [Vector3(0.02, 0.012, 0.012), Vector3(0.012, -0.06, 0)]]:
+		var mi := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = arm[0]
+		box.material = dark
+		mi.mesh = box
+		mi.position = arm[1]
+		_reel_handle.add_child(mi)
+
+
+## Vapa putkena taipuneen keskilinjan ympärille: korkkikahva ja ohenevat nikamat
+func _draw_rod() -> void:
+	_rod_mesh.clear_surfaces()
+	if _rod_points.size() < 2:
+		return
+	var sides := 6
+	var prev_ring := []
+	_rod_mesh.surface_begin(Mesh.PRIMITIVE_TRIANGLES)
+	for i in _rod_points.size():
+		var s := float(i) / (_rod_points.size() - 1)
+		var a: Vector3 = _rod_points[maxi(i - 1, 0)]
+		var b: Vector3 = _rod_points[mini(i + 1, _rod_points.size() - 1)]
+		var dir := (b - a).normalized()
+		var side := dir.cross(Vector3.UP)
+		if side.length() < 0.01:
+			side = dir.cross(Vector3.RIGHT)
+		side = side.normalized()
+		var up := side.cross(dir).normalized()
+		var handle := s * ROD_LENGTH < 0.4
+		var r := 0.016 if handle else lerpf(0.01, 0.0025, s)
+		var col := Color(0.62, 0.48, 0.3) if handle else Color(0.08, 0.1, 0.16)
+		var ring := []
+		for k in sides:
+			var ang := TAU * k / sides
+			var n := side * cos(ang) + up * sin(ang)
+			ring.append([_rod_points[i] + n * r, n, col])
+		if i > 0:
+			for k in sides:
+				var k2 := (k + 1) % sides
+				for v in [prev_ring[k], ring[k], ring[k2], prev_ring[k], ring[k2], prev_ring[k2]]:
+					_rod_mesh.surface_set_normal(v[1])
+					_rod_mesh.surface_set_color(v[2])
+					_rod_mesh.surface_add_vertex(v[0])
+		prev_ring = ring
+	_rod_mesh.surface_end()
+
+
+## Siima vavan kärjestä uistimelle (tai kalalle):
+## - roikkuma riippuu jännityksestä (kireä siima on suora)
+## - ylimääräinen siima (siimaa ulkona enemmän kuin välimatka) roikkuu kaarella
+## - tuuli taivuttaa löysää siimaa sivulle
+## - vedessä siima lepää pinnalla ja painuu suoraan uistimelle
+func _draw_line() -> void:
+	_line_mesh.clear_surfaces()
+	var tip := rod_tip()
+	var span := tip.distance_to(lure_pos)
+	if span < 0.02:
+		return
+	var in_water := state in [State.RETRIEVING, State.BITE, State.FIGHT] and not lure_on_land
+	var excess := 0.0
+	if state in [State.RETRIEVING, State.BITE, State.FIGHT]:
+		excess = maxf(0.0, line_out - span)
+	var tension_n := tension * 9.81 + 0.25
+	var sag := maxf(LINE_WEIGHT * span * span / (8.0 * tension_n), sqrt(3.0 * span * excess / 8.0))
+	sag = minf(sag, span * 0.45)
+	var chord := lure_pos - tip
+	var flat := Vector3(chord.x, 0, chord.z)
+	var perp := Vector3(-flat.z, 0, flat.x).normalized() if flat.length() > 0.01 else Vector3.ZERO
+	var wind := weather.vector()
+	var bow := clampf(Vector3(wind.x, 0, wind.y).dot(perp) * 0.08 * sag, -span * 0.2, span * 0.2)
+	var n := 32
+	var entry_t := -1.0
+	_line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
+	for i in n + 1:
+		var t := float(i) / n
+		var hump := 4.0 * t * (1.0 - t)
+		var p := tip.lerp(lure_pos, t)
+		p.y -= sag * hump
+		p += perp * bow * hump
+		if in_water:
+			if entry_t < 0.0 and p.y <= 0.0:
+				entry_t = t
+			if entry_t >= 0.0:
+				var u := (t - entry_t) / maxf(1.0 - entry_t, 0.001)
+				p.y = maxf(p.y, lerpf(0.0, lure_pos.y, u)) # pinnalta suoraan uistimelle
+		_line_mesh.surface_add_vertex(p)
+	_line_mesh.surface_end()
