@@ -178,7 +178,7 @@ func _help_text() -> String:
 		"  L            vaihda uistin",
 		"",
 		"MUUTA",
-		"  T            ajan nopeus   Tab  saaliskirja   F1  ohje   Esc  tauko",
+		"  T            ajan nopeus   Tab  saaliskirja   F1  ohje   M  äänet   Esc  tauko",
 		"",
 		"Klikkaa hiirellä aloittaaksesi.",
 	]

@@ -5,6 +5,7 @@ extends Node3D
 ## ankkuri ja karilleajo järven syvyysdatan perusteella.
 
 signal message(text: String)
+signal sound_event(sound: String, at: Vector3)
 
 const LENGTH := 4.4
 const MASS := 260.0 # vene + kalastaja + moottori, kg
@@ -77,19 +78,23 @@ func _unhandled_input(event: InputEvent) -> void:
 			motor_starting = 0.0
 			throttle = 0.0
 			_unstow_timer = 1.5
+			sound_event.emit("motor_stop", _stern_position())
 			message.emit("Moottori sammutettu – airot hankaimiin")
 		else:
 			motor_starting = 1.6
+			sound_event.emit("motor_start", _stern_position())
 			message.emit("Airot veneeseen ja nykäiset käynnistysnarusta...")
 	elif event.is_action_pressed("anchor_toggle"):
 		if anchored:
 			anchored = false
+			sound_event.emit("anchor_up", global_position + Vector3(0, 0, 0))
 			message.emit("Ankkuri nostettu")
 		else:
 			var depth := depth_below()
 			anchored = true
 			anchor_point = pos
 			anchor_rope = depth * 2.0 + 2.0
+			sound_event.emit("anchor_drop", global_position)
 			message.emit("Ankkuri laskettu (syvyys %.1f m)" % depth)
 
 
@@ -135,6 +140,8 @@ func _physics_process(dt: float) -> void:
 			torque += (right_oar - left) * 0.5 * ROW_TURN * power
 			if before < 0.45 and f >= 0.45:
 				_leave_swirls()
+			elif before < 0.95 and f >= 0.95:
+				_blade_sounds("oar_catch")
 		else:
 			_row_phase = 0.0
 
@@ -162,8 +169,10 @@ func _physics_process(dt: float) -> void:
 	var old_clearance := _min_depth(pos, yaw)
 	var new_clearance := _min_depth(new_pos, yaw)
 	if new_clearance < DRAFT and new_clearance < old_clearance:
-		if velocity.length() > 1.0 and _bump_cooldown <= 0.0:
-			message.emit("Kolahdus! Vene osui pohjaan")
+		if velocity.length() > 0.5 and _bump_cooldown <= 0.0:
+			sound_event.emit("boat_bump", global_position)
+			if velocity.length() > 1.0:
+				message.emit("Kolahdus! Vene osui pohjaan")
 			_bump_cooldown = 3.0
 		velocity *= -0.15
 		yaw_rate *= 0.5
@@ -271,7 +280,7 @@ func _animate_oars(dt: float) -> void:
 		blade.rotation.x = lerp_angle(blade.rotation.x, PI / 2.0 - feather, minf(1.0, dt * rate))
 
 
-## Vedon lopussa lavat jättävät pyörteen veteen
+## Vedon lopussa lavat jättävät pyörteen veteen, ja lavoista tippuu vettä
 func _leave_swirls() -> void:
 	for i in _oars.size():
 		if _oar_activity[i] == 0.0:
@@ -279,6 +288,18 @@ func _leave_swirls() -> void:
 		var blade: Node3D = _oars[i]["blade"]
 		var p := blade.global_position
 		wake.add_swirl(Vector2(p.x, p.z), 1.0 + absf(_oar_activity[i]) * 0.3)
+	_blade_sounds("oar_drip")
+
+
+func _blade_sounds(sound: String) -> void:
+	for i in _oars.size():
+		if _oar_activity[i] != 0.0:
+			sound_event.emit(sound, _oars[i]["blade"].global_position)
+
+
+func _stern_position() -> Vector3:
+	var stern := pos - forward() * LENGTH * 0.5
+	return Vector3(stern.x, 0.5, stern.y)
 
 
 # --- Ulkonäkö ---------------------------------------------------------------

@@ -18,6 +18,7 @@ const KEYS := {
 	"catch_log": [KEY_TAB],
 	"help": [KEY_F1, KEY_H],
 	"pause": [KEY_ESCAPE],
+	"mute": [KEY_M],
 }
 
 const MOUSE := {

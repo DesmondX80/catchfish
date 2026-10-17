@@ -12,6 +12,7 @@ var camera_rig: CameraRig
 var population: FishPopulation
 var fishing: Fishing
 var hud: Hud
+var audio: GameAudio
 var load_ms := 0
 
 
@@ -69,6 +70,10 @@ func _ready() -> void:
 	hud.setup(boat, fishing, weather, sky, lake, population)
 	hud.show_message("Tervetuloa: %s" % lake.name)
 
+	audio = GameAudio.new()
+	add_child(audio)
+	audio.setup(boat, fishing, weather, sky, lake)
+
 	load_ms = Time.get_ticks_msec() - t0
 
 	var args := OS.get_cmdline_user_args()
@@ -82,6 +87,8 @@ func _ready() -> void:
 		for arg in args:
 			if arg.begins_with("--screenshots="):
 				add_child(load("res://tests/screenshots.gd").new())
+			elif arg.begins_with("--audio-preview="):
+				add_child(load("res://tests/audio_preview.gd").new())
 
 
 func _input(event: InputEvent) -> void:
@@ -93,6 +100,10 @@ func _input(event: InputEvent) -> void:
 	elif event.is_action_pressed("pause"):
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
 		hud.set_paused_view(true)
+	elif event.is_action_pressed("mute"):
+		var bus := AudioServer.get_bus_index("Master")
+		AudioServer.set_bus_mute(bus, not AudioServer.is_bus_mute(bus))
+		hud.show_message("Äänet pois" if AudioServer.is_bus_mute(bus) else "Äänet päällä")
 	elif event.is_action_pressed("time_speed"):
 		sky.cycle_time_scale()
 		hud.show_message("Ajan nopeus x%d" % int(sky.time_scale()))

@@ -5,6 +5,7 @@ extends Node3D
 
 signal message(text: String)
 signal caught(entry: Dictionary, record: bool)
+signal sound_event(sound: String, at: Vector3)
 
 enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED }
 
@@ -171,6 +172,7 @@ func _cast() -> void:
 	var speed: float = 6.0 + 20.0 * power * (0.7 + 0.3 * lure()["cast"])
 	_lure_vel = Vector3(dir.x * cos(CAST_ANGLE), sin(CAST_ANGLE), dir.y * cos(CAST_ANGLE)) * speed
 	lure_pos = rod_tip()
+	sound_event.emit("cast_swish", rod_tip())
 	state = State.FLYING
 	snagged = false
 	lure_on_land = false
@@ -189,6 +191,7 @@ func _fly(dt: float) -> void:
 		lure_pos.y = 0.0
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
+		sound_event.emit("lure_splash", lure_pos)
 		message.emit("Heitto %.0f m" % Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y).length())
 	elif not in_water and lure_pos.y <= ground:
 		lure_pos.y = ground
@@ -246,11 +249,21 @@ func _retrieve(dt: float) -> void:
 				_fish = population.fish[idx]
 				state = State.BITE
 				_bite_timer = _rng.randf_range(0.6, 1.0)
+				sound_event.emit("bite_tick", rod_tip())
 				message.emit("TÄRPPI! Vastaisku – vasen hiiri!")
 	_prev_lure = lure_pos
 
 	if line_out < 1.0 or tip.distance_to(lure_pos) < 1.0:
 		state = State.READY
+
+
+## Kelataanko juuri nyt (äänille)
+func is_reeling() -> bool:
+	return state in [State.RETRIEVING, State.BITE, State.FIGHT] and _reel_speed() > 0.0 and not snagged
+
+
+func reel_speed() -> float:
+	return _reel_speed()
 
 
 ## Siima vetää uistinta kohti vavan kärkeä, kun siimaa on kelattu sisään
@@ -368,6 +381,7 @@ func _fight(dt: float) -> void:
 		return
 	# Hauki ravistelee päätään ja taimen hyppää: löysä siima on silloin vaarallinen
 	if _stamina > 0.3 and _fish_pos.y > -0.6 and _rng.randf() < 0.08 * dt:
+		sound_event.emit("fish_splash", _fish_pos)
 		message.emit("Taimen hyppää!" if _fish["sp"] == "taimen" else "%s rimpuilee pinnassa!" % data["name"])
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
@@ -393,6 +407,7 @@ func _try_land() -> void:
 			"place": lake.nearest_place(boat.pos.x, boat.pos.y),
 			"date": Time.get_datetime_string_from_system(false, true),
 		}
+		sound_event.emit("net_landing", _fish_pos)
 		var record := CatchLog.add(entry)
 		population.remove_and_replace(_fish_index)
 		_fish_index = -1
@@ -405,10 +420,13 @@ func _try_land() -> void:
 		_run_intensity = 1.0
 		_run_dir = Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).normalized()
 		_run_timer = 2.5
+		sound_event.emit("fish_splash", _fish_pos)
 		message.emit("Kala on vielä pirteä ja pakenee haavin luota!")
 
 
 func _lose_fish(text: String, lose_lure: bool) -> void:
+	if not lose_lure and _fish_pos.y > -1.0:
+		sound_event.emit("fish_splash", _fish_pos)
 	population.spook(_fish_index)
 	_fish_index = -1
 	_fish = {}
@@ -422,6 +440,7 @@ func _lose_fish(text: String, lose_lure: bool) -> void:
 
 
 func _lose_lure(text: String) -> void:
+	sound_event.emit("line_snap", rod_tip())
 	lost_lures += 1
 	snagged = false
 	state = State.READY
