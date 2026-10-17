@@ -270,7 +270,7 @@ func _retrieve(dt: float) -> void:
 		_check_timer -= dt
 		if _check_timer <= 0.0:
 			_check_timer = 0.2
-			var idx := population.check_lure(Vector2(lure_pos.x, lure_pos.z), lure_depth(), lure_speed, _twitch, lure(), sky.hour(), weather.speed(), 0.2)
+			var idx := population.check_lure(Vector2(lure_pos.x, lure_pos.z), lure_depth(), lure_speed, _twitch, lure(), sky.hour(), weather.speed(), 0.2, weather.cloud_cover)
 			if idx >= 0:
 				_fish_index = idx
 				_fish = population.fish[idx]

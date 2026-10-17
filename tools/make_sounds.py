@@ -145,6 +145,15 @@ def water_lap_loop():
     return out + 0.08 * shaped_noise(seconds, band(200, 1500))
 
 
+def rain_loop():
+    """Sade: kohina ja tiheät pisaroiden napsahdukset veteen."""
+    seconds = 8.0
+    out = 0.5 * shaped_noise(seconds, lambda f: band(600, 9000, 1.5)(f) / np.sqrt(f / 600))
+    for _ in range(900):
+        place(out, drop(seconds=0.03, f0=rng.uniform(1500, 3000), f1=rng.uniform(3000, 5000), decay=0.006), rng.uniform(0, seconds), rng.uniform(0.1, 0.5), wrap=True)
+    return out
+
+
 def chaffinch_song():
     """Peippo: kiihtyvä, laskeva sarja ja lopun koukero."""
     out = np.zeros(int(2.2 * SR))
@@ -371,6 +380,8 @@ def main():
         save(name, fn(), fades=False)
     for name, fn in sounds.items():
         save(name, fn())
+    # Myöhemmin lisätyt äänet viimeisinä, jotta aiempien satunnaisuus ei muutu
+    save('rain_loop', rain_loop(), fades=False)
 
 
 if __name__ == '__main__':

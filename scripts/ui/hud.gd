@@ -266,8 +266,8 @@ func _process(delta: float) -> void:
 	elif boat.motor_starting > 0.0:
 		motor = "Moottori käynnistyy..."
 	var place := lake.nearest_place(boat.pos.x, boat.pos.y)
-	_status.text = "Klo %s  (aika x%d)\nTuuli %.1f m/s %s\n%s   %.1f km/h%s\nSyvyys %.1f m%s" % [
-		sky.clock_text(), int(sky.time_scale()),
+	_status.text = "Klo %s  (aika x%d)\n%s\nTuuli %.1f m/s %s\n%s   %.1f km/h%s\nSyvyys %.1f m%s" % [
+		sky.clock_text(), int(sky.time_scale()), weather.description(),
 		weather.speed(), weather.from_text(),
 		motor, boat.speed_kmh(), "   ANKKURISSA" if boat.anchored else "",
 		boat.depth_below(), ("\nLähellä: " + place) if place != "" else "",

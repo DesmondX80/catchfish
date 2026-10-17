@@ -24,7 +24,9 @@ func _ready() -> void:
 	var env := Environment.new()
 	env.background_mode = Environment.BG_SKY
 	var sky_res := Sky.new()
-	sky_res.sky_material = ProceduralSkyMaterial.new()
+	var sky_shader := ShaderMaterial.new()
+	sky_shader.shader = load("res://shaders/sky.gdshader")
+	sky_res.sky_material = sky_shader
 	env.sky = sky_res
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
@@ -45,7 +47,8 @@ func _ready() -> void:
 	add_child(weather)
 	sky = SkyTime.new()
 	add_child(sky)
-	sky.setup(sun, env)
+	sky.setup(sun, env, weather)
+	weather.sky = sky
 
 	world = LakeWorld.new()
 	add_child(world)
@@ -58,6 +61,10 @@ func _ready() -> void:
 	camera_rig = CameraRig.new()
 	add_child(camera_rig)
 	camera_rig.setup(boat, lake)
+
+	var rain := Rain.new()
+	add_child(rain)
+	rain.setup(weather, camera_rig.camera)
 
 	population = FishPopulation.new()
 	add_child(population)
@@ -142,4 +149,5 @@ func _process(delta: float) -> void:
 		mat.set_shader_parameter("boat_pos", boat.pos)
 		mat.set_shader_parameter("boat_yaw", boat.yaw)
 	boat.wake.material.set_shader_parameter("light", sky.daylight())
-	world.water_material.set_shader_parameter("sky_color", sky.sky_material.sky_horizon_color)
+	world.water_material.set_shader_parameter("sky_color", sky.horizon_color)
+	world.water_material.set_shader_parameter("rain", weather.rain)

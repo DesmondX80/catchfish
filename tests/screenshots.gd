@@ -84,6 +84,26 @@ func _ready() -> void:
 				main.boat.motor_running = true
 				main.boat.throttle = 0.4,
 			"ready": func(): return _frame > 90},
+		{"name": "19-selkea", "hour": 11.0, "yaw": 0.3, "pitch": 0.08, "distance": 9.0,
+			"setup": func():
+				main.boat.motor_running = false
+				main.boat.throttle = 0.0
+				main.weather.set_kind(Weather.Kind.CLEAR, true),
+			"ready": func(): return _frame > 30},
+		{"name": "20-puolipilvista", "hour": 11.0, "yaw": 0.3, "pitch": 0.08, "distance": 9.0,
+			"setup": func(): main.weather.set_kind(Weather.Kind.PARTLY, true),
+			"ready": func(): return _frame > 30},
+		{"name": "21-pilvista", "hour": 11.0, "yaw": 0.3, "pitch": 0.08, "distance": 9.0,
+			"setup": func(): main.weather.set_kind(Weather.Kind.CLOUDY, true),
+			"ready": func(): return _frame > 30},
+		{"name": "22-sade", "hour": 11.0, "yaw": 0.3, "pitch": 0.08, "distance": 9.0,
+			"setup": func(): main.weather.set_kind(Weather.Kind.RAIN, true),
+			"ready": func(): return _frame > 90},
+		{"name": "23-rankkasade", "hour": 11.0, "yaw": 0.3, "pitch": 0.08, "distance": 9.0,
+			"setup": func(): main.weather.set_kind(Weather.Kind.HEAVY_RAIN, true),
+			"ready": func(): return _frame > 90},
+		{"name": "24-pisararenkaat", "hour": 11.0, "yaw": PI / 2.0, "pitch": 0.75, "distance": 3.0,
+			"ready": func(): return _frame > 30},
 	]
 
 

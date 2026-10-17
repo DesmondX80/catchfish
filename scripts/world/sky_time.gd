@@ -1,7 +1,9 @@
 class_name SkyTime
 extends Node
-## Pelin kello ja aurinko. Auringon korkeus lasketaan Raahen leveysasteelle
-## valitulle päivälle, joten kesäkuussa yö jää hämäräksi.
+## Pelin kello, aurinko ja taivas. Auringon korkeus lasketaan Raahen
+## leveysasteelle valitulle päivälle, joten kesäkuussa yö jää hämäräksi.
+## Pilvisyys himmentää valon, pehmentää varjot ja harmaannuttaa taivaan;
+## sade tuo usvaa.
 
 signal hour_changed(hour: float)
 
@@ -14,13 +16,16 @@ var time_scale_index := 1
 
 var sun: DirectionalLight3D
 var environment: Environment
-var sky_material: ProceduralSkyMaterial
-var cloudiness := 0.3
+var sky_material: ShaderMaterial
+var weather: Weather
+var horizon_color := Color(0.72, 0.78, 0.84) # vedenpinnan heijastukselle
+var _cloud_offset := Vector2.ZERO
 
 
-func setup(sun_light: DirectionalLight3D, env: Environment) -> void:
+func setup(sun_light: DirectionalLight3D, env: Environment, weather_node: Weather) -> void:
 	sun = sun_light
 	environment = env
+	weather = weather_node
 	sky_material = env.sky.sky_material
 	_update_sun()
 
@@ -75,11 +80,34 @@ func _update_sun() -> void:
 	sun.look_at_from_position(Vector3.ZERO, -dir, Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD)
 	var light := daylight()
 	var low := clampf(rad_to_deg(angles.x) / 12.0, 0.0, 1.0)
+	var cover := weather.cloud_cover if weather else 0.3
+	var rain := weather.rain if weather else 0.0
+
 	sun.light_color = Color(1.0, 0.62, 0.4).lerp(Color(1.0, 0.97, 0.9), low)
-	sun.light_energy = lerpf(0.05, 1.15, light) * (1.0 - cloudiness * 0.5)
-	environment.ambient_light_energy = lerpf(0.25, 0.8, light)
-	environment.fog_light_color = Color(0.25, 0.28, 0.35).lerp(Color(0.68, 0.74, 0.8), light)
-	sky_material.sky_top_color = Color(0.12, 0.16, 0.32).lerp(Color(0.32, 0.5, 0.78), light)
-	sky_material.sky_horizon_color = Color(0.55, 0.45, 0.45).lerp(Color(0.72, 0.78, 0.84), low).lerp(Color(0.2, 0.22, 0.3), 1.0 - light)
-	sky_material.ground_horizon_color = sky_material.sky_horizon_color
-	sky_material.sky_energy_multiplier = lerpf(0.25, 1.0, light)
+	sun.light_energy = lerpf(0.05, 1.15, light) * (1.0 - cover * 0.75)
+	sun.shadow_opacity = 1.0 - cover * 0.8 # pilvisellä varjot ovat haaleat
+
+	var top := Color(0.12, 0.16, 0.32).lerp(Color(0.32, 0.5, 0.78), light)
+	var horizon := Color(0.55, 0.45, 0.45).lerp(Color(0.72, 0.78, 0.84), low).lerp(Color(0.2, 0.22, 0.3), 1.0 - light)
+	var overcast := Color(0.5, 0.52, 0.55) * lerpf(0.2, 1.0, light)
+	var grey := smoothstep(0.5, 1.0, cover) * 0.75
+	horizon_color = horizon.lerp(overcast, grey)
+
+	environment.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
+	environment.ambient_light_color = top.lerp(horizon, 0.5).lerp(overcast, grey)
+	environment.ambient_light_energy = lerpf(0.25, 0.8, light) * (1.0 + cover * 0.2)
+	environment.fog_light_color = Color(0.25, 0.28, 0.35).lerp(Color(0.68, 0.74, 0.8), light).lerp(overcast, grey)
+	environment.fog_density = 0.0006 + rain * 0.005 # sade heikentää näkyvyyttä
+
+	sky_material.set_shader_parameter("top_color", top)
+	sky_material.set_shader_parameter("horizon_color", horizon)
+	sky_material.set_shader_parameter("ground_color", horizon * 0.6)
+	sky_material.set_shader_parameter("sun_dir", dir)
+	sky_material.set_shader_parameter("sun_color", sun.light_color)
+	sky_material.set_shader_parameter("daylight", light)
+	sky_material.set_shader_parameter("cover", cover)
+	sky_material.set_shader_parameter("darkness", rain)
+	if weather:
+		# Pilvet ajelehtivat tuulen mukana (todellisessa ajassa, jotta liike näkyy)
+		_cloud_offset += weather.vector() * get_process_delta_time() * 0.0015
+		sky_material.set_shader_parameter("cloud_offset", _cloud_offset)

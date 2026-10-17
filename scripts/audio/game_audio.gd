@@ -5,7 +5,7 @@ extends Node
 ## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py.
 
 const DIR := "res://assets/sounds/"
-const LOOPS := ["wind_loop", "water_lap_loop", "motor_loop", "reel_loop", "drag_loop"]
+const LOOPS := ["wind_loop", "water_lap_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
 const MAX_ONE_SHOTS := 24
 
 ## Kertaäänet: [voimakkuus dB, unit_size (m), sävelkorkeuden satunnaisuus]
@@ -36,6 +36,7 @@ var lake: LakeData
 
 var _streams := {}
 var _wind: AudioStreamPlayer
+var _rain: AudioStreamPlayer
 var _lap: AudioStreamPlayer3D
 var _motor: AudioStreamPlayer3D
 var _reel: AudioStreamPlayer3D
@@ -69,6 +70,11 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	_wind.stream = _streams["wind_loop"]
 	add_child(_wind)
 	_wind.play()
+
+	_rain = AudioStreamPlayer.new()
+	_rain.stream = _streams["rain_loop"]
+	_rain.volume_db = -80.0
+	add_child(_rain)
 
 	_lap = _attached_loop("water_lap_loop", 6.0)
 	_lap.play()
@@ -120,6 +126,14 @@ func _process(delta: float) -> void:
 	var wind := weather.speed()
 	_wind.volume_db = linear_to_db(clampf(0.08 + wind / 10.0, 0.02, 1.0)) - 4.0
 	_wind.pitch_scale = 0.9 + clampf(wind / 30.0, 0.0, 0.3)
+
+	# Sade: voimakkuuden mukaan
+	if weather.rain > 0.02:
+		if not _rain.playing:
+			_rain.play()
+		_rain.volume_db = linear_to_db(clampf(weather.rain, 0.05, 1.0)) - 3.0
+	elif _rain.playing:
+		_rain.stop()
 
 	# Laineet veneen kyljessä: aallokon ja vauhdin mukaan
 	var lap := clampf(0.25 + Waves.strength * 0.8 + boat.velocity.length() * 0.08, 0.0, 1.0)

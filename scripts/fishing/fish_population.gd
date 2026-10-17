@@ -167,7 +167,7 @@ func fish_near(p: Vector2, radius: float) -> Array[int]:
 
 ## Tarkistaa iskeekö jokin kala uistimeen. Palauttaa kalan indeksin tai -1.
 ## lure_speed on uistimen nopeus vedessä (m/s), twitch lyhyt nykäisy (0..1).
-func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: float, lure: Dictionary, hour: float, wind: float, dt: float) -> int:
+func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: float, lure: Dictionary, hour: float, wind: float, dt: float, cloud := 0.0) -> int:
 	var best := -1
 	for i in fish_near(lure_xz, 10.0):
 		var f: Dictionary = fish[i]
@@ -183,7 +183,14 @@ func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: 
 		var sp_speed: Array = data["speed"]
 		var effective_speed := lure_speed + twitch * 0.8
 		interest *= exp(-pow((effective_speed - sp_speed[0]) / sp_speed[1], 2.0))
-		interest *= Species.activity(f["sp"], hour)
+		var activity := Species.activity(f["sp"], hour)
+		# Pilvisellä säällä hauki ja ahven syövät paremmin, ja valoa karttava
+		# kuha uskaltautuu syömään myös päivällä
+		if f["sp"] == "kuha":
+			activity = lerpf(activity, 1.0, cloud * 0.5)
+		else:
+			activity *= 1.0 + cloud * 0.3
+		interest *= activity
 		interest *= f["hunger"]
 		# Pieni tuulen väreily rohkaisee kaloja, kova tuuli samentaa
 		interest *= 1.0 + clampf(wind / 4.0, 0.0, 1.0) * 0.3 - clampf((wind - 7.0) / 4.0, 0.0, 0.4)

@@ -11,7 +11,36 @@ uniform vec3 shallow_color : source_color = vec3(0.13, 0.12, 0.07);
 uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
 #include "res://shaders/waves.gdshaderinc"
 
+uniform float rain = 0.0; // sateen voimakkuus: pisararenkaat pinnassa
+
 varying vec3 world_pos;
+
+float rhash(vec2 p) {
+	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+}
+
+// Pisararenkaat: jokaisessa 0,5 m ruudussa satunnainen pisara laajenevine renkaineen
+vec2 rain_ripples(vec2 p) {
+	const float CELL = 0.5;
+	vec2 slope = vec2(0.0);
+	vec2 cell = floor(p / CELL);
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			vec2 c = cell + vec2(float(i), float(j));
+			if (rhash(c + 9.1) > rain * 0.9 + 0.05) {
+				continue; // heikossa sateessa pisaroita on harvemmassa
+			}
+			vec2 center = (c + vec2(rhash(c), rhash(c + 17.3))) * CELL;
+			float life = fract(wave_time * 1.1 + rhash(c + 5.7));
+			vec2 d = p - center;
+			float dist = length(d) + 0.0001;
+			float x = dist - life * 0.4;
+			float ring = exp(-x * x * 900.0) * (1.0 - life);
+			slope += d / dist * ring * cos(x * 70.0) * 0.6;
+		}
+	}
+	return slope;
+}
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
@@ -36,6 +65,10 @@ void fragment() {
 		float aa = 1.0 - smoothstep(wavelength * 0.08, wavelength * 0.3, footprint);
 		vec2 d = wave_dir(i);
 		slope += d * k * amp * aa * cos(dot(p, d) * k - omega * wave_time);
+	}
+	if (rain > 0.01) {
+		float near_rain = 1.0 - smoothstep(10.0, 40.0, length(world_pos - CAMERA_POSITION_WORLD));
+		slope += rain_ripples(p) * rain * near_rain;
 	}
 	vec3 n = normalize(vec3(-slope.x, 1.0, -slope.y));
 	NORMAL = normalize((VIEW_MATRIX * vec4(n, 0.0)).xyz);
