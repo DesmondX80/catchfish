@@ -37,7 +37,8 @@ func _ready() -> void:
 
 	var sun := DirectionalLight3D.new()
 	sun.shadow_enabled = true
-	sun.directional_shadow_max_distance = 120.0
+	sun.directional_shadow_max_distance = 60.0 # lähempänä tarkemmat varjot
+	sun.shadow_blur = 1.5
 	add_child(sun)
 
 	weather = Weather.new()
@@ -65,6 +66,7 @@ func _ready() -> void:
 	fishing = Fishing.new()
 	add_child(fishing)
 	fishing.setup(boat, camera_rig, lake, population, weather, sky)
+	boat.angler.setup(boat, fishing)
 
 	fish_visuals = FishVisuals.new()
 	add_child(fish_visuals)
@@ -135,5 +137,9 @@ func _process(delta: float) -> void:
 	Waves.time = fmod(Waves.time + delta, 3600.0)
 	Waves.apply(world.water_material)
 	Waves.apply(boat.wake.material)
+	# Veneen sisällä ei piirretä vettä eikä vanaa
+	for mat in [world.water_material, boat.wake.material]:
+		mat.set_shader_parameter("boat_pos", boat.pos)
+		mat.set_shader_parameter("boat_yaw", boat.yaw)
 	boat.wake.material.set_shader_parameter("light", sky.daylight())
 	world.water_material.set_shader_parameter("sky_color", sky.sky_material.sky_horizon_color)

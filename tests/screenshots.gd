@@ -19,6 +19,7 @@ func _ready() -> void:
 	main.hud.set_paused_view(false)
 	var boat: Boat = main.boat
 	_shots = [
+		{"name": "0-vene-lahelta", "hour": 12.0, "yaw": PI / 2.0 + 0.3, "pitch": 0.35, "distance": 4.5},
 		{"name": "1-laituri", "hour": 7.0, "yaw": 0.0, "pitch": 0.3, "distance": 9.0},
 		{"name": "2-yleiskuva", "hour": 9.0, "yaw": 0.6, "pitch": 0.7, "distance": 40.0},
 		{"name": "3-soutu-veto", "hour": 10.0, "yaw": PI / 2.0, "pitch": 0.12, "distance": 6.5,
@@ -64,6 +65,25 @@ func _ready() -> void:
 		{"name": "15-hauki-koukussa", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.12, "distance": 6.0,
 			"setup": func(): _hook("hauki", 4.0),
 			"ready": func(): return _frame > 40},
+		{"name": "16-kalastaja-edesta", "hour": 12.0, "yaw": PI - 0.35, "pitch": 0.1, "distance": 2.4,
+			"setup": func():
+				main.fishing.state = Fishing.State.READY
+				main.fishing._fish_index = -1
+				main.boat.motor_running = true # moottoriasennossa kasvot keulaan päin
+				main.boat.throttle = 0.0,
+			"ready": func(): return _frame > 60},
+		{"name": "16b-kalastaja-sivulta", "hour": 12.0, "yaw": PI / 2.0, "pitch": 0.1, "distance": 2.6,
+			"setup": func(): main.boat.motor_running = false,
+			"ready": func(): return _frame > 60},
+		{"name": "17-soutaja", "hour": 12.0, "yaw": PI / 2.0 + 0.3, "pitch": 0.2, "distance": 3.6,
+			"setup": func(): Input.action_press("boat_forward"),
+			"ready": func(): return _frame > 60 and _phase_between(0.3, 0.38)},
+		{"name": "18-moottoriajo", "hour": 12.0, "yaw": PI / 2.0 - 0.4, "pitch": 0.25, "distance": 4.0,
+			"setup": func():
+				Input.action_release("boat_forward")
+				main.boat.motor_running = true
+				main.boat.throttle = 0.4,
+			"ready": func(): return _frame > 90},
 	]
 
 

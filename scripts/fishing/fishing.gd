@@ -60,6 +60,7 @@ var _last_catch: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
 var _rod_pivot: Node3D
+var _rod_pitch := 0.7
 var _rod_mesh: ImmediateMesh
 var _rod_points := PackedVector3Array()
 var _tip_world := Vector3.ZERO
@@ -173,7 +174,7 @@ func _aim_angler(dt: float) -> void:
 		var to_fish := Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y)
 		if to_fish.length() > 0.5:
 			target = wrapf(atan2(-to_fish.x, -to_fish.y) - boat.yaw, -PI, PI)
-	boat.angler.rotation.y = lerp_angle(boat.angler.rotation.y, target, minf(1.0, dt * 6.0))
+	boat.angler.aim_yaw = target
 	var pitch := 0.7
 	match state:
 		State.CHARGING:
@@ -184,7 +185,10 @@ func _aim_angler(dt: float) -> void:
 			pitch = 0.35
 		State.FIGHT:
 			pitch = 0.8 + clampf(tension / LINE_STRENGTH, 0.0, 1.0) * 0.5
-	_rod_pivot.rotation.x = lerpf(_rod_pivot.rotation.x, pitch, minf(1.0, dt * 8.0))
+	_rod_pitch = lerpf(_rod_pitch, pitch, minf(1.0, dt * 8.0))
+	# Vapa kalastajan käsissä tai veneen pohjalla (soudettaessa ja moottoriajossa)
+	var in_hands := boat.angler.rod_mount.global_transform * Transform3D(Basis(Vector3.RIGHT, _rod_pitch), Vector3.ZERO)
+	_rod_pivot.global_transform = in_hands.interpolate_with(boat.angler.rod_stow_transform(), boat.angler.rod_stow_blend())
 
 
 func _cast() -> void:
@@ -278,6 +282,21 @@ func _retrieve(dt: float) -> void:
 
 	if line_out < 1.0 or tip.distance_to(lure_pos) < 1.0:
 		state = State.READY
+
+
+## Piste vavalla annetun matkan päässä tyvestä (kalastajan kädet)
+func rod_point(distance: float) -> Vector3:
+	if _rod_points.size() < 2:
+		return _rod_pivot.global_position
+	var seg := ROD_LENGTH / ROD_SEGMENTS
+	var f := clampf(distance / seg, 0.0, ROD_SEGMENTS - 0.001)
+	var i := int(f)
+	return _rod_points[i].lerp(_rod_points[i + 1], f - i)
+
+
+## Kelan kammen nuppi (vasen käsi kelatessa)
+func reel_knob() -> Vector3:
+	return _reel_handle.global_transform * Vector3(0.012, -0.06, 0)
 
 
 ## Kelataanko juuri nyt (äänille)
@@ -529,8 +548,8 @@ func _lose_lure(text: String) -> void:
 
 func _build_visuals() -> void:
 	_rod_pivot = Node3D.new()
-	_rod_pivot.position = Vector3(0.22, 0.72, -0.1)
-	boat.angler.add_child(_rod_pivot)
+	_rod_pivot.top_level = true # sijainti lasketaan itse: kädessä tai veneen pohjalla
+	boat.angler.rod_mount.add_child(_rod_pivot)
 	# Vapa piirretään joka ruudulla taipuneena (ImmediateMesh maailman koordinaateissa)
 	_rod_mesh = ImmediateMesh.new()
 	var rod := MeshInstance3D.new()

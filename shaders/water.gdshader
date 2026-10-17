@@ -19,6 +19,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (inside_boat(world_pos.xz)) {
+		discard;
+	}
 	vec2 p = world_pos.xz;
 	// Kuinka monta metriä yksi pikseli kattaa tässä kohdassa
 	float footprint = length(fwidth(p));

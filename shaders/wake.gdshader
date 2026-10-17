@@ -16,6 +16,9 @@ void vertex() {
 }
 
 void fragment() {
+	if (inside_boat(foam_uv)) {
+		discard;
+	}
 	// Vaahdon epätasainen rakenne: kaksi ristikkäistä aaltokuviota
 	float streaks = 0.55 + 0.45 * sin(foam_uv.x * 3.1 + sin(foam_uv.y * 2.3) * 2.0) * sin(foam_uv.y * 2.7 + foam_uv.x * 0.7);
 	ALBEDO = foam_color * mix(0.25, 1.0, light);
