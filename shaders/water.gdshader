@@ -12,6 +12,7 @@ uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
 #include "res://shaders/waves.gdshaderinc"
 
 uniform float rain = 0.0; // sateen voimakkuus: pisararenkaat pinnassa
+uniform float ice = 0.0; // talvi: järvi jäässä, lumen peittämä jää
 
 varying vec3 world_pos;
 
@@ -44,7 +45,7 @@ vec2 rain_ripples(vec2 p) {
 
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
-	VERTEX.y += swell_height(world_pos.xz);
+	VERTEX.y += swell_height(world_pos.xz) * (1.0 - ice);
 }
 
 void fragment() {
@@ -83,4 +84,17 @@ void fragment() {
 	SPECULAR = 0.4;
 	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa
 	ALPHA = mix(0.55, 0.97, fresnel);
+	if (ice > 0.5) {
+		// Jää: lumipeite, jonka seassa tuulen paljastamia sinertäviä jäälaikkuja
+		vec2 q = world_pos.xz;
+		float n = sin(q.x * 0.11 + sin(q.y * 0.07) * 2.0) * 0.5 + sin(q.y * 0.13 - q.x * 0.05) * 0.5;
+		// Tuulen muovaamat lumikinokset: pehmeät aallot tuulen suuntaan
+		float drift = sin(dot(q, vec2(0.8, 0.6)) * 0.9 + sin(q.x * 0.21) * 1.5) * 0.5 + 0.5;
+		vec3 snow_col = vec3(0.95, 0.95, 0.96) * (0.95 + drift * 0.05);
+		ALBEDO = mix(snow_col, vec3(0.6, 0.68, 0.74), smoothstep(0.78, 0.97, n) * 0.6);
+		NORMAL = normalize((VIEW_MATRIX * vec4(0.0, 1.0, 0.0, 0.0)).xyz);
+		ROUGHNESS = 0.75;
+		SPECULAR = 0.3;
+		ALPHA = 1.0;
+	}
 }

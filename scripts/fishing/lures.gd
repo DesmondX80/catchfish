@@ -7,6 +7,12 @@ class_name Lures
 ## pull: uistimen vesivastus (kg) nopeudella 1 m/s – kasvaa nopeuden neliönä.
 ##       Sukeltava vaappu vastustaa paljon, jigi vähän.
 
+## Pilkit (talvi): pystysuoraan avannosta, nykäistään ylös ja annetaan vajota
+const ICE := [
+	{"id": "pilkki", "name": "Pilkki + toukka 4 g", "kind": "sink", "sink": 0.5, "lift": 0.3, "cast": 0.5, "snag": 0.0, "pull": 0.03, "color": Color(0.85, 0.82, 0.75)},
+	{"id": "tasuri", "name": "Tasapainopilkki 7 cm", "kind": "sink", "sink": 0.7, "lift": 0.3, "cast": 0.5, "snag": 0.0, "pull": 0.05, "color": Color(0.3, 0.75, 0.35)},
+]
+
 const LIST := [
 	{"id": "lusikka", "pull": 0.12, "name": "Lusikka 15 g", "kind": "sink", "sink": 0.45, "lift": 0.55, "cast": 1.0, "snag": 0.12, "color": Color(0.85, 0.75, 0.3)},
 	{"id": "vaappu", "pull": 0.22, "name": "Kelluva vaappu 9 cm", "kind": "dive", "float": 0.15, "max_dive": 1.6, "cast": 0.75, "snag": 0.05, "color": Color(0.2, 0.6, 0.3)},

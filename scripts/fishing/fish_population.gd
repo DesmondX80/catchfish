@@ -8,6 +8,8 @@ const GRID := 24.0 # spatiaalisen hakemiston solukoko (m)
 const WANDER_INTERVAL := 2.0 # jokainen kala liikkuu kerran tässä ajassa
 
 var lake: LakeData
+## Talvi: jään alla ahven, kuha ja taimen pysyttelevät pohjan lähellä
+var winter := false
 var fish: Array[Dictionary] = []
 var _grid := {}
 var _rng := RandomNumberGenerator.new()
@@ -98,6 +100,8 @@ func _random_habitat(sp: String) -> Vector2:
 func _preferred_depth(sp: String, p: Vector2) -> float:
 	var data: Dictionary = Species.DATA[sp]
 	var bottom := lake.depth_at(p.x, p.y)
+	if winter and sp != "hauki":
+		return maxf(0.2, bottom - _rng.randf_range(0.05, 0.7))
 	var dr: Array = data["depth"]
 	if data["bottom"]:
 		return maxf(0.2, bottom - _rng.randf_range(0.1, 0.6))

@@ -120,6 +120,7 @@ func _start_game(start_index: int) -> void:
 
 	population = FishPopulation.new()
 	add_child(population)
+	population.winter = season.frozen()
 	population.setup(lake)
 
 	fishing = Fishing.new()
@@ -131,11 +132,21 @@ func _start_game(start_index: int) -> void:
 	add_child(fish_visuals)
 	fish_visuals.setup(population, boat, fishing, lake)
 
+	# Talvi: järvi jäässä, kävellään ja pilkitään
+	if season.frozen():
+		boat.set_on_ice(true)
+		fishing.set_on_ice(true)
+		fish_visuals.visible = false # kalat eivät näy jään läpi
+		if not weather.real_mode:
+			weather.snow = true
+
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(boat, fishing, weather, sky, lake, population)
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
-	if season.name != "kesä":
+	if boat.on_ice:
+		hud.show_message("Järvi on jäässä – pilkille! Kairaa reikä pitämällä vasenta hiirtä pohjassa")
+	elif season.name != "kesä":
 		hud.show_message("Tervetuloa: %s – %s (%s)" % [lake.name, lake.starts[start_index]["name"], season.name])
 
 	pause_menu = PauseMenu.new()
@@ -155,6 +166,8 @@ func _start_game(start_index: int) -> void:
 		add_child(load("res://tests/autotest.gd").new())
 	elif "--flicker" in args:
 		add_child(load("res://tests/flicker.gd").new())
+	elif "--icetest" in args:
+		add_child(load("res://tests/ice_test.gd").new())
 	elif "--pausetest" in args:
 		add_child(load("res://tests/pause_test.gd").new())
 	elif "--inputtest" in args:
@@ -244,9 +257,10 @@ func _process(delta: float) -> void:
 	Waves.time = fmod(Waves.time + delta, 3600.0)
 	Waves.apply(world.water_material)
 	Waves.apply(boat.wake.material)
-	# Veneen sisällä ei piirretä vettä eikä vanaa
+	# Veneen sisällä ei piirretä vettä eikä vanaa (jäällä ei venettä)
+	world.water_material.set_shader_parameter("ice", 1.0 if boat.on_ice else 0.0)
 	for mat in [world.water_material, boat.wake.material]:
-		mat.set_shader_parameter("boat_pos", boat.pos)
+		mat.set_shader_parameter("boat_pos", Vector2(1e6, 1e6) if boat.on_ice else boat.pos)
 		mat.set_shader_parameter("boat_yaw", boat.yaw)
 	boat.wake.material.set_shader_parameter("light", sky.daylight())
 	world.water_material.set_shader_parameter("sky_color", sky.horizon_color)

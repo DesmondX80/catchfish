@@ -7,7 +7,7 @@ signal message(text: String)
 signal caught(entry: Dictionary, record: bool)
 signal sound_event(sound: String, at: Vector3)
 
-enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED }
+enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED, DRILLING }
 
 const ROD_LENGTH := 2.1
 const ROD_SEGMENTS := 16
@@ -30,6 +30,15 @@ var weather: Weather
 var sky: SkyTime
 
 var state := State.READY
+## Talvi: pilkkiminen avannosta (jäällä ei heitetä, vaan kairataan reikä)
+var on_ice := false
+var rod_length := ROD_LENGTH
+var holes: Array[Vector3] = []
+var current_hole := Vector3.INF
+const HOLE_AHEAD := 0.75 # avanto kalastajan edessä (m)
+const DRILL_TIME := 3.0 # s
+var _auger: Node3D
+var _holes_node: Node3D
 var lure_index := 0
 var drag_kg := 3.0
 var power := 0.0
@@ -85,8 +94,43 @@ func setup(boat_node: Boat, rig: CameraRig, lake_data: LakeData, fish_pop: FishP
 	_update_rod(0.0) # vavan kärjen sijainti heti alussa
 
 
+func lures() -> Array:
+	return Lures.ICE if on_ice else Lures.LIST
+
+
 func lure() -> Dictionary:
-	return Lures.LIST[lure_index]
+	return lures()[lure_index % lures().size()]
+
+
+## Talvitila: lyhyt pilkkivapa ja pilkit
+func set_on_ice(on: bool) -> void:
+	on_ice = on
+	rod_length = 0.65 if on else ROD_LENGTH
+	lure_index = 0
+	_lure_node.mesh.material.albedo_color = lure()["color"]
+
+
+## Kalastus käynnissä: kalastaja istuu paikallaan (ei kävellä)
+func busy() -> bool:
+	return state != State.READY and state != State.LANDED
+
+
+## Kalastajan edessä oleva avanto, tai Vector3.INF
+func hole_in_front() -> Vector3:
+	var front := boat.pos + boat.forward() * HOLE_AHEAD
+	for h in holes:
+		if Vector2(h.x, h.z).distance_to(front) < 0.45:
+			return h
+	return Vector3.INF
+
+
+func at_hole() -> bool:
+	return on_ice and hole_in_front() != Vector3.INF
+
+
+## Jääkairan kahvat: [oikea käsi ylhäällä, vasen kammella]
+func auger_grips() -> Array:
+	return [_auger.global_transform * Vector3(0, 1.0, 0), _auger.global_transform * Vector3(0.16, 0.78, 0)]
 
 
 func lure_depth() -> float:
@@ -117,6 +161,8 @@ func last_catch() -> Dictionary:
 func _unhandled_input(event: InputEvent) -> void:
 	if not GameInput.active():
 		return
+	if on_ice and _ice_input(event):
+		return
 	if event.is_action_pressed("cast"):
 		match state:
 			State.READY:
@@ -132,7 +178,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_released("cast") and state == State.CHARGING:
 		_cast()
 	elif event.is_action_pressed("lure_next") and state == State.READY:
-		lure_index = (lure_index + 1) % Lures.LIST.size()
+		lure_index = (lure_index + 1) % lures().size()
 		_lure_node.mesh.material.albedo_color = lure()["color"]
 		message.emit("Uistin: " + lure()["name"])
 	elif event.is_action_pressed("twitch") and state == State.RETRIEVING and not lure_on_land:
@@ -150,16 +196,21 @@ func _physics_process(dt: float) -> void:
 	_twitch = move_toward(_twitch, 0.0, dt * 3.0)
 	match state:
 		State.READY, State.LANDED:
-			lure_pos = rod_tip() + Vector3(0, -0.35, 0)
-			line_out = 0.35
+			lure_pos = rod_tip() + Vector3(0, -0.12 if on_ice else -0.35, 0)
+			line_out = 0.12 if on_ice else 0.35
 			tension = 0.0
+		State.DRILLING:
+			_drill(dt)
 		State.CHARGING:
 			power = minf(1.0, power + dt / 1.1)
 			lure_pos = rod_tip() + Vector3(0, -0.35, 0)
 		State.FLYING:
 			_fly(dt)
 		State.RETRIEVING:
-			_retrieve(dt)
+			if on_ice:
+				_ice_retrieve(dt)
+			else:
+				_retrieve(dt)
 		State.BITE:
 			_bite(dt)
 		State.FIGHT:
@@ -174,6 +225,8 @@ func _aim_angler(dt: float) -> void:
 		var to_fish := Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y)
 		if to_fish.length() > 0.5:
 			target = wrapf(atan2(-to_fish.x, -to_fish.y) - boat.yaw, -PI, PI)
+	if on_ice:
+		target = 0.0 # avanto on kalastajan edessä
 	boat.angler.aim_yaw = target
 	var pitch := 0.7
 	match state:
@@ -185,6 +238,11 @@ func _aim_angler(dt: float) -> void:
 			pitch = 0.35
 		State.FIGHT:
 			pitch = 0.8 + clampf(tension / LINE_STRENGTH, 0.0, 1.0) * 0.5
+	if on_ice:
+		# Pilkkivapa osoittaa avantoon; kalan vetäessä ja nykäistessä kärki nousee
+		pitch = -0.55 + _twitch * 0.3
+		if state == State.FIGHT:
+			pitch = -0.4 + clampf(tension / 3.0, 0.0, 1.0) * 0.6
 	_rod_pitch = lerpf(_rod_pitch, pitch, minf(1.0, dt * 8.0))
 	# Vapa kalastajan käsissä tai veneen pohjalla (soudettaessa ja moottoriajossa)
 	var in_hands := boat.angler.rod_mount.global_transform * Transform3D(Basis(Vector3.RIGHT, _rod_pitch), Vector3.ZERO)
@@ -288,7 +346,7 @@ func _retrieve(dt: float) -> void:
 func rod_point(distance: float) -> Vector3:
 	if _rod_points.size() < 2:
 		return _rod_pivot.global_position
-	var seg := ROD_LENGTH / ROD_SEGMENTS
+	var seg := rod_length / ROD_SEGMENTS
 	var f := clampf(distance / seg, 0.0, ROD_SEGMENTS - 0.001)
 	var i := int(f)
 	return _rod_points[i].lerp(_rod_points[i + 1], f - i)
@@ -330,7 +388,7 @@ func _retrieve_tension(tip: Vector3, reel: float) -> float:
 func _update_rod(dt: float) -> void:
 	var base := _rod_pivot.global_position
 	var dir0 := (-_rod_pivot.global_basis.z).normalized()
-	var straight_tip := base + dir0 * ROD_LENGTH
+	var straight_tip := base + dir0 * rod_length
 	var load := 0.015 # uistimen paino
 	var pull_dir := Vector3.DOWN
 	match state:
@@ -355,7 +413,7 @@ func _update_rod(dt: float) -> void:
 	_rod_points.append(p)
 	for i in ROD_SEGMENTS:
 		var s := (i + 0.5) / ROD_SEGMENTS
-		p += dir0.rotated(axis, _bend * s * s) * (ROD_LENGTH / ROD_SEGMENTS)
+		p += dir0.rotated(axis, _bend * s * s) * (rod_length / ROD_SEGMENTS)
 		_rod_points.append(p)
 	_tip_world = p
 	if _reel_handle:
@@ -393,7 +451,8 @@ func _lure_depth_dynamics(dt: float) -> void:
 
 func _bite(dt: float) -> void:
 	_bite_timer -= dt
-	lure_pos += Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)) * dt * 0.5
+	if not on_ice:
+		lure_pos += Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)) * dt * 0.5
 	if _reel_speed() > 0.0 and _bite_timer < 0.4:
 		_try_hook(0.45, "Kala tarttui kelatessa!")
 	elif _bite_timer <= 0.0:
@@ -446,12 +505,22 @@ func _fight(dt: float) -> void:
 	var bottom := lake.depth_at(_fish_pos.x, _fish_pos.z)
 	var target_depth := 0.3 if _stamina < 0.3 else clampf(lerpf(data["depth"][0], data["depth"][1], 0.5), 0.3, maxf(0.3, bottom - 0.2))
 	_fish_pos.y = -move_toward(-_fish_pos.y, target_depth, dt * 0.5)
+	# Jäällä siima kulkee avannon kautta: avanto on siiman taitekohta
+	var anchor := tip
+	var tip_to_anchor := 0.0
+	var hole_dist := 0.0
+	if on_ice:
+		anchor = Vector3(current_hole.x, 0.0, current_hole.z)
+		tip_to_anchor = tip.distance_to(anchor)
+		hole_dist = Vector2(_fish_pos.x - anchor.x, _fish_pos.z - anchor.z).length()
+		if hole_dist > 0.1:
+			_fish_pos.y = minf(_fish_pos.y, -0.2) # jään alla
 
 	# Siima, jarru ja jännitys
 	var pull := (_run_intensity * (0.3 + 0.7 * _stamina) * fish_power * 0.95 + 0.12) * weight
 	var reel := _reel_speed()
 	var effort := 0.6 if reel > 0.0 else 0.0
-	var dist := tip.distance_to(_fish_pos)
+	var dist := tip_to_anchor + anchor.distance_to(_fish_pos)
 	drag_slipping = false
 	if dist >= line_out:
 		var wanted := pull + effort
@@ -460,8 +529,8 @@ func _fight(dt: float) -> void:
 			line_out = dist # jarru antaa siimaa
 			tension = drag_kg
 		else:
-			_fish_pos = tip + (_fish_pos - tip).normalized() * line_out
-			line_out = maxf(0.5, line_out - reel * dt * clampf(1.0 - pull / drag_kg, 0.25, 1.0))
+			_fish_pos = anchor + (_fish_pos - anchor).normalized() * (line_out - tip_to_anchor)
+			line_out = maxf(tip_to_anchor + 0.15 if on_ice else 0.5, line_out - reel * dt * clampf(1.0 - pull / drag_kg, 0.25, 1.0))
 			tension = wanted
 		_slack_time = maxf(0.0, _slack_time - dt * 2.0)
 	else:
@@ -477,7 +546,7 @@ func _fight(dt: float) -> void:
 		_lose_fish("Kala irtosi löysällä siimalla", false)
 		return
 	# Hauki ravistelee päätään ja taimen hyppää: löysä siima on silloin vaarallinen
-	if _stamina > 0.3 and _fish_pos.y > -0.6 and _rng.randf() < 0.08 * dt:
+	if _stamina > 0.3 and _fish_pos.y > -0.6 and (not on_ice or hole_dist < 0.3) and _rng.randf() < 0.08 * dt:
 		sound_event.emit("fish_splash", _fish_pos)
 		message.emit("Taimen hyppää!" if _fish["sp"] == "taimen" else "%s rimpuilee pinnassa!" % data["name"])
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
@@ -486,7 +555,10 @@ func _fight(dt: float) -> void:
 
 	_stamina = clampf(_stamina - (tension / maxf(weight, 0.2)) * 0.03 * dt / fish_power - _run_intensity * 0.006 * dt + (0.004 * dt if tension < 0.3 else 0.0), 0.0, 1.0)
 	lure_pos = _fish_pos
-	_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2
+	if on_ice:
+		_landing_prompt = line_out - tip_to_anchor < 0.8 and hole_dist < 0.5
+	else:
+		_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2
 	tension = maxf(tension, 0.0)
 
 
@@ -561,6 +633,7 @@ func _build_visuals() -> void:
 	rod.material_override = rod_mat
 	add_child(rod)
 	_build_reel()
+	_build_auger()
 
 	_line_mesh = ImmediateMesh.new()
 	var line := MeshInstance3D.new()
@@ -615,6 +688,18 @@ func _update_visuals() -> void:
 		if dir.length() > 0.01:
 			_fish_node.look_at(_fish_pos + dir, Vector3.UP)
 		_fish_node.scale = Vector3.ONE * len_m
+	elif on_ice and state == State.LANDED and not _last_catch.is_empty():
+		# Saalis jäällä avannon vieressä, kyljellään
+		var sp: String = _last_catch["species"]
+		if _fish_node.mesh != FishModels.mesh(sp):
+			_fish_node.mesh = FishModels.mesh(sp)
+			_fish_node.material_override = FishModels.material(sp).duplicate()
+		_fish_node.material_override.set_shader_parameter("swim_rate", 1.5) # sätkii hiljalleen
+		var side := boat.right()
+		var at := Vector3(current_hole.x + side.x * 0.45, 0.05, current_hole.z + side.y * 0.45)
+		_fish_node.global_transform = Transform3D(Basis(Vector3.UP, boat.yaw + 0.3) * Basis(Vector3.BACK, PI / 2.0), at)
+		_fish_node.scale = Vector3.ONE * _last_catch["length"] / 100.0
+		_fish_node.visible = true
 
 
 ## Kela vavan kahvaan: runko, kela ja pyörivä kampi
@@ -681,7 +766,7 @@ func _draw_rod() -> void:
 			side = dir.cross(Vector3.RIGHT)
 		side = side.normalized()
 		var up := side.cross(dir).normalized()
-		var handle := s * ROD_LENGTH < 0.4
+		var handle := s * rod_length < 0.4
 		var r := 0.016 if handle else lerpf(0.01, 0.0025, s)
 		var col := Color(0.62, 0.48, 0.3) if handle else Color(0.08, 0.1, 0.16)
 		var ring := []
@@ -740,3 +825,151 @@ func _draw_line() -> void:
 				p.y = maxf(p.y, lerpf(0.0, lure_pos.y, u)) # pinnalta suoraan uistimelle
 		_line_mesh.surface_add_vertex(p)
 	_line_mesh.surface_end()
+
+
+
+# --- Pilkkiminen ----------------------------------------------------------------
+
+## Talven ohjaus: vasen hiiri kairaa (pidä pohjassa) tai laskee pilkin avantoon.
+## Palauttaa true, jos tapahtuma käsiteltiin.
+func _ice_input(event: InputEvent) -> bool:
+	if event.is_action_pressed("cast") and state == State.READY:
+		var hole := hole_in_front()
+		if hole != Vector3.INF:
+			current_hole = hole
+			state = State.RETRIEVING
+			lure_pos = Vector3(hole.x, -0.02, hole.z)
+			line_out = rod_tip().distance_to(Vector3(hole.x, 0.0, hole.z)) + 0.02
+			sound_event.emit("lure_splash", lure_pos)
+			message.emit("Pilkki avantoon – vasen hiiri laskee, oikea nostaa, välilyönti nykäisee")
+		else:
+			var front := boat.pos + boat.forward() * HOLE_AHEAD
+			if not lake.is_water(front.x, front.y) or lake.depth_at(front.x, front.y) < 0.4:
+				message.emit("Kairaa reikä jäälle, jossa on vettä alla")
+			else:
+				state = State.DRILLING
+				power = 0.0
+				_auger.global_position = Vector3(front.x, 0.0, front.y)
+				_auger.visible = true
+				sound_event.emit("ice_drill", _auger.global_position)
+		return true
+	if event.is_action_released("cast") and state == State.DRILLING:
+		state = State.READY
+		_auger.visible = false
+		message.emit("Kairaus keskeytyi")
+		return true
+	if event.is_action_pressed("twitch") and state == State.RETRIEVING:
+		_twitch = 1.0
+		return true
+	return false
+
+
+func _drill(dt: float) -> void:
+	power = minf(1.0, power + dt / DRILL_TIME)
+	_auger.rotation.y += dt * 9.0
+	_auger.position.y = -power * 0.35 # kaira painuu jäähän
+	if power >= 1.0:
+		var front := boat.pos + boat.forward() * HOLE_AHEAD
+		var hole := Vector3(front.x, 0.0, front.y)
+		holes.append(hole)
+		_add_hole_visual(hole)
+		_auger.visible = false
+		state = State.READY
+		message.emit("Reikä valmis (jää %d cm) – vasen hiiri laskee pilkin" % _rng.randi_range(35, 55))
+
+
+## Pilkki avannossa: vasen hiiri pohjassa laskee siimaa, oikea kelaa ylös,
+## välilyönti nykäisee pilkkiä ylös, minkä jälkeen se vajoaa takaisin.
+func _ice_retrieve(dt: float) -> void:
+	var h := current_hole
+	var tip := rod_tip()
+	var tip_to_hole := tip.distance_to(Vector3(h.x, 0.0, h.z))
+	var reel := _reel_speed()
+	if Input.is_action_pressed("cast") and GameInput.active():
+		line_out += 0.8 * dt
+	line_out = maxf(tip_to_hole, line_out - reel * dt)
+	var bottom := lake.depth_at(h.x, h.z)
+	var target := clampf(line_out - tip_to_hole, 0.0, maxf(0.0, bottom - 0.03))
+	target = maxf(0.0, target - _twitch * 0.3) # nykäisy nostaa pilkkiä
+	var depth := lure_depth()
+	var before := depth
+	if target > depth:
+		depth = move_toward(depth, target, lure()["sink"] * dt * 1.6) # vajoaa
+	else:
+		depth = move_toward(depth, target, 3.0 * dt) # siima nostaa
+	lure_pos = Vector3(h.x, -depth, h.z)
+	lure_speed = lerpf(lure_speed, absf(depth - before) / dt, minf(1.0, dt * 6.0))
+	var slack := line_out - tip_to_hole - depth
+	tension = 0.0 if slack > 0.05 else 0.02 + lure()["pull"] * lure_speed
+	_check_timer -= dt
+	if _check_timer <= 0.0 and depth > 0.2:
+		_check_timer = 0.2
+		var idx := population.check_lure(Vector2(h.x, h.z), depth, lure_speed, _twitch, lure(), sky.hour(), 2.0, 0.2, weather.cloud_cover)
+		if idx >= 0:
+			_fish_index = idx
+			_fish = population.fish[idx]
+			state = State.BITE
+			_bite_timer = _rng.randf_range(0.6, 1.0)
+			_bend_vel += 3.0 # vavan kärki nykäisee
+			sound_event.emit("bite_tick", tip)
+			message.emit("TÄRPPI! Vastaisku – vasen hiiri!")
+	if depth <= 0.01 and reel > 0.0 and line_out <= tip_to_hole + 0.01:
+		state = State.READY # pilkki ylhäällä
+
+
+func _add_hole_visual(hole: Vector3) -> void:
+	var slush := StandardMaterial3D.new()
+	slush.albedo_color = Color(0.78, 0.8, 0.82)
+	slush.roughness = 0.9
+	var water := StandardMaterial3D.new()
+	water.albedo_color = Color(0.03, 0.05, 0.06)
+	water.roughness = 0.1
+	water.metallic = 0.3
+	for part in [[0.36, 0.03, slush], [0.075, 0.035, water]]:
+		var mi := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = part[0]
+		cyl.bottom_radius = part[0] * 1.1
+		cyl.height = part[1]
+		cyl.radial_segments = 20
+		cyl.material = part[2]
+		mi.mesh = cyl
+		mi.position = hole + Vector3(0, part[1] / 2.0, 0)
+		_holes_node.add_child(mi)
+
+
+## Jääkaira: varsi, terä, kampi ja kahva
+func _build_auger() -> void:
+	_holes_node = Node3D.new()
+	_holes_node.top_level = true
+	add_child(_holes_node)
+	_auger = Node3D.new()
+	_auger.top_level = true
+	_auger.visible = false
+	add_child(_auger)
+	var steel := StandardMaterial3D.new()
+	steel.albedo_color = Color(0.7, 0.72, 0.75)
+	steel.metallic = 0.8
+	steel.roughness = 0.35
+	var blue := StandardMaterial3D.new()
+	blue.albedo_color = Color(0.15, 0.3, 0.65)
+	var grip := StandardMaterial3D.new()
+	grip.albedo_color = Color(0.1, 0.1, 0.1)
+	var parts := [
+		[CylinderMesh.new(), 0.018, 1.0, Vector3(0, 0.5, 0), Vector3.ZERO, blue], # varsi
+		[CylinderMesh.new(), 0.075, 0.35, Vector3(0, 0.15, 0), Vector3.ZERO, steel], # kierreterä
+		[CylinderMesh.new(), 0.012, 0.32, Vector3(0.0, 1.0, 0), Vector3(0, 0, PI / 2.0), grip], # kahva
+		[CylinderMesh.new(), 0.01, 0.17, Vector3(0.08, 0.78, 0), Vector3(0, 0, PI / 2.0), blue], # kampi
+		[CylinderMesh.new(), 0.014, 0.1, Vector3(0.16, 0.82, 0), Vector3.ZERO, grip], # kammen nuppi
+	]
+	for part in parts:
+		var mi := MeshInstance3D.new()
+		var cyl: CylinderMesh = part[0]
+		cyl.top_radius = part[1]
+		cyl.bottom_radius = part[1]
+		cyl.height = part[2]
+		cyl.material = part[5]
+		mi.mesh = cyl
+		mi.position = part[3]
+		mi.rotation = part[4]
+		_auger.add_child(mi)

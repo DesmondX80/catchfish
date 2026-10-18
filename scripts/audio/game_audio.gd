@@ -23,6 +23,8 @@ const ONE_SHOTS := {
 	"fish_splash": [0.0, 14.0, 0.15],
 	"line_snap": [-2.0, 5.0, 0.05],
 	"net_landing": [-2.0, 8.0, 0.08],
+	"ice_drill": [-4.0, 8.0, 0.04],
+	"snow_step": [-14.0, 4.0, 0.15],
 	"bird_chaffinch": [-6.0, 30.0, 0.06],
 	"bird_great_tit": [-6.0, 30.0, 0.06],
 	"bird_loon": [-2.0, 160.0, 0.04],
@@ -141,8 +143,8 @@ func _process(delta: float) -> void:
 		_rain.stop()
 
 	# Laineet veneen kyljessä: aallokon ja vauhdin mukaan
-	var lap := clampf(0.25 + Waves.strength * 0.8 + boat.velocity.length() * 0.08, 0.0, 1.0)
-	_lap.volume_db = linear_to_db(lap) - 6.0
+	var lap := 0.0 if boat.on_ice else clampf(0.25 + Waves.strength * 0.8 + boat.velocity.length() * 0.08, 0.0, 1.0)
+	_lap.volume_db = linear_to_db(maxf(lap, 0.0001)) - 6.0
 
 	# Moottori: kierrokset kaasun mukaan, käynnistyksen jälkeen pehmeä aloitus
 	if boat.motor_running:

@@ -154,6 +154,30 @@ def rain_loop():
     return out
 
 
+def ice_drill():
+    """Jääkaira: terä raapii jäätä kierros kerrallaan, lopussa vesi pulpahtaa."""
+    seconds = 3.2
+    t = t_axis(seconds)
+    scrape = shaped_noise(seconds, band(900, 6000)) * (0.55 + 0.45 * np.abs(np.sin(2 * np.pi * 1.6 * t)))
+    crunch = np.zeros_like(t)
+    for _ in range(140):
+        place(crunch, splash_burst(0.03, 1500, 7000, attack=0.001, decay=0.008), rng.uniform(0, seconds - 0.4), rng.uniform(0.2, 0.7))
+    out = 0.6 * scrape + crunch
+    out *= np.minimum(1.0, t / 0.15)
+    gulp = mix(damped_sine(160, 0.4, 0.1, glide=0.7), splash_burst(0.4, 200, 2000, decay=0.1) * 0.6)
+    place(out, gulp, seconds - 0.45, 0.9)
+    return out
+
+
+def snow_step():
+    """Askel kovalla lumella: narskahdus."""
+    n = int(0.22 * SR)
+    crunch = filtered(rng.standard_normal(n), band(700, 5000)) * envelope(n, 0.01, 0.05)
+    for _ in range(6):
+        place(crunch, splash_burst(0.02, 2000, 8000, attack=0.001, decay=0.005), rng.uniform(0.0, 0.12), 0.4)
+    return crunch
+
+
 def chaffinch_song():
     """Peippo: kiihtyvä, laskeva sarja ja lopun koukero."""
     out = np.zeros(int(2.2 * SR))
@@ -382,6 +406,8 @@ def main():
         save(name, fn())
     # Myöhemmin lisätyt äänet viimeisinä, jotta aiempien satunnaisuus ei muutu
     save('rain_loop', rain_loop(), fades=False)
+    save('ice_drill', ice_drill())
+    save('snow_step', snow_step())
 
 
 if __name__ == '__main__':

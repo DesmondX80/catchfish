@@ -203,6 +203,11 @@ func help_text(start_hint := true) -> String:
 		"  E / C        jarru kireämmälle / löysemmälle",
 		"  L            vaihda uistin",
 		"",
+		"PILKKIMINEN (talvella järvi on jäässä)",
+		"  W/A/S/D      kävely (Shift = juoksu)",
+		"  Vasen hiiri  pidä pohjassa = kairaa reikä; avannolla = laske pilkkiä",
+		"  Oikea hiiri  nosta pilkkiä   Välilyönti  nykäisy",
+		"",
 		"MUUTA",
 		"  T            ajan nopeus   Tab  saaliskirja   K  kartta   F1  ohje   M  äänet   Esc  valikko",
 		"",
@@ -283,7 +288,9 @@ func _process(delta: float) -> void:
 		_message.modulate.a = maxf(0.0, _message_timer)
 
 	var motor := "Airot"
-	if boat.motor_running:
+	if boat.on_ice:
+		motor = "Jalan jäällä"
+	elif boat.motor_running:
 		motor = "Moottori %d %%" % roundi(boat.throttle * 100.0) if boat.throttle >= 0.0 else "Moottori peruutus"
 	elif boat.motor_starting > 0.0:
 		motor = "Moottori käynnistyy..."
@@ -303,7 +310,12 @@ func _process(delta: float) -> void:
 	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [l["name"], fishing.drag_kg, Fishing.LINE_STRENGTH]
 	match fishing.state:
 		Fishing.State.READY:
-			info += "\nValmiina heittoon"
+			if fishing.on_ice:
+				info += "\nAvanto edessä – vasen hiiri laskee pilkin" if fishing.at_hole() else "\nKairaa reikä: vasen hiiri pohjassa (kävele W/A/S/D)"
+			else:
+				info += "\nValmiina heittoon"
+		Fishing.State.DRILLING:
+			info += "\nKairataan reikää... %d %%" % int(fishing.power * 100.0)
 		Fishing.State.CHARGING:
 			info += "\nHeittovoima..."
 		Fishing.State.FLYING:
@@ -316,10 +328,11 @@ func _process(delta: float) -> void:
 			var fish := fishing.hooked_fish()
 			info += "\n%s koukussa!   Siimaa %.1f m%s" % [Species.DATA[fish["sp"]]["name"] if not fish.is_empty() else "Kala", fishing.line_out, "   JARRU LAULAA" if fishing.drag_slipping else ""]
 		Fishing.State.LANDED:
-			info += "\nSaalis haavissa!"
+			info += "\nSaalis jäällä!" if fishing.on_ice else "\nSaalis haavissa!"
 	_fishing_label.text = info
 
-	_power_bar.get_parent().visible = fishing.state == Fishing.State.CHARGING
+	_power_bar.get_parent().visible = fishing.state == Fishing.State.CHARGING or fishing.state == Fishing.State.DRILLING
+	_power_bar.get_parent().get_child(0).text = "Kairaus" if fishing.state == Fishing.State.DRILLING else "Heittovoima"
 	_power_bar.value = fishing.power
 	var tension_visible := fishing.state in [Fishing.State.RETRIEVING, Fishing.State.BITE, Fishing.State.FIGHT]
 	_tension_bar.get_parent().visible = tension_visible
@@ -331,6 +344,6 @@ func _process(delta: float) -> void:
 	if fishing.state == Fishing.State.BITE:
 		_prompt.text = "TÄRPPI! Vasen hiiri = vastaisku"
 	elif fishing.landing_ready():
-		_prompt.text = "Kala on veneen vieressä – vasen hiiri = haavi"
+		_prompt.text = "Kala on avannossa – vasen hiiri = nosta jäälle" if fishing.on_ice else "Kala on veneen vieressä – vasen hiiri = haavi"
 	if fishing.state != Fishing.State.LANDED:
 		_catch_panel.visible = false

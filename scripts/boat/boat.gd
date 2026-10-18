@@ -34,6 +34,12 @@ var anchor_point := Vector2.ZERO
 var anchor_rope := 0.0
 
 var angler: Angler
+## Talvi: järvi on jäässä, vene piilotetaan ja kalastaja kävelee jäällä
+var on_ice := false
+const WALK_SPEED := 1.4 # m/s
+const RUN_SPEED := 2.8
+const TURN_SPEED := 2.2 # rad/s
+var _step_dist := 0.0
 var hull: Node3D # aaltojen keinuttama osa
 var _motor: Node3D
 var wake: Wake
@@ -71,7 +77,25 @@ func depth_below() -> float:
 	return lake.depth_at(pos.x, pos.y)
 
 
+## Jäätila: vene, airot, moottori ja vana piiloon, kalastaja jäälle
+func set_on_ice(on: bool) -> void:
+	on_ice = on
+	for child in hull.get_children():
+		if child != angler:
+			child.visible = not on
+	wake.visible = not on
+	hull.position = Vector3.ZERO
+	hull.rotation = Vector3.ZERO
+	anchored = false
+	motor_running = false
+	_apply_transform()
+
+
 func _unhandled_input(event: InputEvent) -> void:
+	if on_ice:
+		if event.is_action_pressed("motor_toggle") or event.is_action_pressed("anchor_toggle"):
+			message.emit("Järvi on jäässä – vene on talviteloilla")
+		return
 	if event.is_action_pressed("motor_toggle"):
 		if motor_running or motor_starting > 0.0:
 			motor_running = false
@@ -98,7 +122,33 @@ func _unhandled_input(event: InputEvent) -> void:
 			message.emit("Ankkuri laskettu (syvyys %.1f m)" % depth)
 
 
+## Kävely jäällä ja rannalla: W/S eteen ja taakse, A/D kääntyy, Shift juoksee.
+## Avannolla istuessa (kalastus käynnissä) ei kävellä.
+func _walk(dt: float) -> void:
+	var drive := Input.get_axis("boat_back", "boat_forward")
+	var steer := Input.get_axis("boat_right", "boat_left")
+	if angler and angler.fishing and angler.fishing.busy():
+		drive = 0.0
+		steer = 0.0
+	yaw = wrapf(yaw + steer * TURN_SPEED * dt, -PI, PI)
+	var speed := RUN_SPEED if Input.is_action_pressed("reel_fast") else WALK_SPEED
+	var target := forward() * drive * speed
+	velocity = velocity.move_toward(target, dt * 6.0)
+	var next := pos + velocity * dt
+	var size := lake.world_size()
+	if next.x > lake.origin_x + 5.0 and next.x < lake.origin_x + size.x - 5.0 and next.y > lake.origin_z + 5.0 and next.y < lake.origin_z + size.y - 5.0:
+		_step_dist += pos.distance_to(next)
+		pos = next
+	if _step_dist > 0.75:
+		_step_dist = 0.0
+		sound_event.emit("snow_step", global_position)
+	_apply_transform()
+
+
 func _physics_process(dt: float) -> void:
+	if on_ice:
+		_walk(dt)
+		return
 	_time += dt
 	_bump_cooldown -= dt
 	if motor_starting > 0.0:
@@ -193,7 +243,8 @@ func _min_depth(p: Vector2, heading: float) -> float:
 
 
 func _apply_transform() -> void:
-	position = Vector3(pos.x, 0.0, pos.y)
+	var ground := maxf(lake.height_at(pos.x, pos.y), 0.0) if on_ice and lake else 0.0
+	position = Vector3(pos.x, ground, pos.y)
 	rotation = Vector3(0.0, yaw, 0.0)
 
 

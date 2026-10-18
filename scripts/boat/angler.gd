@@ -6,7 +6,7 @@ extends Node3D
 ##  - soutu: selkä keulaan päin, kädet airojen kahvoilla, vartalo nojaa vedon mukana
 ##  - moottoriajo: perätuhdolla, oikea käsi ohjausaisalla, vapa veneen pohjalla
 
-enum Pose { FISHING, ROWING, MOTOR }
+enum Pose { FISHING, ROWING, MOTOR, ICE_STAND, ICE_SIT, ICE_DRILL }
 
 const SKIN := Color(0.86, 0.66, 0.52)
 const BOOTS := Color(0.12, 0.14, 0.1)
@@ -16,6 +16,10 @@ const SEATS := {
 	Pose.FISHING: Vector3(0, 0.225, 0.25), # keskituhto
 	Pose.ROWING: Vector3(0, 0.225, 0.25),
 	Pose.MOTOR: Vector3(-0.28, 0.225, 1.35), # perätuhto, vasemmalla puolella
+	# Jäällä (veneen solmu on jään tasolla): seisten lantio 0,85 m, ämpärin päällä 0,32 m
+	Pose.ICE_STAND: Vector3(0, 0.85, 0),
+	Pose.ICE_SIT: Vector3(0, 0.32, 0),
+	Pose.ICE_DRILL: Vector3(0, 0.85, 0.1),
 }
 
 var boat: Boat
@@ -29,6 +33,10 @@ var _camo: ShaderMaterial
 var _arms := [] # [{side, upper, fore, hand}]
 var _since_rowing := 10.0
 var _rod_stow := 0.0 # 0 = vapa kädessä, 1 = veneen pohjalla
+var _sit_legs: Node3D
+var _stand_legs: Node3D
+var _bucket: Node3D
+var _walk_phase := 0.0
 
 
 func _ready() -> void:
@@ -71,19 +79,52 @@ func _capsule(r: float, h: float) -> CapsuleMesh:
 func _build() -> void:
 	var skin := _material(SKIN)
 	var boots := _material(BOOTS)
-	# Lantio ja jalat istuma-asennossa (kasvot -Z:aan päin)
+	# Lantio ja jalat (kasvot -Z:aan päin): istuma-asento ja seisoma-asento
 	_part(self, _capsule(0.16, 0.36), Vector3(0, 0.1, 0), _camo, Vector3(1.0, 0.6, 0.9)).rotation.z = PI / 2.0
+	_sit_legs = Node3D.new()
+	add_child(_sit_legs)
+	_stand_legs = Node3D.new()
+	_stand_legs.visible = false
+	add_child(_stand_legs)
 	for s in [-1.0, 1.0]:
-		var thigh := _part(self, _capsule(0.075, 0.44), Vector3(s * 0.11, 0.1, -0.2), _camo)
+		var thigh := _part(_sit_legs, _capsule(0.075, 0.44), Vector3(s * 0.11, 0.1, -0.2), _camo)
 		thigh.rotation.x = PI / 2.0 - 0.08
-		_part(self, _capsule(0.06, 0.42), Vector3(s * 0.12, -0.08, -0.42), _camo)
+		_part(_sit_legs, _capsule(0.06, 0.42), Vector3(s * 0.12, -0.08, -0.42), _camo)
 		var boot := MeshInstance3D.new()
 		var box := BoxMesh.new()
 		box.size = Vector3(0.11, 0.1, 0.26)
 		boot.mesh = box
 		boot.material_override = boots
 		boot.position = Vector3(s * 0.12, -0.27, -0.47)
-		add_child(boot)
+		_sit_legs.add_child(boot)
+		# Seisova jalka: lonkasta alas, kävellessä heiluu (lantion solmu kääntyy)
+		var hip := Node3D.new()
+		hip.name = "Hip" + ("R" if s > 0 else "L")
+		hip.position = Vector3(s * 0.11, 0.08, 0)
+		_stand_legs.add_child(hip)
+		_part(hip, _capsule(0.075, 0.46), Vector3(0, -0.22, 0), _camo)
+		_part(hip, _capsule(0.06, 0.44), Vector3(0.01 * s, -0.63, 0), _camo)
+		var sboot := MeshInstance3D.new()
+		var sbox := BoxMesh.new()
+		sbox.size = Vector3(0.11, 0.1, 0.26)
+		sboot.mesh = sbox
+		sboot.material_override = boots
+		sboot.position = Vector3(0.01 * s, -0.88, -0.05)
+		hip.add_child(sboot)
+	# Pilkkiämpäri istuimena
+	_bucket = Node3D.new()
+	_bucket.visible = false
+	add_child(_bucket)
+	var bucket_mesh := CylinderMesh.new()
+	bucket_mesh.top_radius = 0.15
+	bucket_mesh.bottom_radius = 0.13
+	bucket_mesh.height = 0.3
+	_part(_bucket, bucket_mesh, Vector3(0, -0.17, 0.02), _material(Color(0.2, 0.35, 0.6)))
+	var lid := CylinderMesh.new()
+	lid.top_radius = 0.16
+	lid.bottom_radius = 0.16
+	lid.height = 0.03
+	_part(_bucket, lid, Vector3(0, -0.01, 0.02), _material(Color(0.85, 0.85, 0.8)))
 
 	torso = Node3D.new()
 	torso.position = Vector3(0, 0.14, 0)
@@ -161,6 +202,9 @@ func rod_stowed() -> bool:
 
 ## Vavan sijainti veneen pohjalla oikealla laidalla, kärki keulaan
 func rod_stow_transform() -> Transform3D:
+	if boat.on_ice:
+		# Jäällä vapa on kalastajan vieressä jäällä
+		return boat.global_transform * Transform3D(Basis(Vector3.UP, 0.4), Vector3(0.45, 0.03, -0.2))
 	return boat.hull.global_transform * Transform3D(Basis.IDENTITY, Vector3(0.45, 0.27, 1.25))
 
 
@@ -172,6 +216,12 @@ func rod_stow_blend() -> float:
 func _choose_pose() -> int:
 	if fishing == null:
 		return Pose.FISHING
+	if boat.on_ice:
+		if fishing.state == Fishing.State.DRILLING:
+			return Pose.ICE_DRILL
+		if fishing.busy() or fishing.at_hole():
+			return Pose.ICE_SIT
+		return Pose.ICE_STAND
 	if fishing.state != Fishing.State.READY and fishing.state != Fishing.State.LANDED:
 		return Pose.FISHING
 	if boat.motor_running or boat.motor_starting > 0.0:
@@ -186,7 +236,18 @@ func _process(delta: float) -> void:
 		return
 	_since_rowing = 0.0 if boat._rowing else _since_rowing + delta
 	pose = _choose_pose()
-	_rod_stow = move_toward(_rod_stow, 0.0 if pose == Pose.FISHING else 1.0, delta * 2.5)
+	var rod_in_hand := pose == Pose.FISHING or pose == Pose.ICE_SIT
+	_rod_stow = move_toward(_rod_stow, 0.0 if rod_in_hand else 1.0, delta * 2.5)
+	var standing := pose == Pose.ICE_STAND or pose == Pose.ICE_DRILL
+	_stand_legs.visible = standing
+	_sit_legs.visible = not standing
+	_bucket.visible = pose == Pose.ICE_SIT
+	# Kävellessä jalat heiluvat askelten tahdissa
+	var walk := boat.velocity.length() if pose == Pose.ICE_STAND else 0.0
+	_walk_phase += delta * walk * 4.2
+	var swing := sin(_walk_phase) * clampf(walk / 1.4, 0.0, 1.0) * 0.45
+	_stand_legs.get_node("HipR").rotation.x = swing
+	_stand_legs.get_node("HipL").rotation.x = -swing
 
 	# Istumapaikka ja suunta
 	var seat: Vector3 = SEATS[pose]
@@ -203,7 +264,7 @@ func _process(delta: float) -> void:
 	if pose == Pose.ROWING and boat._rowing:
 		var f := fmod(boat._row_phase, 1.0)
 		lean = lerpf(-0.35, 0.25, f / 0.45) if f < 0.45 else lerpf(0.25, -0.35, (f - 0.45) / 0.55)
-	elif pose == Pose.FISHING and fishing.state == Fishing.State.FIGHT:
+	elif (pose == Pose.FISHING or pose == Pose.ICE_SIT) and fishing.state == Fishing.State.FIGHT:
 		lean = 0.12 + clampf(fishing.tension / 6.0, 0.0, 0.2) # nojaa taakse kalan vetäessä
 	torso.rotation.x = lerpf(torso.rotation.x, lean, minf(1.0, delta * 8.0))
 
@@ -224,6 +285,15 @@ func _hand_targets() -> Array:
 		Pose.MOTOR:
 			right = boat.tiller_handle()
 			left = global_transform * Vector3(-0.12, 0.12, -0.32) # polvella
+		Pose.ICE_DRILL:
+			var grips := fishing.auger_grips()
+			right = grips[0]
+			left = grips[1]
+		Pose.ICE_STAND:
+			# Kädet sivuilla, heiluvat kävellessä vastakkain jalkojen kanssa
+			var arm_swing := sin(_walk_phase) * clampf(boat.velocity.length() / 1.4, 0.0, 1.0) * 0.18
+			right = global_transform * Vector3(0.3, -0.08, -arm_swing)
+			left = global_transform * Vector3(-0.3, -0.08, arm_swing)
 		_:
 			right = fishing.rod_point(0.3) # kelan jalan kohdalla
 			left = fishing.reel_knob() if fishing.is_reeling() else fishing.rod_point(0.55)

@@ -12,6 +12,7 @@ var autumn := 0.0 # ruska: 0 vihreä .. 1 keltainen/oranssi
 var spring := 0.0 # puhkeava lehti: 1 = vaalea kevätvihreä
 var grass_dry := 0.0 # ruohon kuivuus/ruskeus 0 vihreä .. 1 ruskea
 var reeds_dry := 0.0 # kaislojen kellastuminen 0 .. 1
+var ice := 0.0 # jääpeite 0 (sula) .. 1 (kantava jää)
 
 
 ## Liukuva siirtymä päivien a ja b välillä (0 ennen a:ta, 1 b:n jälkeen)
@@ -32,6 +33,8 @@ static func from_day(day_of_year: int) -> Season:
 	# Ruoho vihertyy toukokuussa ja ruskettuu syyskuusta alkaen
 	s.grass_dry = maxf(1.0 - _ramp(d, 125.0, 152.0), _ramp(d, 240.0, 285.0))
 	s.reeds_dry = maxf(1.0 - _ramp(d, 140.0, 175.0), _ramp(d, 235.0, 270.0))
+	# Jää: tulee marras–joulukuun vaihteessa (318–333), lähtee huhtikuussa (112–127)
+	s.ice = maxf(_ramp(d, 318.0, 333.0), 1.0 - _ramp(d, 112.0, 127.0))
 	if s.snow > 0.6:
 		s.name = "talvi"
 	elif d < 152.0:
@@ -48,6 +51,11 @@ static func from_day(day_of_year: int) -> Season:
 
 
 ## Ruohon ja aluskasvillisuuden värin muutos: vihreä -> kuiva ruskea
+## Kantaako jää: koko järvi jäässä, kävellään ja pilkitään
+func frozen() -> bool:
+	return ice >= 0.999
+
+
 func tint_grass(c: Color) -> Color:
 	var dry := Color(0.42, 0.36, 0.22) * (0.75 + c.v * 0.6)
 	return c.lerp(dry, grass_dry * 0.85)
