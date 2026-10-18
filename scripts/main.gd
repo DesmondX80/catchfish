@@ -1,3 +1,4 @@
+class_name Main
 extends Node3D
 ## Aloitusvalikko ja pelin kokoaminen: järvi, ympäristö, vene, kamera, kalat,
 ## virveli ja käyttöliittymä rakennetaan, kun aloituspaikka on valittu.
@@ -15,6 +16,9 @@ var fishing: Fishing
 var fish_visuals: FishVisuals
 var hud: Hud
 var audio: GameAudio
+## "Mene kotiin": pää-scene ladataan uudelleen ja se aukeaa alkuvalikkoon
+static var return_to_menu := false
+
 var menu: StartMenu
 var pause_menu: PauseMenu
 var running := false # peli käynnissä (valikko ohitettu)
@@ -23,6 +27,10 @@ var load_ms := 0
 
 func _ready() -> void:
 	lake = LakeData.load_from(LAKE_DIR)
+	if return_to_menu:
+		return_to_menu = false
+		_show_menu()
+		return
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
 		if arg.begins_with("--menutest="):

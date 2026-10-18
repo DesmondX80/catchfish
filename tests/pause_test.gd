@@ -2,7 +2,8 @@ extends Node
 ## Taukovalikon testi oikealla Esc-näppäimellä ja hiiren klikkauksilla:
 ##   godot -- --pausetest   (vaatii ikkunan)
 ## Esc avaa valikon ja pysäyttää pelin → Ohjeet → Takaisin → Jatka kalastusta →
-## Esc → Esc jatkaa → Esc → Lopeta peli sulkee pelin.
+## Esc → Esc jatkaa → Esc → Mene kotiin avaa alkuvalikon.
+## --shots=KANSIO tallentaa kuvat taukovalikosta ja kotinäkymästä.
 
 var _frame := 0
 var _log: Array[String] = []
@@ -15,7 +16,19 @@ func _ready() -> void:
 	main = get_parent()
 	main.hud.set_paused_view(false)
 	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
-	main.pause_menu.quitting.connect(func(): _finish("Lopeta peli sulki pelin", true))
+	# Testi siirtyy pää-scenen ulkopuolelle, jotta se säilyy kotiin palatessa
+	reparent.call_deferred(get_tree().root)
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--shots="):
+			_shots = arg.split("=")[1]
+
+
+var _shots := ""
+
+
+func _shot(name: String) -> void:
+	if _shots != "":
+		get_viewport().get_texture().get_image().save_png(_shots.path_join(name + ".png"))
 
 
 func _key(code: Key) -> void:
@@ -52,12 +65,16 @@ func _finish(name: String, ok: bool) -> void:
 
 func _process(_delta: float) -> void:
 	_frame += 1
+	if _frame >= 60:
+		return _late()
 	var pm: PauseMenu = main.pause_menu
-	var b := pm._buttons # Jatka, Ohjeet, Lopeta, Takaisin
+	var b := pm._buttons # Jatka, Ohjeet, Mene kotiin, Takaisin
 	match _frame:
 		10:
 			_clock = main.sky.minutes
 			_key(KEY_ESCAPE)
+		18:
+			_shot("tauko-valikko")
 		20:
 			_check("Esc avasi valikon", pm.visible and pm._box.visible)
 			_check("peli on tauolla", get_tree().paused)
@@ -82,7 +99,22 @@ func _process(_delta: float) -> void:
 			_check("toinen Esc jatkoi peliä", not pm.visible and not get_tree().paused)
 			_key(KEY_ESCAPE)
 		56:
+			_check("painikkeen teksti on Mene kotiin", b[2].text == "Mene kotiin")
 			_click(b[2])
-		80:
-			_finish("Lopeta peli sulki pelin", false)
-			get_tree().quit(1)
+
+
+
+## Kotiin paluun jälkeen: pää-scene on ladattu uudelleen
+func _late() -> void:
+	match _frame:
+		90:
+			var home: Node = get_tree().current_scene
+			_check("Mene kotiin avasi alkuvalikon", not is_instance_valid(main) and home.menu != null and home.menu._main.visible)
+			_check("peli ei ole käynnissä kotona", not home.running and not get_tree().paused)
+			var texts: Array = home.menu.find_children("*", "Label", true, false).map(func(l): return l.text)
+			_check("alkuvalikossa lukee Kotona", "Kotona" in texts)
+			_check("hiiri vapaana valikossa", Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
+			_shot("koti-valikko")
+		92:
+			_finish("valmis", true)
+			get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)

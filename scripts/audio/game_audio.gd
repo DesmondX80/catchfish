@@ -55,9 +55,14 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	lake = lake_data
 	_rng.randomize()
 	# Rajoitin päämikserissä estää säröytymisen, kun moni ääni soi yhtä aikaa
-	var limiter := AudioEffectHardLimiter.new()
-	limiter.ceiling_db = -1.0
-	AudioServer.add_bus_effect(0, limiter)
+	# (vain kerran: peli voidaan käynnistää uudelleen kotoa)
+	var has_limiter := false
+	for i in AudioServer.get_bus_effect_count(0):
+		has_limiter = has_limiter or AudioServer.get_bus_effect(0, i) is AudioEffectHardLimiter
+	if not has_limiter:
+		var limiter := AudioEffectHardLimiter.new()
+		limiter.ceiling_db = -1.0
+		AudioServer.add_bus_effect(0, limiter)
 	for name in LOOPS + ONE_SHOTS.keys() + ["record_chime"]:
 		var stream: AudioStreamWAV = load(DIR + name + ".wav")
 		if name in LOOPS:

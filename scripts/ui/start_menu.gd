@@ -8,6 +8,7 @@ signal start_selected(index: int)
 var lake: LakeData
 var _main: Control
 var _map_view: Control
+var _map_bg: ColorRect
 var _map: LakeMap
 var _loading: Label
 var _start_buttons: Array[Button] = []
@@ -48,20 +49,27 @@ func _label(text: String, font_size: int, color := Color.WHITE) -> Label:
 
 
 func _build() -> void:
-	var bg := ColorRect.new()
-	bg.color = Color(0.05, 0.11, 0.09)
-	add_child(bg)
-	bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	# Taustalla mökin pirtti 3D:nä
+	add_child(CabinScene.new())
 
-	# Päävalikko
-	_main = CenterContainer.new()
+	# Päävalikko vasemmalla puoliläpinäkyvän paneelin päällä
+	_main = MarginContainer.new()
+	_main.add_theme_constant_override("margin_left", 70)
 	add_child(_main)
-	_main.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_main.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	_main.custom_minimum_size.x = 520
+	var center := CenterContainer.new()
+	_main.add_child(center)
+	var panel := PanelContainer.new()
+	var panel_style := _style(Color(0.04, 0.06, 0.05, 0.72), 14)
+	panel_style.set_content_margin_all(34)
+	panel.add_theme_stylebox_override("panel", panel_style)
+	center.add_child(panel)
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 18)
-	_main.add_child(box)
+	panel.add_child(box)
 	box.add_child(_label("CATCHFISH", 72, Color(0.95, 0.85, 0.45)))
-	box.add_child(_label(lake.name, 22, Color(0.8, 0.88, 0.82)))
+	box.add_child(_label("Kotona", 26, Color(0.9, 0.84, 0.72)))
 	box.add_child(Control.new())
 	var go := _button("Mene kalalle")
 	go.pressed.connect(_show_map)
@@ -70,12 +78,19 @@ func _build() -> void:
 	quit.pressed.connect(func(): get_tree().quit())
 	box.add_child(quit)
 	if lake.attribution != "":
-		var credit := _label(lake.attribution, 13, Color(0.6, 0.68, 0.62))
+		var credit := _label(lake.attribution, 12, Color(0.7, 0.72, 0.66))
+		credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		credit.custom_minimum_size.x = 320
 		box.add_child(Control.new())
 		box.add_child(credit)
 	go.grab_focus.call_deferred()
 
-	# Aloituspaikan valinta kartalta
+	# Aloituspaikan valinta kartalta (tumma tausta mökin päällä)
+	_map_bg = ColorRect.new()
+	_map_bg.color = Color(0.05, 0.08, 0.07, 0.94)
+	add_child(_map_bg)
+	_map_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_map_bg.visible = false
 	_map_view = MarginContainer.new()
 	for side in ["left", "right", "top", "bottom"]:
 		_map_view.add_theme_constant_override("margin_" + side, 24)
@@ -121,12 +136,14 @@ func _build() -> void:
 
 func _show_map() -> void:
 	_main.visible = false
+	_map_bg.visible = true
 	_map_view.visible = true
 	_start_buttons[0].grab_focus()
 
 
 func _show_main() -> void:
 	_map_view.visible = false
+	_map_bg.visible = false
 	_main.visible = true
 
 
@@ -139,4 +156,5 @@ func show_loading(place: String) -> void:
 	_main.visible = false
 	_map_view.visible = false
 	_loading.text = "Lähdetään kalaan: %s\n\nLadataan järveä..." % place
+	_map_bg.visible = true
 	_loading.visible = true

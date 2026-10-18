@@ -1,10 +1,10 @@
 class_name PauseMenu
 extends CanvasLayer
-## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Lopeta peli.
+## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Mene kotiin (alkuvalikkoon).
 ## Peli on pysähdyksissä valikon ollessa auki; tämä solmu toimii tauollakin.
 
 signal resumed
-signal quitting
+signal going_home
 
 var _box: Control
 var _help: Control
@@ -56,7 +56,7 @@ func _build(help_text: String) -> void:
 	title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Lopeta peli", _quit]]:
+	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Mene kotiin", _go_home]]:
 		var b := _button(item[0])
 		b.pressed.connect(item[1])
 		col.add_child(b)
@@ -113,9 +113,13 @@ func _show_help() -> void:
 	_buttons[-1].grab_focus()
 
 
-func _quit() -> void:
-	quitting.emit()
-	get_tree().quit()
+## Takaisin alkuvalikkoon: peli ladataan alusta (pää-scene käynnistyy valikosta)
+func _go_home() -> void:
+	going_home.emit()
+	get_tree().paused = false
+	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+	Main.return_to_menu = true
+	get_tree().reload_current_scene()
 
 
 func _unhandled_input(event: InputEvent) -> void:
