@@ -297,6 +297,10 @@ func _hand_targets() -> Array:
 		_:
 			right = fishing.rod_point(0.3) # kelan jalan kohdalla
 			left = fishing.reel_knob() if fishing.is_reeling() else fishing.rod_point(0.55)
+			if fishing.net_active():
+				# Haavinta: oikea käsi haavin varressa, vasen pitää vapaa
+				left = right
+				right = fishing.net_grip()
 			if rod_stow_blend() > 0.01:
 				right = right.lerp(global_transform * Vector3(0.15, 0.12, -0.3), rod_stow_blend())
 				left = left.lerp(global_transform * Vector3(-0.15, 0.12, -0.3), rod_stow_blend())

@@ -19,6 +19,13 @@ func _ready() -> void:
 	main.hud.set_paused_view(false)
 	var boat: Boat = main.boat
 	_shots = [
+		{"name": "0b-keula", "hour": 12.0, "yaw": PI + 0.35, "pitch": 0.6, "distance": 4.0,
+			"setup": func():
+				boat.pos += boat.forward() * 30.0 # avovedelle, pois laiturin luota
+				boat.velocity = Vector2.ZERO,
+			"ready": func(): return _frame > 20},
+		{"name": "0c-keula-sivu", "hour": 12.0, "yaw": -1.3, "pitch": 0.3, "distance": 3.5,
+			"ready": func(): return _frame > 10},
 		{"name": "0-vene-lahelta", "hour": 12.0, "yaw": PI / 2.0 + 0.3, "pitch": 0.35, "distance": 4.5},
 		{"name": "1-laituri", "hour": 7.0, "yaw": 0.0, "pitch": 0.3, "distance": 9.0},
 		{"name": "2-yleiskuva", "hour": 9.0, "yaw": 0.6, "pitch": 0.7, "distance": 40.0},

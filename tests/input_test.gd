@@ -5,6 +5,7 @@ extends Node
 ##   godot -- --inputtest   (vaatii ikkunan, jotta hiiren voi kaapata)
 
 var _frame := 0
+var _landing_frames := 0
 var _step := 0
 var _log: Array[String] = []
 var main: Node
@@ -32,9 +33,30 @@ func _check(name: String, ok: bool) -> void:
 	_log.append("%s %s (tila %d)" % ["OK  " if ok else "VIRHE", name, main.fishing.state])
 
 
+var _shots := ""
+
+
 func _process(_delta: float) -> void:
 	_frame += 1
 	var f: Fishing = main.fishing
+	if _shots == "":
+		for arg in OS.get_cmdline_user_args():
+			if arg.begins_with("--landshots="):
+				_shots = arg.split("=")[1]
+	# Haavinta-animaatio kestää n. 2 s: odotetaan sen loppuun (kuvat animaatiosta)
+	if _frame == 18 and f.state == Fishing.State.LANDING and _landing_frames == 0:
+		_check("haavinta-animaatio alkoi", true)
+	if _frame >= 18 and _frame < 1000 and f.state == Fishing.State.LANDING:
+		_landing_frames += 1
+		if _shots != "" and _landing_frames in [20, 55, 80]:
+			main.camera_rig.yaw = main.boat.yaw + 1.9
+			main.camera_rig.pitch = 0.35
+			main.camera_rig.distance = 4.0
+			get_viewport().get_texture().get_image().save_png(_shots.path_join("haavinta-%d.png" % _landing_frames))
+		_frame = 17
+		return
+	if _frame == 18:
+		_frame = 1018 # animaatio ohi
 	match _frame:
 		10:
 			_check("hiiri kaapattu", Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
@@ -52,18 +74,21 @@ func _process(_delta: float) -> void:
 			_mouse(true)
 		15:
 			_mouse(false)
-		18:
-			_check("kala haavissa ja saalisikkuna auki", f.state == Fishing.State.LANDED and main.hud._catch_panel.visible)
+		1018:
+			_check("kala haavissa ja saalisikkuna auki (animaatio %d ruutua)" % _landing_frames, f.state == Fishing.State.LANDED and main.hud._catch_panel.visible and _landing_frames > 30)
+		1020:
+			if _shots != "":
+				get_viewport().get_texture().get_image().save_png(_shots.path_join("saalis-ikkuna.png"))
 			_mouse(true)
-		19:
+		1021:
 			_mouse(false)
-		22:
+		1024:
 			_check("klikkaus sulki saalisikkunan, valmiina heittoon", f.state == Fishing.State.READY)
 			_mouse(true)
-		30:
+		1030:
 			_check("painallus aloitti heiton latauksen", f.state == Fishing.State.CHARGING)
 			_mouse(false)
-		34:
+		1034:
 			_check("heitto lähti", f.state == Fishing.State.FLYING or f.state == Fishing.State.RETRIEVING)
 			var failed := _log.any(func(l): return l.begins_with("VIRHE"))
 			for l in _log:

@@ -449,7 +449,7 @@ func _add_triangle(st: SurfaceTool, tri: Array, inward: bool) -> void:
 func _hull_mesh(inward := false) -> Mesh:
 	var stations := [
 		# z, puolileveys, pohjan syvyys
-		[-2.2, 0.05, 0.05],
+		[-2.2, 0.0, 0.05], # keulapiikki: laidat yhtyvät, ei aukkoa
 		[-1.8, 0.4, -0.12],
 		[-1.0, 0.68, -0.22],
 		[0.0, 0.76, -0.25],

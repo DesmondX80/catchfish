@@ -1,5 +1,6 @@
 extends Node
-## Saaliskirja: kaikki saaliit ja lajikohtaiset ennätykset, tallennetaan pelaajan koneelle.
+## Kertakalastuksen saaliit ja ennätykset (painavimmat kalat), tallennetaan pelaajan
+## koneelle. Uramoodin saaliit eivät tule tähän (ne ovat saavissa ja säilössä).
 
 const SAVE_PATH := "user://saaliskirja.json"
 
@@ -29,6 +30,13 @@ func personal_best(species: String) -> Dictionary:
 		if e["species"] == species and (best.is_empty() or e["weight"] > best["weight"]):
 			best = e
 	return best
+
+
+## Koko pelin painavimmat kalat (kaikki lajit)
+func top(n: int) -> Array:
+	var sorted := entries.duplicate()
+	sorted.sort_custom(func(a, b): return a["weight"] > b["weight"])
+	return sorted.slice(0, n)
 
 
 func count(species: String) -> int:

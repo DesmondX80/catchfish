@@ -128,6 +128,12 @@ func _process(delta: float) -> void:
 			f._stamina = 0.1
 			f.state = Fishing.State.FIGHT
 			f._try_land()
+			_next()
+		8:
+			# Haavinta-animaatio (n. 2 s), sitten saalis on kalarepussa
+			if m.fishing.state == Fishing.State.LANDING:
+				return
+			var f: Fishing = m.fishing
 			_fish_value = m.trip_catch[0]["weight"] * Career.price(m.trip_catch[0]["species"])
 			# Uistin menetetään
 			f._lose_lure("Siima katkesi (testi)")
@@ -135,8 +141,8 @@ func _process(delta: float) -> void:
 			m.sky.minutes += 90.0 # reissu kestää 1,5 h
 			m.hud.set_paused_view(false)
 			_next()
-		8:
-			_check("kalareppu HUD:ssa: " + m.hud._status.text.split("\n")[1], "Kalareppu: 1 kalaa" in m.hud._status.text)
+		9:
+			_check("saavi HUD:ssa: " + m.hud._status.text.split("\n")[1], "Saavi: 1 kalaa" in m.hud._status.text)
 			_shot("u3-reissu")
 			var ev := InputEventKey.new()
 			ev.physical_keycode = KEY_ESCAPE
@@ -147,10 +153,10 @@ func _process(delta: float) -> void:
 			ev.pressed = false
 			Input.parse_input_event(ev)
 			_next()
-		9:
+		10:
 			_click(_button("Mene kotiin"))
 			_next()
-		10:
+		11:
 			if _t < 1.5:
 				return
 			var t := _texts()
@@ -159,24 +165,24 @@ func _process(delta: float) -> void:
 			_money_before = Career.money
 			_click(_button("Myy kaloja"))
 			_next()
-		11:
+		12:
 			_shot("u4-myynti")
 			_click(_button("Myy kaikki"))
 			_next()
-		12:
+		13:
 			_check("kalat myyty %.2f €" % _fish_value, absf(Career.money - _money_before - _fish_value) < 0.02 and Career.storage_count() == 0)
 			_click(_button("Takaisin"))
 			_next()
-		13:
+		14:
 			_click(_button("Nuku"))
 			_next()
-		14:
+		15:
 			var slider: HSlider = get_tree().root.find_children("*", "HSlider", true, false)[0]
 			slider.value = 16
 			_shot("u5-nukkuminen")
 			_click(_button("Nuku"))
 			_next()
-		15:
+		16:
 			var t := _texts()
 			_check("nukuttiin yli puolenyön: päivä 2, tiistai klo 00:30", Career.day == 2 and Career.weekday() == "tiistai" and Career.clock_text() == "00:30" and "Päivä 2 – tiistai" in t)
 			_shot("u6-uusi-paiva")

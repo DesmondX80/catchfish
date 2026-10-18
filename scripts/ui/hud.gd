@@ -19,6 +19,7 @@ var _message_timer := 0.0
 var _prompt: Label
 var _catch_panel: PanelContainer
 var _catch_label: Label
+var _catch_picture: FishPicture
 var _log_panel: PanelContainer
 var _log_label: Label
 var _help_panel: PanelContainer
@@ -146,12 +147,19 @@ func _build() -> void:
 	_prompt.offset_top = 60
 
 	_catch_panel = _panel(center, center)
-	_catch_label = _label(_catch_panel, 22)
+	var catch_box := VBoxContainer.new()
+	_catch_panel.add_child(catch_box)
+	_catch_picture = FishPicture.new()
+	catch_box.add_child(_catch_picture)
+	_catch_label = _label(catch_box, 22)
 	_catch_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_catch_panel.visible = false
 
 	_log_panel = _panel(center, center)
 	_log_label = _label(_log_panel, 16)
+	var mono := SystemFont.new()
+	mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "monospace"])
+	_log_label.add_theme_font_override("font", mono)
 	_log_panel.visible = false
 
 	# Kartta kesken pelin (K): näyttää veneen sijainnin järvellä
@@ -209,7 +217,7 @@ func help_text(start_hint := true) -> String:
 		"  Oikea hiiri  nosta pilkkiä   Välilyönti  nykäisy",
 		"",
 		"MUUTA",
-		"  T            ajan nopeus   Tab  saaliskirja   K  kartta   F1  ohje   M  äänet   Esc  valikko",
+		"  T            ajan nopeus   Tab  saavi / painavimmat kalat   K  kartta   F1  ohje   M  äänet   Esc  valikko",
 		"",
 	]
 	if start_hint:
@@ -238,6 +246,7 @@ func _on_caught(entry: Dictionary, record: bool) -> void:
 		text = "UUSI ENNÄTYS!\n" + text
 	text += "\n\nVasen hiiri: jatka kalastusta"
 	_catch_label.text = text
+	_catch_picture.show_species(entry["species"])
 	_catch_panel.visible = true
 
 
@@ -259,25 +268,48 @@ func set_paused_view(paused: bool) -> void:
 	_help_panel.visible = paused
 
 
+## Tab: uramoodissa saavi (tämän reissun kalat), kertakalastuksessa koko pelin
+## painavimmat kalat, millä saatu ja milloin (koneen päiväys ja kellonaika)
 func _log_text() -> String:
-	var lines := ["SAALISKIRJA", ""]
-	for sp in Species.DATA:
-		var best := CatchLog.personal_best(sp)
-		var line := "%-8s %3d kpl" % [Species.DATA[sp]["name"], CatchLog.count(sp)]
-		if not best.is_empty():
-			line += "   ennätys %.2f kg / %.0f cm (%s)" % [best["weight"], best["length"], best["lure"]]
-		lines.append(line)
-	lines.append("")
-	lines.append("Viimeisimmät:")
-	var recent := CatchLog.entries.slice(maxi(0, CatchLog.entries.size() - 8))
-	recent.reverse()
-	for e in recent:
-		lines.append("  %s %.2f kg  klo %s  %s" % [e["name"], e["weight"], e["time"], e["lure"]])
-	if CatchLog.entries.is_empty():
-		lines.append("  Ei vielä saaliita.")
-	lines.append("")
-	lines.append("Menetetyt uistimet tällä kerralla: %d" % fishing.lost_lures)
+	var lines: Array[String] = []
+	if Career.active:
+		var trip: Array = get_parent().trip_catch
+		var kg := 0.0
+		lines.append("SAAVI – tämän kalareissun saalis")
+		lines.append("")
+		for e in trip:
+			kg += e["weight"]
+			lines.append("  %-7s %6s kg  %3.0f cm   %-22s klo %s" % [e["name"], _fi(e["weight"]), e["length"], e["lure"], e["time"]])
+		if trip.is_empty():
+			lines.append("  Saavi on tyhjä.")
+		lines.append("")
+		lines.append("Yhteensä %d kalaa, %s kg – saalis viedään kotiin säilöön (Esc → Mene kotiin)" % [trip.size(), _fi(kg)])
+	else:
+		lines.append("PAINAVIMMAT KALAT")
+		lines.append("")
+		var top := CatchLog.top(10)
+		for i in top.size():
+			var e: Dictionary = top[i]
+			lines.append("%2d. %-7s %6s kg  %3.0f cm   %-22s %s" % [i + 1, e["name"], _fi(e["weight"]), e["length"], e["lure"], _real_date(e.get("date", ""))])
+		if top.is_empty():
+			lines.append("  Ei vielä saaliita.")
 	return "\n".join(lines)
+
+
+func _fi(v: float) -> String:
+	return ("%.2f" % v).replace(".", ",")
+
+
+## Koneen päiväys "2026-10-18 20:15:33" -> "18.10.2026 klo 20.15"
+func _real_date(s: String) -> String:
+	var parts := s.split(" ")
+	if parts.size() < 2:
+		return s
+	var d := parts[0].split("-")
+	var t := parts[1].split(":")
+	if d.size() < 3 or t.size() < 2:
+		return s
+	return "%d.%d.%s klo %s.%s" % [int(d[2]), int(d[1]), d[0], t[0], t[1]]
 
 
 func _process(delta: float) -> void:
@@ -304,7 +336,7 @@ func _process(delta: float) -> void:
 		var kg := 0.0
 		for e in trip:
 			kg += e["weight"]
-		clock += "\nKalareppu: %d kalaa, %s kg" % [trip.size(), ("%.2f" % kg).replace(".", ",")]
+		clock += "\nSaavi: %d kalaa, %s kg (Tab)" % [trip.size(), ("%.2f" % kg).replace(".", ",")]
 	var weather_text := weather.description()
 	if not is_nan(weather.temperature):
 		weather_text = "%s, %s °C" % [weather_text, ("%.1f" % weather.temperature).replace(".", ",")]
@@ -339,6 +371,8 @@ func _process(delta: float) -> void:
 		Fishing.State.FIGHT:
 			var fish := fishing.hooked_fish()
 			info += "\n%s koukussa!   Siimaa %.1f m%s" % [Species.DATA[fish["sp"]]["name"] if not fish.is_empty() else "Kala", fishing.line_out, "   JARRU LAULAA" if fishing.drag_slipping else ""]
+		Fishing.State.LANDING:
+			info += "\nNostetaan jäälle..." if fishing.on_ice else "\nHaavitaan..."
 		Fishing.State.LANDED:
 			info += "\nSaalis jäällä!" if fishing.on_ice else "\nSaalis haavissa!"
 	_fishing_label.text = info
