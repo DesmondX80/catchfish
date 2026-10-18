@@ -4,6 +4,8 @@ shader_type spatial;
 render_mode unshaded, cull_disabled;
 
 uniform float seed = 0.0;
+uniform float snow = 0.0; // vuodenaika: lumi maassa ja puissa
+uniform float autumn = 0.0; // ruska metsänreunassa
 
 float tree_line(float x) {
 	float h = 0.0;
@@ -23,6 +25,10 @@ void fragment() {
 	float trees = tree_line(uv.x);
 	if (uv.y < trees) {
 		col = mix(vec3(0.1, 0.17, 0.11), vec3(0.18, 0.26, 0.15), uv.y);
+		// Ruska: lehtipuiden keltaiset läikät kuusten lomassa
+		float birch = step(0.6, fract(sin(floor(uv.x * 38.0) * 12.9898 + seed) * 43758.5));
+		col = mix(col, vec3(0.75, 0.5, 0.12), autumn * birch * 0.8);
+		col = mix(col, vec3(0.7, 0.74, 0.78), snow * 0.35);
 	}
 	if (uv.y < 0.36) {
 		// Järvi heijastaa taivasta, rannassa tumma vyö
@@ -30,7 +36,8 @@ void fragment() {
 		col *= 0.85 + 0.15 * sin(uv.y * 160.0 + uv.x * 8.0);
 	}
 	if (uv.y < 0.18) {
-		col = vec3(0.24, 0.3, 0.16); // ranta ja nurmi ikkunan alla
+		col = mix(vec3(0.24, 0.3, 0.16), vec3(0.4, 0.34, 0.2), autumn); // ranta ja nurmi ikkunan alla
+		col = mix(col, vec3(0.9, 0.92, 0.95), snow);
 	}
 	ALBEDO = col * 1.15;
 }

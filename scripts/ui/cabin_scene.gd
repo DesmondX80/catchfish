@@ -13,10 +13,17 @@ var _fire_light: OmniLight3D
 var _flames: Array[MeshInstance3D] = []
 var _time := 0.0
 var _rng := RandomNumberGenerator.new()
+## Ikkunanäkymän vuodenaika: todellisessa ajassa tämän päivän mukaan
+var season := Season.from_day(165)
 
 
 func _ready() -> void:
 	_rng.seed = 11
+	if Settings.real_world:
+		var t := Time.get_datetime_dict_from_system()
+		var jan1 := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": 1, "day": 1})
+		var today := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": t["month"], "day": t["day"]})
+		season = Season.from_day(int((today - jan1) / 86400.0) + 1)
 	_environment()
 	_camera()
 	_floor_and_ceiling()
@@ -138,6 +145,8 @@ func _windows() -> void:
 			var m := ShaderMaterial.new()
 			m.shader = view_shader
 			m.set_shader_parameter("seed", zc * side)
+			m.set_shader_parameter("snow", season.snow)
+			m.set_shader_parameter("autumn", maxf(season.autumn * season.leaves, season.grass_dry * 0.4))
 			quad.material = m
 			glass.mesh = quad
 			glass.position = Vector3(x, 1.45, zc)

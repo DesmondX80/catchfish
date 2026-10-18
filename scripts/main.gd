@@ -97,10 +97,14 @@ func _start_game(start_index: int) -> void:
 	weather.sky = sky
 	if Settings.real_world:
 		_use_real_world()
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--day="):
+			sky.day_of_year = int(arg.split("=")[1]) # testi: vuodenaika päivän mukaan
+	var season := current_season()
 
 	world = LakeWorld.new()
 	add_child(world)
-	world.build(lake)
+	world.build(lake, season)
 
 	boat = Boat.new()
 	add_child(boat)
@@ -131,6 +135,8 @@ func _start_game(start_index: int) -> void:
 	add_child(hud)
 	hud.setup(boat, fishing, weather, sky, lake, population)
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
+	if season.name != "kesä":
+		hud.show_message("Tervetuloa: %s – %s (%s)" % [lake.name, lake.starts[start_index]["name"], season.name])
 
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
@@ -157,6 +163,8 @@ func _start_game(start_index: int) -> void:
 		add_child(load("res://tests/perf.gd").new())
 	else:
 		for arg in args:
+			if arg.begins_with("--seasonshot="):
+				add_child(load("res://tests/season_shot.gd").new())
 			if arg.begins_with("--screenshots="):
 				add_child(load("res://tests/screenshots.gd").new())
 			elif arg.begins_with("--audio-preview="):
@@ -185,6 +193,11 @@ func _input(event: InputEvent) -> void:
 		else:
 			sky.cycle_time_scale()
 			hud.show_message("Ajan nopeus x%d" % int(sky.time_scale()))
+
+
+## Vuodenaika: todellisessa ajassa päivämäärän mukaan, muuten kesäkuun puoliväli
+func current_season() -> Season:
+	return Season.from_day(sky.day_of_year)
 
 
 ## Todellinen kellonaika ja sää Saloisissa: kello tietokoneelta, sää havainnoista

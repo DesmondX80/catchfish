@@ -7,10 +7,15 @@ const TREE_BAND := 350.0 # tiheä metsä näin lähellä rantaa, kauempana harve
 
 var lake: LakeData
 var water_material: ShaderMaterial
+var season := Season.from_day(165)
+var _plain_summer := true # keskikesällä maaston värejä ei tarvitse muuttaa
 
 
-func build(lake_data: LakeData) -> void:
+func build(lake_data: LakeData, season_now: Season = null) -> void:
 	lake = lake_data
+	if season_now:
+		season = season_now
+	_plain_summer = season.snow == 0.0 and season.grass_dry == 0.0
 	_carve_ramps() # maasto ja pohja luiskan muotoon ennen maaston rakentamista
 	_build_terrain()
 	_build_water()
@@ -22,7 +27,24 @@ func build(lake_data: LakeData) -> void:
 	_build_dock()
 
 
+## Solukohtainen satunnaisluku 0..1 (sulavan lumen laikut)
+func _patch(c: int, r: int) -> float:
+	var n := sin(c * 0.37 + r * 0.11) * 0.5 + sin(c * 0.13 - r * 0.29 + 1.7) * 0.35 + sin((c + r) * 0.9) * 0.15
+	return clampf(n * 0.5 + 0.5, 0.0, 1.0)
+
+
 func _ground_color(c: int, r: int, h: float) -> Color:
+	var base := _summer_ground_color(c, r, h)
+	if _plain_summer or lake.cell_is_water(c, r):
+		return base
+	var g := lake.cell_ground(c, r)
+	if g != LakeData.Ground.ROCK:
+		base = season.tint_grass(base)
+	# Lumi jää pisimpään metsän varjoon
+	return season.snowy(base, _patch(c, r), 1.0 if g == LakeData.Ground.FOREST else 0.0)
+
+
+func _summer_ground_color(c: int, r: int, h: float) -> Color:
 	if lake.cell_is_water(c, r):
 		var depth := -h
 		return Color(0.32, 0.27, 0.17).lerp(Color(0.12, 0.1, 0.06), clampf(depth / 3.0, 0.0, 1.0))
@@ -199,8 +221,11 @@ func _pine_mesh() -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cone(st, 0.0, 9.0, 0.25, Color(0.3, 0.2, 0.12), 5)
-	_cone(st, 2.0, 8.0, 2.2, Color(0.1, 0.22, 0.1))
-	_cone(st, 5.0, 12.0, 1.6, Color(0.12, 0.26, 0.11))
+	# Talvella kuusten oksilla on lunta
+	var needles := Color(0.1, 0.22, 0.1).lerp(Color(0.75, 0.8, 0.82), season.snow * 0.45)
+	var top := Color(0.12, 0.26, 0.11).lerp(Color(0.85, 0.88, 0.9), season.snow * 0.55)
+	_cone(st, 2.0, 8.0, 2.2, needles)
+	_cone(st, 5.0, 12.0, 1.6, top)
 	st.set_material(_vertex_color_material())
 	return st.commit()
 
@@ -209,8 +234,17 @@ func _birch_mesh() -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	_cone(st, 0.0, 9.0, 0.18, Color(0.85, 0.85, 0.8), 5)
-	_cone(st, 3.0, 10.5, 2.0, Color(0.32, 0.5, 0.16), 8)
-	_cone(st, 7.0, 3.0, 1.9, Color(0.28, 0.46, 0.14), 8) # alaspäin osoittava kartio pyöristää latvuksen
+	# Lehvästö: koko ja väri vuodenajan mukaan (keväällä vaalea, syksyllä ruska, talvella paljas)
+	var leaves := season.leaves
+	if leaves > 0.05:
+		var size := 0.55 + 0.45 * leaves
+		_cone(st, 3.0 + (1.0 - size) * 2.0, 10.5, 2.0 * size, season.birch_leaf_color(Color(0.32, 0.5, 0.16)), 8)
+		_cone(st, 7.0, 3.0 + (1.0 - size) * 2.5, 1.9 * size, season.birch_leaf_color(Color(0.28, 0.46, 0.14)), 8) # alaspäin osoittava kartio pyöristää latvuksen
+	else:
+		# Paljaat oksat: muutama ohut kartio
+		for k in 4:
+			var branch := Color(0.35, 0.3, 0.27)
+			_cone(st, 4.0 + k * 1.3, 9.5, 0.9 - k * 0.15, branch, 5)
 	st.set_material(_vertex_color_material())
 	return st.commit()
 
@@ -254,8 +288,8 @@ func _reed_mesh() -> Mesh:
 		var lean := Vector3(rng.randf_range(-0.25, 0.25), 0, rng.randf_range(-0.25, 0.25))
 		var side := Vector3(0.05, 0, 0).rotated(Vector3.UP, rng.randf() * PI)
 		var top := base + Vector3(0, height, 0) + lean
-		var c_low := Color(0.3, 0.36, 0.16)
-		var c_high := Color(0.62, 0.6, 0.32)
+		var c_low := season.reed_color(Color(0.3, 0.36, 0.16))
+		var c_high := season.reed_color(Color(0.62, 0.6, 0.32))
 		for v in [[base - side, c_low], [base + side, c_low], [top, c_high]]:
 			st.set_color(v[1])
 			st.set_normal(Vector3.UP)

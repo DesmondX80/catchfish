@@ -168,7 +168,7 @@ func _build_settings() -> void:
 	_real_toggle.toggled.connect(_on_real_toggled)
 	box.add_child(_real_toggle)
 
-	var info := _label("Kellonaika ja vuodenaika otetaan tietokoneen kellosta, ja sää haetaan Ilmatieteen laitoksen havainnoista Raahen Lapaluodon asemalta (n. 5 km Saloisista) 10 minuutin välein. Ajan nopeutta (T) ei voi silloin muuttaa.", 14, Color(0.8, 0.82, 0.76))
+	var info := _label("Kellonaika ja vuodenaika otetaan tietokoneen kellosta (maisema muuttuu vuodenajan mukaan: ruska, lumi), ja sää haetaan Ilmatieteen laitoksen havainnoista Raahen Lapaluodon asemalta (n. 5 km Saloisista) 10 minuutin välein. Ajan nopeutta (T) ei voi silloin muuttaa.", 14, Color(0.8, 0.82, 0.76))
 	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(info)
