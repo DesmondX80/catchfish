@@ -33,6 +33,13 @@ var cloud_cover := 0.2 # 0 selkeä .. 1 täysin pilvessä
 var rain := 0.0 # sateen voimakkuus 0 .. 1
 var kind := Kind.CLEAR
 var sky: SkyTime # pelin kello: sää muuttuu peliajassa
+var snow := false # sataa lunta (todellinen sää)
+var temperature := NAN # °C, vain todellisessa säässä
+## Todellinen sää: säätila ei vaihdu itsestään, vaan apply_real() asettaa sen
+var real_mode := false
+var real_source := ""
+var real_time := ""
+var _gust_peak := 0.0
 
 var _rng := RandomNumberGenerator.new()
 var _gust_timer := 0.0
@@ -65,24 +72,54 @@ func set_kind(new_kind: int, instant := false) -> void:
 
 func _process(delta: float) -> void:
 	var game_minutes := delta * (sky.time_scale() if sky else 1.0) / 60.0
-	_change_in -= game_minutes
-	if _change_in <= 0.0:
-		set_kind(_pick_next())
+	if real_mode:
+		game_minutes = maxf(game_minutes, delta / 6.0) # havainnot tulevat näkyviin muutamassa sekunnissa
+	else:
+		_change_in -= game_minutes
+		if _change_in <= 0.0:
+			set_kind(_pick_next())
 
 	# Pilvet tulevat noin puolessa tunnissa; sade alkaa vasta pilvisellä taivaalla
 	cloud_cover = move_toward(cloud_cover, _cover_target, game_minutes / 30.0)
-	var rain_goal := _rain_target if cloud_cover > 0.85 else 0.0
+	var rain_goal := _rain_target if cloud_cover > 0.85 or real_mode else 0.0
 	rain = move_toward(rain, rain_goal, game_minutes / 8.0)
 
-	# Tuuli: hidas satunnaiskävely, sateella voimakkaampi
-	_wind_target = clampf(_wind_target + _rng.randfn(0.0, 0.05) * delta * 4.0, 0.5, 8.0)
-	wind_base = move_toward(wind_base, clampf(_wind_target + rain * 3.0, 0.0, 11.0), delta * 0.05)
+	# Tuuli: hidas satunnaiskävely, sateella voimakkaampi; todellisessa säässä havaittu
+	if real_mode:
+		wind_base = move_toward(wind_base, _wind_target, delta * 0.3)
+	else:
+		_wind_target = clampf(_wind_target + _rng.randfn(0.0, 0.05) * delta * 4.0, 0.5, 8.0)
+		wind_base = move_toward(wind_base, clampf(_wind_target + rain * 3.0, 0.0, 11.0), delta * 0.05)
 	wind_direction = wrapf(wind_direction + _rng.randfn(0.0, 0.02) * delta * 4.0, 0.0, TAU)
 	_gust_timer -= delta
 	if _gust_timer <= 0.0:
 		_gust_timer = _rng.randf_range(3.0, 12.0)
-		gust = _rng.randf_range(0.0, wind_base * (0.5 + rain * 0.3))
+		var peak := maxf(_gust_peak - wind_base, 0.3) if real_mode else wind_base * (0.5 + rain * 0.3)
+		gust = _rng.randf_range(0.0, peak)
 	gust = move_toward(gust, 0.0, delta * 0.3)
+
+
+## Todellinen sää (RealWeather): pilvisyys, sade ja tuuli havainnoista
+func apply_real(data: Dictionary, instant := false) -> void:
+	real_mode = true
+	real_source = data["source"]
+	real_time = data["time"]
+	temperature = data["temperature"]
+	snow = data["snow"]
+	_cover_target = data["cloud"]
+	_rain_target = data["precipitation"]
+	_wind_target = data["wind_speed"]
+	_gust_peak = data["wind_gust"]
+	# Havaittu suunta on se, MISTÄ tuulee; pelissä suunta, JOHON tuulee
+	var to := deg_to_rad(data["wind_from_deg"] + 180.0)
+	wind_direction = to if instant else lerp_angle(wind_direction, to, 1.0)
+	if instant:
+		cloud_cover = _cover_target
+		rain = _rain_target
+		wind_base = _wind_target
+	# Sade alkaa todellisessa säässä heti eikä odota täyttä pilvipeitettä
+	if _rain_target > 0.0:
+		_cover_target = maxf(_cover_target, 0.9)
 
 
 func _pick_next() -> int:
@@ -121,10 +158,11 @@ func description() -> String:
 		sky_text = "Puolipilvistä"
 	elif cloud_cover > 0.12:
 		sky_text = "Melkein selkeää"
+	var what := "lumisadetta" if snow else "sadetta"
 	if rain > 0.7:
-		return sky_text + ", rankkasadetta"
+		return sky_text + (", runsasta lumisadetta" if snow else ", rankkasadetta")
 	if rain > 0.35:
-		return sky_text + ", sadetta"
+		return sky_text + ", " + what
 	if rain > 0.03:
-		return sky_text + ", heikkoa sadetta"
+		return sky_text + ", heikkoa " + what
 	return sky_text

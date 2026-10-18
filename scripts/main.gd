@@ -33,10 +33,10 @@ func _ready() -> void:
 		return
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
-		if arg.begins_with("--menutest="):
+		if arg.begins_with("--menutest=") or arg.begins_with("--settingstest="):
 			CatchLog.persist = false
 			_show_menu()
-			add_child(load("res://tests/menu_test.gd").new())
+			add_child(load("res://tests/menu_test.gd" if arg.begins_with("--menutest=") else "res://tests/settings_test.gd").new())
 			return
 		if arg.begins_with("--"):
 			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
@@ -95,6 +95,8 @@ func _start_game(start_index: int) -> void:
 	add_child(sky)
 	sky.setup(sun, env, weather)
 	weather.sky = sky
+	if Settings.real_world:
+		_use_real_world()
 
 	world = LakeWorld.new()
 	add_child(world)
@@ -178,8 +180,37 @@ func _input(event: InputEvent) -> void:
 		AudioServer.set_bus_mute(bus, not AudioServer.is_bus_mute(bus))
 		hud.show_message("Äänet pois" if AudioServer.is_bus_mute(bus) else "Äänet päällä")
 	elif event.is_action_pressed("time_speed"):
-		sky.cycle_time_scale()
-		hud.show_message("Ajan nopeus x%d" % int(sky.time_scale()))
+		if sky.real_time:
+			hud.show_message("Todellinen aika käytössä – ajan nopeutta ei voi muuttaa")
+		else:
+			sky.cycle_time_scale()
+			hud.show_message("Ajan nopeus x%d" % int(sky.time_scale()))
+
+
+## Todellinen kellonaika ja sää Saloisissa: kello tietokoneelta, sää havainnoista
+## 10 minuutin välein. Ensimmäinen havainto asetetaan heti, myöhemmät vähitellen.
+func _use_real_world() -> void:
+	sky.real_time = true
+	sky.sync_to_system_clock()
+	var real := RealWeather.new()
+	add_child(real)
+	var first := [true]
+	real.updated.connect(func(data):
+		weather.apply_real(data, first[0])
+		if first[0]:
+			first[0] = false
+			_wave_strength = -1.0 # aallokko heti tuulen mukaiseksi
+			if hud:
+				hud.show_message("Sää: %s (%s klo %s)" % [RealWeather.summary(data), data["source"], data["time"]]))
+	real.failed.connect(func(msg):
+		if hud:
+			hud.show_message(msg + " – käytetään simuloitua säätä"))
+	real.fetch()
+	var timer := Timer.new()
+	timer.wait_time = 600.0
+	timer.autostart = true
+	timer.timeout.connect(real.fetch)
+	add_child(timer)
 
 
 var _wave_strength := -1.0

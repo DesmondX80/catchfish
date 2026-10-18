@@ -13,6 +13,8 @@ const TIME_SCALES := [1.0, 10.0, 60.0]
 @export var day_of_year := 165 # kesäkuun puoliväli
 var minutes := 5.0 * 60.0 + 30.0 # 05:30
 var time_scale_index := 1
+## Todellinen aika: kello ja päivämäärä tietokoneen kellosta, aika kulkee reaaliajassa
+var real_time := false
 
 var sun: DirectionalLight3D
 var environment: Environment
@@ -31,11 +33,21 @@ func setup(sun_light: DirectionalLight3D, env: Environment, weather_node: Weathe
 
 
 func time_scale() -> float:
-	return TIME_SCALES[time_scale_index]
+	return 1.0 if real_time else TIME_SCALES[time_scale_index]
 
 
 func cycle_time_scale() -> void:
-	time_scale_index = (time_scale_index + 1) % TIME_SCALES.size()
+	if not real_time:
+		time_scale_index = (time_scale_index + 1) % TIME_SCALES.size()
+
+
+## Asettaa kellon ja päivämäärän tietokoneen kellosta
+func sync_to_system_clock() -> void:
+	var t := Time.get_datetime_dict_from_system()
+	minutes = t["hour"] * 60.0 + t["minute"] + t["second"] / 60.0
+	var jan1 := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": 1, "day": 1})
+	var today := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": t["month"], "day": t["day"]})
+	day_of_year = int((today - jan1) / 86400.0) + 1
 
 
 func hour() -> float:
@@ -49,7 +61,10 @@ func clock_text() -> String:
 
 func _process(delta: float) -> void:
 	var before := int(hour())
-	minutes += delta * time_scale() / 60.0
+	if real_time:
+		sync_to_system_clock()
+	else:
+		minutes += delta * time_scale() / 60.0
 	if int(hour()) != before:
 		hour_changed.emit(hour())
 	_update_sun()

@@ -57,7 +57,7 @@ func _process(_delta: float) -> void:
 			var map: LakeMap = main.menu._map
 			var target := map.get_global_rect().position + map._start_point(1)
 			_move(target)
-		34:
+		42: # hiiren liike käsitellään muutaman ruudun viiveellä
 			_shot("m2-kartta")
 			var map: LakeMap = main.menu._map
 			_check("aloituspaikka 2 korostuu hiiren alla", map.hovered == 1)

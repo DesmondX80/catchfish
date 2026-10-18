@@ -1,7 +1,7 @@
 class_name StartMenu
 extends CanvasLayer
 ## Aloitusvalikko: "Mene kalalle" avaa järven kartan, josta valitaan
-## aloituspaikka; "Lopeta peli" sulkee pelin.
+## aloituspaikka; "Asetukset" (todellinen aika ja sää); "Lopeta peli" sulkee pelin.
 
 signal start_selected(index: int)
 
@@ -9,6 +9,10 @@ var lake: LakeData
 var _main: Control
 var _map_view: Control
 var _map_bg: ColorRect
+var _settings: Control
+var _real_toggle: CheckButton
+var _weather_label: Label
+var _real_weather: RealWeather
 var _map: LakeMap
 var _loading: Label
 var _start_buttons: Array[Button] = []
@@ -74,6 +78,9 @@ func _build() -> void:
 	var go := _button("Mene kalalle")
 	go.pressed.connect(_show_map)
 	box.add_child(go)
+	var settings := _button("Asetukset")
+	settings.pressed.connect(_show_settings)
+	box.add_child(settings)
 	var quit := _button("Lopeta peli")
 	quit.pressed.connect(func(): get_tree().quit())
 	box.add_child(quit)
@@ -127,11 +134,82 @@ func _build() -> void:
 	back.pressed.connect(_show_main)
 	side.add_child(back)
 
+	_build_settings()
+
 	_loading = _label("", 30, Color(0.95, 0.85, 0.45))
 	add_child(_loading)
 	_loading.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_loading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_loading.visible = false
+
+
+func _build_settings() -> void:
+	_settings = MarginContainer.new()
+	_settings.add_theme_constant_override("margin_left", 70)
+	add_child(_settings)
+	_settings.set_anchors_and_offsets_preset(Control.PRESET_LEFT_WIDE)
+	var center := CenterContainer.new()
+	_settings.add_child(center)
+	var panel := PanelContainer.new()
+	var sb := _style(Color(0.04, 0.06, 0.05, 0.82), 14)
+	sb.set_content_margin_all(30)
+	panel.add_theme_stylebox_override("panel", sb)
+	center.add_child(panel)
+	var box := VBoxContainer.new()
+	box.add_theme_constant_override("separation", 16)
+	box.custom_minimum_size.x = 460
+	panel.add_child(box)
+	box.add_child(_label("Asetukset", 40, Color(0.95, 0.85, 0.45)))
+
+	_real_toggle = CheckButton.new()
+	_real_toggle.text = "Todellinen kellonaika ja sää\n(Saloinen, Raahe)"
+	_real_toggle.add_theme_font_size_override("font_size", 20)
+	_real_toggle.button_pressed = Settings.real_world
+	_real_toggle.toggled.connect(_on_real_toggled)
+	box.add_child(_real_toggle)
+
+	var info := _label("Kellonaika ja vuodenaika otetaan tietokoneen kellosta, ja sää haetaan Ilmatieteen laitoksen havainnoista Raahen Lapaluodon asemalta (n. 5 km Saloisista) 10 minuutin välein. Ajan nopeutta (T) ei voi silloin muuttaa.", 14, Color(0.8, 0.82, 0.76))
+	info.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	info.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(info)
+	_weather_label = _label("", 16, Color(0.95, 0.9, 0.75))
+	_weather_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	_weather_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	box.add_child(_weather_label)
+	var credit := _label("Säätiedot: Ilmatieteen laitos ja Open-Meteo (CC BY 4.0)", 12, Color(0.65, 0.68, 0.62))
+	box.add_child(credit)
+	var back := _button("Takaisin", 20)
+	back.pressed.connect(_show_main)
+	box.add_child(back)
+	_settings.visible = false
+
+	_real_weather = RealWeather.new()
+	add_child(_real_weather)
+	_real_weather.updated.connect(func(data):
+		_weather_label.text = "Nyt Saloisissa: %s\n(%s, klo %s)" % [RealWeather.summary(data), data["source"], data["time"]])
+	_real_weather.failed.connect(func(msg):
+		_weather_label.text = msg + ". Pelissä käytetään silloin simuloitua säätä.")
+
+
+func _on_real_toggled(on: bool) -> void:
+	Settings.real_world = on
+	Settings.save()
+	_update_weather_preview()
+
+
+func _update_weather_preview() -> void:
+	if Settings.real_world:
+		_weather_label.text = "Haetaan säätietoja..."
+		_real_weather.fetch()
+	else:
+		_weather_label.text = "Pois päältä: kello alkaa kesäaamusta klo 5.30, ja sää vaihtelee satunnaisesti."
+
+
+func _show_settings() -> void:
+	_main.visible = false
+	_settings.visible = true
+	_real_toggle.grab_focus()
+	_update_weather_preview()
 
 
 func _show_map() -> void:
@@ -144,11 +222,12 @@ func _show_map() -> void:
 func _show_main() -> void:
 	_map_view.visible = false
 	_map_bg.visible = false
+	_settings.visible = false
 	_main.visible = true
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause") and _map_view.visible:
+	if event.is_action_pressed("pause") and (_map_view.visible or _settings.visible):
 		_show_main()
 
 
