@@ -33,11 +33,13 @@ func _ready() -> void:
 		return
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
-		if arg.begins_with("--menutest=") or arg.begins_with("--settingstest="):
-			CatchLog.persist = false
-			_show_menu()
-			add_child(load("res://tests/menu_test.gd" if arg.begins_with("--menutest=") else "res://tests/settings_test.gd").new())
-			return
+		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test"}
+		for prefix in menu_tests:
+			if arg.begins_with(prefix):
+				CatchLog.persist = false
+				_show_menu()
+				add_child(load("res://tests/%s.gd" % menu_tests[prefix]).new())
+				return
 		if arg.begins_with("--"):
 			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
 			_start_game(0) # testit ohittavat valikon
@@ -97,6 +99,10 @@ func _start_game(start_index: int) -> void:
 	weather.sky = sky
 	if Settings.real_world:
 		_use_real_world()
+	else:
+		# Itse valittu vuodenaika ja kellonaika (aloituspaikan valinnassa)
+		sky.day_of_year = Settings.season_day()
+		sky.minutes = Settings.start_hour() * 60.0
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--day="):
 			sky.day_of_year = int(arg.split("=")[1]) # testi: vuodenaika päivän mukaan

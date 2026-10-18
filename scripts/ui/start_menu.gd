@@ -13,6 +13,9 @@ var _settings: Control
 var _real_toggle: CheckButton
 var _weather_label: Label
 var _real_weather: RealWeather
+var _map_real: CheckButton
+var _season_pick: OptionButton
+var _time_pick: OptionButton
 var _map: LakeMap
 var _loading: Label
 var _start_buttons: Array[Button] = []
@@ -118,7 +121,27 @@ func _build() -> void:
 	side.add_theme_constant_override("separation", 14)
 	side.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(side)
-	var title := _label("Valitse aloituspaikka", 28, Color(0.95, 0.85, 0.45))
+	# Aika ja sää: todellinen tai itse valittu vuodenaika ja kellonaika
+	side.add_child(_label("Aika ja sää", 24, Color(0.95, 0.85, 0.45)))
+	_map_real = CheckButton.new()
+	_map_real.text = "Todellinen kellonaika ja sää (Saloinen)"
+	_map_real.add_theme_font_size_override("font_size", 16)
+	_map_real.toggled.connect(_on_map_real_toggled)
+	side.add_child(_map_real)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.add_theme_constant_override("h_separation", 12)
+	grid.add_theme_constant_override("v_separation", 8)
+	side.add_child(grid)
+	_season_pick = _picker(grid, "Vuodenaika", Settings.SEASONS, func(i):
+		Settings.season_index = i
+		Settings.save())
+	_time_pick = _picker(grid, "Kellonaika", Settings.TIMES, func(i):
+		Settings.time_index = i
+		Settings.save())
+	side.add_child(Control.new())
+
+	var title := _label("Valitse aloituspaikka", 24, Color(0.95, 0.85, 0.45))
 	side.add_child(title)
 	side.add_child(_label("Klikkaa paikkaa kartalla tai listassa", 15, Color(0.75, 0.82, 0.78)))
 	for i in lake.starts.size():
@@ -141,6 +164,38 @@ func _build() -> void:
 	_loading.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_loading.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	_loading.visible = false
+
+
+## Pudotusvalikko nimen kanssa ruudukkoon
+func _picker(grid: GridContainer, title: String, items: Array, on_pick: Callable) -> OptionButton:
+	var l := _label(title, 16, Color(0.85, 0.88, 0.82))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	grid.add_child(l)
+	var pick := OptionButton.new()
+	pick.add_theme_font_size_override("font_size", 16)
+	pick.custom_minimum_size.x = 250
+	for item in items:
+		pick.add_item(item[0])
+	pick.item_selected.connect(on_pick)
+	grid.add_child(pick)
+	return pick
+
+
+func _on_map_real_toggled(on: bool) -> void:
+	Settings.real_world = on
+	Settings.save()
+	_sync_time_controls()
+
+
+## Kartan aika- ja säävalinnat vastaamaan asetuksia
+func _sync_time_controls() -> void:
+	_map_real.set_pressed_no_signal(Settings.real_world)
+	_season_pick.select(Settings.season_index)
+	_time_pick.select(Settings.time_index)
+	_season_pick.disabled = Settings.real_world
+	_time_pick.disabled = Settings.real_world
+	if _real_toggle:
+		_real_toggle.set_pressed_no_signal(Settings.real_world)
 
 
 func _build_settings() -> void:
@@ -202,7 +257,7 @@ func _update_weather_preview() -> void:
 		_weather_label.text = "Haetaan säätietoja..."
 		_real_weather.fetch()
 	else:
-		_weather_label.text = "Pois päältä: kello alkaa kesäaamusta klo 5.30, ja sää vaihtelee satunnaisesti."
+		_weather_label.text = "Pois päältä: vuodenajan ja kellonajan voi valita aloituspaikan valinnassa, ja sää vaihtelee satunnaisesti."
 
 
 func _show_settings() -> void:
@@ -216,6 +271,7 @@ func _show_map() -> void:
 	_main.visible = false
 	_map_bg.visible = true
 	_map_view.visible = true
+	_sync_time_controls()
 	_start_buttons[0].grab_focus()
 
 

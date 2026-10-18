@@ -24,6 +24,8 @@ func _ready() -> void:
 		var jan1 := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": 1, "day": 1})
 		var today := Time.get_unix_time_from_datetime_dict({"year": t["year"], "month": t["month"], "day": t["day"]})
 		season = Season.from_day(int((today - jan1) / 86400.0) + 1)
+	else:
+		season = Season.from_day(Settings.season_day())
 	_environment()
 	_camera()
 	_floor_and_ceiling()
