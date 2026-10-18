@@ -16,6 +16,7 @@ var fish_visuals: FishVisuals
 var hud: Hud
 var audio: GameAudio
 var menu: StartMenu
+var pause_menu: PauseMenu
 var running := false # peli käynnissä (valikko ohitettu)
 var load_ms := 0
 
@@ -121,6 +122,11 @@ func _start_game(start_index: int) -> void:
 	hud.setup(boat, fishing, weather, sky, lake, population)
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
 
+	pause_menu = PauseMenu.new()
+	add_child(pause_menu)
+	pause_menu.setup(hud.help_text(false))
+	pause_menu.resumed.connect(func(): hud.set_paused_view(false))
+
 	audio = GameAudio.new()
 	add_child(audio)
 	audio.setup(boat, fishing, weather, sky, lake)
@@ -133,6 +139,8 @@ func _start_game(start_index: int) -> void:
 		add_child(load("res://tests/autotest.gd").new())
 	elif "--flicker" in args:
 		add_child(load("res://tests/flicker.gd").new())
+	elif "--pausetest" in args:
+		add_child(load("res://tests/pause_test.gd").new())
 	elif "--inputtest" in args:
 		add_child(load("res://tests/input_test.gd").new())
 	elif "--perftest" in args:
@@ -154,8 +162,9 @@ func _input(event: InputEvent) -> void:
 		hud.set_paused_view(false)
 		get_viewport().set_input_as_handled()
 	elif event.is_action_pressed("pause"):
-		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-		hud.set_paused_view(true)
+		get_viewport().set_input_as_handled()
+		hud.set_paused_view(false)
+		pause_menu.open()
 	elif event.is_action_pressed("mute"):
 		var bus := AudioServer.get_bus_index("Master")
 		AudioServer.set_bus_mute(bus, not AudioServer.is_bus_mute(bus))

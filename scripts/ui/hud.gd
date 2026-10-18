@@ -168,7 +168,7 @@ func _build() -> void:
 
 	_help_panel = _panel(center, center)
 	var help := _label(_help_panel, 16)
-	help.text = _help_text()
+	help.text = help_text(true)
 	_help_panel.visible = true
 
 	# HUD:ssa ei ole painikkeita: klikkausten pitää mennä peliin. Kaapattu hiiri
@@ -183,7 +183,8 @@ func _ignore_mouse(node: Node) -> void:
 		_ignore_mouse(child)
 
 
-func _help_text() -> String:
+## Näppäinohjeet; start_hint = lisää kehotus klikata aloittaakseen
+func help_text(start_hint := true) -> String:
 	var lines := [
 		"CATCHFISH – %s" % lake.name,
 		"",
@@ -203,12 +204,14 @@ func _help_text() -> String:
 		"  L            vaihda uistin",
 		"",
 		"MUUTA",
-		"  T            ajan nopeus   Tab  saaliskirja   K  kartta   F1  ohje   M  äänet   Esc  tauko",
+		"  T            ajan nopeus   Tab  saaliskirja   K  kartta   F1  ohje   M  äänet   Esc  valikko",
 		"",
-		"Klikkaa hiirellä aloittaaksesi.",
 	]
+	if start_hint:
+		lines.append("Klikkaa hiirellä aloittaaksesi.")
 	if lake.attribution != "":
-		lines.append("")
+		if start_hint:
+			lines.append("")
 		lines.append(lake.attribution)
 	if lake.depth_estimated:
 		lines.append("Järven syvyys on arvioitu – tekoaltaasta ei ole avointa syvyysaineistoa.")
