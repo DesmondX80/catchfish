@@ -18,6 +18,8 @@ var hud: Hud
 var audio: GameAudio
 ## "Mene kotiin": pää-scene ladataan uudelleen ja se aukeaa alkuvalikkoon
 static var return_to_menu := false
+## Uramoodin reissulta kotiin: valikko aukeaa uran kotinäkymään
+static var return_to_career := false
 
 var menu: StartMenu
 var pause_menu: PauseMenu
@@ -30,10 +32,13 @@ func _ready() -> void:
 	if return_to_menu:
 		return_to_menu = false
 		_show_menu()
+		if return_to_career:
+			return_to_career = false
+			menu.open_career()
 		return
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
-		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test"}
+		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test", "--careertest=": "career_test"}
 		for prefix in menu_tests:
 			if arg.begins_with(prefix):
 				CatchLog.persist = false
@@ -60,12 +65,18 @@ func _on_start_selected(index: int) -> void:
 	# Annetaan latausviestin piirtyä ennen raskasta järven rakentamista
 	await get_tree().process_frame
 	await get_tree().process_frame
+	var career := menu.career_mode
 	menu.queue_free()
 	menu = null
-	_start_game(index)
+	_start_game(index, career)
 
 
-func _start_game(start_index: int) -> void:
+## Uramoodin kalareissun saalis (kalareppu): viedään kotiin säilöön
+var trip_catch: Array = []
+
+
+func _start_game(start_index: int, career := false) -> void:
+	Career.active = career
 	var t0 := Time.get_ticks_msec()
 	lake.select_start(start_index)
 
@@ -97,7 +108,12 @@ func _start_game(start_index: int) -> void:
 	add_child(sky)
 	sky.setup(sun, env, weather)
 	weather.sky = sky
-	if Settings.real_world:
+	if career:
+		# Uran kello ja päivä: vuodenaika etenee päivien mukana
+		sky.day_of_year = Career.day_of_year()
+		sky.minutes = Career.minutes
+		Career.trip_start = Career.minutes
+	elif Settings.real_world:
 		_use_real_world()
 	else:
 		# Itse valittu vuodenaika ja kellonaika (aloituspaikan valinnassa)
@@ -159,6 +175,15 @@ func _start_game(start_index: int) -> void:
 	add_child(pause_menu)
 	pause_menu.setup(hud.help_text(false))
 	pause_menu.resumed.connect(func(): hud.set_paused_view(false))
+	if career:
+		fishing.limited = true
+		fishing.inventory = Career.lures # sama sanakirja: menetetyt uistimet vähenevät urasta
+		fishing.lure_index = 0
+		fishing._lure_node.mesh.material.albedo_color = fishing.lure()["color"]
+		fishing.caught.connect(func(entry, _record): trip_catch.append(entry))
+		pause_menu.going_home.connect(func():
+			Career.end_trip(trip_catch, sky.minutes - Career.trip_start)
+			Main.return_to_career = true)
 
 	audio = GameAudio.new()
 	add_child(audio)

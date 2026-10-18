@@ -6,6 +6,7 @@ extends Node3D
 signal message(text: String)
 signal caught(entry: Dictionary, record: bool)
 signal sound_event(sound: String, at: Vector3)
+signal lure_lost(lure_id: String)
 
 enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED, DRILLING }
 
@@ -35,6 +36,9 @@ var on_ice := false
 var rod_length := ROD_LENGTH
 var holes: Array[Vector3] = []
 var current_hole := Vector3.INF
+## Uramoodi: uistinvarasto (id -> kpl). Tyhjä = vapaa kalastus, kaikki uistimet käytössä.
+var inventory: Dictionary = {}
+var limited := false
 const HOLE_AHEAD := 0.75 # avanto kalastajan edessä (m)
 const DRILL_TIME := 3.0 # s
 var _auger: Node3D
@@ -95,11 +99,25 @@ func setup(boat_node: Boat, rig: CameraRig, lake_data: LakeData, fish_pop: FishP
 
 
 func lures() -> Array:
-	return Lures.ICE if on_ice else Lures.LIST
+	var all: Array = Lures.ICE if on_ice else Lures.LIST
+	if not limited:
+		return all
+	return all.filter(func(l): return int(inventory.get(l["id"], 0)) > 0)
+
+
+func has_lure() -> bool:
+	return not lures().is_empty()
 
 
 func lure() -> Dictionary:
-	return lures()[lure_index % lures().size()]
+	var list := lures()
+	if list.is_empty():
+		return (Lures.ICE if on_ice else Lures.LIST)[0] # vain ulkonäköä varten
+	return list[lure_index % list.size()]
+
+
+func lure_count() -> int:
+	return int(inventory.get(lure()["id"], 0)) if limited else -1
 
 
 ## Talvitila: lyhyt pilkkivapa ja pilkit
@@ -161,6 +179,9 @@ func last_catch() -> Dictionary:
 func _unhandled_input(event: InputEvent) -> void:
 	if not GameInput.active():
 		return
+	if event.is_action_pressed("cast") and state == State.READY and not has_lure():
+		message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
+		return
 	if on_ice and _ice_input(event):
 		return
 	if event.is_action_pressed("cast"):
@@ -178,9 +199,12 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_released("cast") and state == State.CHARGING:
 		_cast()
 	elif event.is_action_pressed("lure_next") and state == State.READY:
+		if not has_lure():
+			message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
+			return
 		lure_index = (lure_index + 1) % lures().size()
 		_lure_node.mesh.material.albedo_color = lure()["color"]
-		message.emit("Uistin: " + lure()["name"])
+		message.emit("Uistin: " + lure()["name"] + (" (%d kpl)" % lure_count() if limited else ""))
 	elif event.is_action_pressed("twitch") and state == State.RETRIEVING and not lure_on_land:
 		line_out = maxf(0.0, line_out - 0.5)
 		_twitch = 1.0
@@ -611,6 +635,14 @@ func _lose_fish(text: String, lose_lure: bool) -> void:
 func _lose_lure(text: String) -> void:
 	sound_event.emit("line_snap", rod_tip())
 	lost_lures += 1
+	if limited:
+		var id: String = lure()["id"]
+		inventory[id] = maxi(0, int(inventory.get(id, 0)) - 1)
+		lure_lost.emit(id)
+		if inventory[id] == 0:
+			lure_index = 0
+			text += " – %s loppui" % Lures.name_of(id) if has_lure() else " – uistimet loppuivat"
+			_lure_node.mesh.material.albedo_color = lure()["color"]
 	snagged = false
 	state = State.READY
 	message.emit(text)

@@ -296,6 +296,15 @@ func _process(delta: float) -> void:
 		motor = "Moottori käynnistyy..."
 	var place := lake.nearest_place(boat.pos.x, boat.pos.y)
 	var clock := "Klo %s  (todellinen aika)" % sky.clock_text() if sky.real_time else "Klo %s  (aika x%d)" % [sky.clock_text(), int(sky.time_scale())]
+	if Career.active:
+		# Päivä vaihtuu reissulla, kun kello ohittaa puolenyön
+		var day := Career.day + int(sky.minutes / 1440.0)
+		clock = "Päivä %d (%s) %s" % [day, Career.WEEKDAYS[(day - 1) % 7].left(2), clock]
+		var trip: Array = get_parent().trip_catch
+		var kg := 0.0
+		for e in trip:
+			kg += e["weight"]
+		clock += "\nKalareppu: %d kalaa, %s kg" % [trip.size(), ("%.2f" % kg).replace(".", ",")]
 	var weather_text := weather.description()
 	if not is_nan(weather.temperature):
 		weather_text = "%s, %s °C" % [weather_text, ("%.1f" % weather.temperature).replace(".", ",")]
@@ -307,7 +316,10 @@ func _process(delta: float) -> void:
 	]
 
 	var l := fishing.lure()
-	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [l["name"], fishing.drag_kg, Fishing.LINE_STRENGTH]
+	var lure_name: String = l["name"]
+	if fishing.limited:
+		lure_name = "%s (%d kpl)" % [lure_name, fishing.lure_count()] if fishing.has_lure() else "Ei uistimia – osta kaupasta"
+	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [lure_name, fishing.drag_kg, Fishing.LINE_STRENGTH]
 	match fishing.state:
 		Fishing.State.READY:
 			if fishing.on_ice:

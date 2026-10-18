@@ -14,6 +14,11 @@ var _real_toggle: CheckButton
 var _weather_label: Label
 var _real_weather: RealWeather
 var _map_real: CheckButton
+var _time_section: Array[Control] = []
+var _map_title: Label
+var _career: CareerView
+## Uramoodin kalareissu (aloituspaikka valitaan uran kotinäkymästä)
+var career_mode := false
 var _season_pick: OptionButton
 var _time_pick: OptionButton
 var _map: LakeMap
@@ -79,8 +84,11 @@ func _build() -> void:
 	box.add_child(_label("Kotona", 26, Color(0.9, 0.84, 0.72)))
 	box.add_child(Control.new())
 	var go := _button("Mene kalalle")
-	go.pressed.connect(_show_map)
+	go.pressed.connect(func(): career_mode = false; _show_map())
 	box.add_child(go)
+	var career := _button("Uramoodi")
+	career.pressed.connect(open_career)
+	box.add_child(career)
 	var settings := _button("Asetukset")
 	settings.pressed.connect(_show_settings)
 	box.add_child(settings)
@@ -122,7 +130,8 @@ func _build() -> void:
 	side.alignment = BoxContainer.ALIGNMENT_CENTER
 	row.add_child(side)
 	# Aika ja sää: todellinen tai itse valittu vuodenaika ja kellonaika
-	side.add_child(_label("Aika ja sää", 24, Color(0.95, 0.85, 0.45)))
+	var time_title := _label("Aika ja sää", 24, Color(0.95, 0.85, 0.45))
+	side.add_child(time_title)
 	_map_real = CheckButton.new()
 	_map_real.text = "Todellinen kellonaika ja sää (Saloinen)"
 	_map_real.add_theme_font_size_override("font_size", 16)
@@ -139,10 +148,12 @@ func _build() -> void:
 	_time_pick = _picker(grid, "Kellonaika", Settings.TIMES, func(i):
 		Settings.time_index = i
 		Settings.save())
-	side.add_child(Control.new())
+	var spacer := Control.new()
+	side.add_child(spacer)
+	_time_section = [time_title, _map_real, grid, spacer]
 
-	var title := _label("Valitse aloituspaikka", 24, Color(0.95, 0.85, 0.45))
-	side.add_child(title)
+	_map_title = _label("Valitse aloituspaikka", 24, Color(0.95, 0.85, 0.45))
+	side.add_child(_map_title)
 	side.add_child(_label("Klikkaa paikkaa kartalla tai listassa", 15, Color(0.75, 0.82, 0.78)))
 	for i in lake.starts.size():
 		var s: Dictionary = lake.starts[i]
@@ -154,8 +165,14 @@ func _build() -> void:
 		_start_buttons.append(b)
 	side.add_child(Control.new())
 	var back := _button("Takaisin", 18)
-	back.pressed.connect(_show_main)
+	back.pressed.connect(func(): open_career() if career_mode else _show_main())
 	side.add_child(back)
+
+	_career = CareerView.new()
+	_career.visible = false
+	add_child(_career)
+	_career.go_fishing.connect(func(): career_mode = true; _show_map())
+	_career.back.connect(_show_main)
 
 	_build_settings()
 
@@ -269,9 +286,25 @@ func _show_settings() -> void:
 
 func _show_map() -> void:
 	_main.visible = false
+	_career.visible = false
 	_map_bg.visible = true
 	_map_view.visible = true
 	_sync_time_controls()
+	# Uramoodissa aika on uran kello: vuodenaikaa ja kellonaikaa ei valita
+	for c in _time_section:
+		c.visible = not career_mode
+	_map_title.text = "Uramoodi – %s, klo %s\nValitse aloituspaikka" % [Career.weekday(), Career.clock_text()] if career_mode else "Valitse aloituspaikka"
+
+
+## Uran kotinäkymä (myös kalareissulta palatessa)
+func open_career() -> void:
+	_main.visible = false
+	_map_view.visible = false
+	_map_bg.visible = false
+	_settings.visible = false
+	career_mode = true
+	_career.visible = true
+	_career.show_home()
 	_start_buttons[0].grab_focus()
 
 
@@ -279,12 +312,17 @@ func _show_main() -> void:
 	_map_view.visible = false
 	_map_bg.visible = false
 	_settings.visible = false
+	_career.visible = false
+	career_mode = false
 	_main.visible = true
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if event.is_action_pressed("pause") and (_map_view.visible or _settings.visible):
-		_show_main()
+	if event.is_action_pressed("pause") and (_map_view.visible or _settings.visible or _career.visible):
+		if _map_view.visible and career_mode:
+			open_career()
+		else:
+			_show_main()
 
 
 func show_loading(place: String) -> void:

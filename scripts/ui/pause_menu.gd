@@ -113,7 +113,8 @@ func _show_help() -> void:
 	_buttons[-1].grab_focus()
 
 
-## Takaisin alkuvalikkoon: peli ladataan alusta (pää-scene käynnistyy valikosta)
+## Takaisin alkuvalikkoon: peli ladataan alusta (pää-scene käynnistyy valikosta).
+## Uramoodissa saalis viedään kotiin säilöön (going_home-signaali).
 func _go_home() -> void:
 	going_home.emit()
 	get_tree().paused = false
