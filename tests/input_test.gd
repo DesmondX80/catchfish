@@ -43,15 +43,12 @@ func _process(_delta: float) -> void:
 		for arg in OS.get_cmdline_user_args():
 			if arg.begins_with("--landshots="):
 				_shots = arg.split("=")[1]
-	# Haavinta-animaatio kestää n. 2 s: odotetaan sen loppuun (kuvat animaatiosta)
+	# Haavinta-animaatio kestää n. 3,4 s: odotetaan sen loppuun (kuvat animaatiosta)
 	if _frame == 18 and f.state == Fishing.State.LANDING and _landing_frames == 0:
 		_check("haavinta-animaatio alkoi", true)
 	if _frame >= 18 and _frame < 1000 and f.state == Fishing.State.LANDING:
 		_landing_frames += 1
-		if _shots != "" and _landing_frames in [20, 55, 80]:
-			main.camera_rig.yaw = main.boat.yaw + 1.9
-			main.camera_rig.pitch = 0.35
-			main.camera_rig.distance = 4.0
+		if _shots != "" and _landing_frames in [20, 45, 60, 80, 98]: # ojennus, kauhaisu, nosto, käännös, lasku
 			get_viewport().get_texture().get_image().save_png(_shots.path_join("haavinta-%d.png" % _landing_frames))
 		_frame = 17
 		return

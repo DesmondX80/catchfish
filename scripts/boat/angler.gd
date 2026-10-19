@@ -266,6 +266,8 @@ func _process(delta: float) -> void:
 		lean = lerpf(-0.35, 0.25, f / 0.45) if f < 0.45 else lerpf(0.25, -0.35, (f - 0.45) / 0.55)
 	elif (pose == Pose.FISHING or pose == Pose.ICE_SIT) and fishing.state == Fishing.State.FIGHT and not fishing.hands_free():
 		lean = 0.12 + clampf(fishing.tension / 6.0, 0.0, 0.2) # nojaa taakse kalan vetäessä
+	elif fishing.net_active():
+		lean = -fishing.net_lean() # nojaa eteen ojentaessaan haavia
 	torso.rotation.x = lerpf(torso.rotation.x, lean, minf(1.0, delta * 8.0))
 
 	_update_arms()
@@ -302,9 +304,11 @@ func _hand_targets() -> Array:
 			right = fishing.rod_point(0.3) # kelan jalan kohdalla
 			left = fishing.reel_knob() if fishing.is_reeling() else fishing.rod_point(0.55)
 			if fishing.net_active():
-				# Haavinta: oikea käsi haavin varressa, vasen pitää vapaa
-				left = right
-				right = fishing.net_grip()
+				# Haavinta: oikea käsi haavin varren päässä; vasen pitää vapaa,
+				# kunnes kala on haavissa, ja tarttuu sitten varteen nostoon
+				var grips := fishing.net_grips()
+				left = grips[1] if grips.size() > 1 else right
+				right = grips[0]
 			if rod_stow_blend() > 0.01:
 				right = right.lerp(global_transform * Vector3(0.15, 0.12, -0.3), rod_stow_blend())
 				left = left.lerp(global_transform * Vector3(-0.15, 0.12, -0.3), rod_stow_blend())

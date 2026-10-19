@@ -76,11 +76,8 @@ var limited := false
 const HOLE_AHEAD := 0.75 # avanto kalastajan edessä (m)
 const DRILL_TIME := 3.0 # s
 var _auger: Node3D
-# Haavinta-animaatio
-const LANDING_TIME := 2.0
-var _net: Node3D
-var _landing_t := 0.0
-var _landing_from := Vector3.ZERO
+# Haavinta (animaatio: landing_net.gd)
+var _landing_net: LandingNet
 var _landing_entry: Dictionary = {}
 var _landing_record := false
 var _landing_species := ""
@@ -501,7 +498,7 @@ func _process_rod(dt: float, in_hand: bool) -> void:
 		State.DRILLING:
 			_drill(dt)
 		State.LANDING:
-			_landing(dt)
+			_landing_net.update(dt)
 		State.CHARGING:
 			power = minf(1.0, power + dt / 1.1)
 			lure_pos = rod_tip() + Vector3(0, -0.35, 0)
@@ -521,8 +518,8 @@ func _process_rod(dt: float, in_hand: bool) -> void:
 
 func _aim_angler(dt: float) -> void:
 	var target := wrapf(camera_rig.yaw - boat.yaw, -PI, PI)
-	if state == State.FIGHT or state == State.BITE:
-		# Väsytyksessä vapa osoittaa kalaa kohti, ettei se taivu selän taakse
+	if state == State.FIGHT or state == State.BITE or state == State.LANDING:
+		# Väsytyksessä ja haavittaessa kalastaja kääntyy kalaa kohti, ettei se taivu selän taakse
 		var to_fish := Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y)
 		if to_fish.length() > 0.5:
 			target = wrapf(atan2(-to_fish.x, -to_fish.y) - boat.yaw, -PI, PI)
@@ -940,14 +937,11 @@ func _try_land() -> void:
 		_fish_index = -1
 		_fish = {}
 		_landing_prompt = false
-		_landing_from = _fish_pos
-		_landing_t = 0.0
 		tension = 0.0
 		state = State.LANDING # animaatio: haavi (avovesi) tai nosto avannosta (jää)
-		if on_ice:
-			sound_event.emit("fish_splash", _fish_pos)
-		else:
-			_net.visible = true
+		_landing_net.start(_fish_pos, sp, weight, on_ice, current_hole)
+		camera_rig.shot = _landing_net.camera_shot()
+		camera_rig.shot_view = true
 	else:
 		_run_intensity = 1.0
 		_run_dir = Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).normalized()
@@ -991,7 +985,11 @@ func _lose_lure(text: String) -> void:
 
 func _build_visuals() -> void:
 	_build_auger()
-	_build_net()
+	_landing_net = LandingNet.new()
+	add_child(_landing_net)
+	_landing_net.setup(boat)
+	_landing_net.sound.connect(func(n, at): sound_event.emit(n, at))
+	_landing_net.finished.connect(_finish_landing)
 	_build_holders()
 	# Kaksi vapaa: kumpikin omine kelan, siiman ja uistimen solmuineen
 	for i in ROD_COUNT:
@@ -1099,8 +1097,6 @@ func _update_visuals() -> void:
 		if dir.length() > 0.01:
 			_fish_node.look_at(_fish_pos + dir, Vector3.UP)
 		_fish_node.scale = Vector3.ONE * len_m
-	elif state == State.LANDING:
-		_show_landing_fish()
 	elif state == State.LANDED and not _last_catch.is_empty() and not on_ice:
 		# Saalis veneen pohjalla kalastajan jalkojen edessä
 		_place_fish_model(_last_catch["species"], _last_catch["length"] / 100.0, boat.hull.global_transform * Transform3D(Basis(Vector3.UP, 1.2) * Basis(Vector3.BACK, PI / 2.0), Vector3(0.1, -0.05, -0.35)), 1.0)
@@ -1393,123 +1389,25 @@ func _build_auger() -> void:
 
 # --- Haavinta -------------------------------------------------------------------
 
-## Haavi: varsi, kehä ja verkkopussi. Kehän keskipiste on solmun origossa,
-## varsi osoittaa paikallista +Z:aa kohti kalastajaa.
-func _build_net() -> void:
-	_net = Node3D.new()
-	_net.top_level = true
-	_net.visible = false
-	add_child(_net)
-	var alu := StandardMaterial3D.new()
-	alu.albedo_color = Color(0.75, 0.77, 0.8)
-	alu.metallic = 0.7
-	alu.roughness = 0.35
-	var mesh_mat := StandardMaterial3D.new()
-	mesh_mat.albedo_color = Color(0.12, 0.14, 0.12, 0.55)
-	mesh_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mesh_mat.cull_mode = BaseMaterial3D.CULL_DISABLED
-	var hoop := MeshInstance3D.new()
-	var torus := TorusMesh.new()
-	torus.inner_radius = 0.27
-	torus.outer_radius = 0.3
-	torus.material = alu
-	hoop.mesh = torus
-	_net.add_child(hoop)
-	var bag := MeshInstance3D.new()
-	var cone := CylinderMesh.new()
-	cone.top_radius = 0.28
-	cone.bottom_radius = 0.06
-	cone.height = 0.4
-	cone.material = mesh_mat
-	bag.mesh = cone
-	bag.position = Vector3(0, -0.2, 0)
-	_net.add_child(bag)
-	var handle := MeshInstance3D.new()
-	var cyl := CylinderMesh.new()
-	cyl.top_radius = 0.016
-	cyl.bottom_radius = 0.016
-	cyl.height = 1.3
-	cyl.material = alu
-	handle.mesh = cyl
-	handle.rotation.x = PI / 2.0 - 0.45 # varsi nousee viistosti kohti kalastajaa
-	handle.position = Vector3(0, 0.28, 0.85)
-	_net.add_child(handle)
-
-
 func net_active() -> bool:
-	return state == State.LANDING and not on_ice
+	return state == State.LANDING and _landing_net.net_in_hands()
 
 
-## Haavin varren pää (kalastajan oikea käsi)
-func net_grip() -> Vector3:
-	return _net.global_transform * Vector3(0, 0.55, 1.45)
+## Kalastajan kädet haavinnassa: [oikea, vasen] (vain oikea = vasen pitää vapaa)
+func net_grips() -> Array:
+	return _landing_net.grips()
 
 
-## Animaatio: haavi lasketaan kalan alle ja nostetaan veneeseen (n. 2 s),
-## jäällä kala nostetaan avannosta jäälle.
-func _landing(dt: float) -> void:
-	_landing_t += dt
-	var t := _landing_t
-	if on_ice:
-		if t >= 1.4:
-			_finish_landing()
-		return
-	# Haavin reitti: veneen laidalta veteen kalan alle (0–0,8 s), kalan kanssa ylös
-	# ja veneeseen (0,8–1,6 s), lopuksi haavi pysyy veneen päällä hetken
-	var side := boat.right()
-	var to_fish := Vector2(_landing_from.x - boat.pos.x, _landing_from.z - boat.pos.y)
-	if to_fish.length() > 0.1:
-		side = to_fish.normalized()
-	var gunwale := Vector3(boat.pos.x + side.x * 0.9, 0.75, boat.pos.y + side.y * 0.9)
-	var under := Vector3(_landing_from.x, -0.35, _landing_from.z)
-	var inside := Vector3(boat.pos.x + side.x * 0.15, 0.55, boat.pos.y + side.y * 0.15)
-	var p: Vector3
-	if t < 0.8:
-		p = gunwale.lerp(under, smoothstep(0.0, 0.8, t))
-	elif t < 1.6:
-		var u := smoothstep(0.8, 1.6, t)
-		p = under.lerp(gunwale, minf(1.0, u * 2.0)).lerp(inside, maxf(0.0, u * 2.0 - 1.0))
-		if t - dt < 0.8:
-			sound_event.emit("net_landing", under)
-	else:
-		p = inside
-	# Varsi osoittaa kalastajaa kohti
-	var toward := Vector3(boat.pos.x - p.x, 0, boat.pos.y - p.z)
-	var yaw := atan2(toward.x, toward.z) if toward.length() > 0.05 else boat.yaw
-	_net.global_transform = Transform3D(Basis(Vector3.UP, yaw), p)
-	if t >= LANDING_TIME:
-		_finish_landing()
+## Kalastaja nojaa eteen haavia ojentaessaan
+func net_lean() -> float:
+	return _landing_net.lean() if state == State.LANDING else 0.0
 
 
 func _finish_landing() -> void:
-	_net.visible = false
+	camera_rig.shot_view = false
 	_last_catch = _landing_entry
 	state = State.LANDED
 	caught.emit(_landing_entry, _landing_record)
-
-
-## Kalan malli haavinnan aikana: ensin vedessä, sitten haavissa (avovesi) tai
-## avannosta nousten (jää)
-func _show_landing_fish() -> void:
-	var len_m := Species.length_cm(_landing_species, _landing_weight) / 100.0
-	if on_ice:
-		var t := _landing_t
-		var hole := Vector3(current_hole.x, 0.0, current_hole.z)
-		var up := hole + Vector3(0, 0.45, 0)
-		var side := boat.right()
-		var rest := hole + Vector3(side.x * 0.45, 0.05, side.y * 0.45)
-		var p := Vector3(hole.x, -0.4, hole.z).lerp(up, smoothstep(0.0, 0.8, t)).lerp(rest, smoothstep(0.8, 1.4, t))
-		# Ensin pää edellä ylös avannosta, sitten kyljelleen jäälle
-		var lying := Basis(Vector3.UP, boat.yaw + 0.3) * Basis(Vector3.BACK, PI / 2.0)
-		var basis := Basis(Vector3.RIGHT, -PI / 2.0).slerp(lying, smoothstep(0.8, 1.4, t))
-		_place_fish_model(_landing_species, len_m, Transform3D(basis, p), 14.0)
-		return
-	var in_net := _landing_t >= 0.8
-	var at: Vector3 = _net.global_transform * Vector3(0, -0.12, 0) if in_net else Vector3(_landing_from.x, -0.15, _landing_from.z)
-	var basis := Basis(Vector3.UP, boat.yaw + 1.2)
-	if in_net:
-		basis = basis * Basis(Vector3.BACK, PI / 2.0 * 0.8) # kyljellään haavissa
-	_place_fish_model(_landing_species, minf(len_m, 0.7), Transform3D(basis, at), 12.0)
 
 
 func _place_fish_model(sp: String, len_m: float, xf: Transform3D, wiggle: float) -> void:

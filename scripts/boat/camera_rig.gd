@@ -13,6 +13,10 @@ var tub: CatchTub
 ## Tab: kamera katsoo kalasaavia ylhäältä
 var tub_view := false
 var _tub_blend := 0.0
+## Haavinnan kamerakuva (LandingNet.camera_shot)
+var shot := Transform3D.IDENTITY
+var shot_view := false
+var _shot_blend := 0.0
 
 
 func setup(target: Boat, lake_data: LakeData) -> void:
@@ -61,3 +65,6 @@ func _process(delta: float) -> void:
 		var center := tub.view_point()
 		var above := Transform3D(Basis.looking_at(Vector3.DOWN, bow), center + Vector3(0, 0.65, 0) + right * 0.25)
 		camera.global_transform = camera.global_transform.interpolate_with(above, smoothstep(0.0, 1.0, _tub_blend))
+	_shot_blend = move_toward(_shot_blend, 1.0 if shot_view else 0.0, delta * 2.5)
+	if _shot_blend > 0.0:
+		camera.global_transform = camera.global_transform.interpolate_with(shot, smoothstep(0.0, 1.0, _shot_blend))
