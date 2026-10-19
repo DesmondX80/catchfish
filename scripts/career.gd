@@ -10,10 +10,11 @@ const START_MONEY := 20.0
 const START_LURES := {"lusikka": 2, "jigi": 2, "pilkki": 2}
 const WEEKDAYS := ["maanantai", "tiistai", "keskiviikko", "torstai", "perjantai", "lauantai", "sunnuntai"]
 
-## Tuottajahinnat €/kg (Luonnonvarakeskus, kaupallinen kalastus merialueella):
-## ahven ja kuha 2025, hauki 2023 (uusin löydetty), taimen = perattu lohi 2025
-## (Luke ei tilastoi taimenen hintaa erikseen).
-const PRICES := {"ahven": 2.22, "hauki": 2.44, "kuha": 6.19, "taimen": 10.57}
+## Tuottajahinnat €/kg: Luonnonvarakeskus, kaupallinen kalastus sisävesillä 2024
+## (saaliin nimellisarvo / saalis lajeittain). Kiiski = "muut kalat".
+## Kuha ja taimen: vanhojen tallennusten säilössä voi vielä olla niitä
+## (merialueen hinnat 2025, taimen = perattu lohi).
+const PRICES := {"ahven": 2.52, "hauki": 2.74, "made": 5.28, "sarki": 0.95, "lahna": 1.23, "kiiski": 0.82, "kuha": 6.19, "taimen": 10.57}
 
 var active := false # ura käynnissä (pelissä kalareissu on uran reissu)
 var day := 1
@@ -113,6 +114,17 @@ func clock_text() -> String:
 func price(species: String) -> float:
 	var wobble := sin(day * 1.7 + species.hash() % 100) * 0.1 + sin(day * 0.43 + species.length()) * 0.05
 	return snappedf(PRICES.get(species, 1.0) * (1.0 + wobble), 0.01)
+
+
+## Myytävät lajit: [id, nimi] – järven lajit ja säilössä olevat vanhat lajit
+func sale_species() -> Array:
+	var list := []
+	for sp in Species.DATA:
+		list.append([sp, Species.DATA[sp]["name"]])
+	for f in storage:
+		if not Species.DATA.has(f["species"]) and not list.any(func(x): return x[0] == f["species"]):
+			list.append([f["species"], f["name"]])
+	return list
 
 
 func storage_kg(species := "") -> float:

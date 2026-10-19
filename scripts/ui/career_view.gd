@@ -131,14 +131,15 @@ func show_market() -> void:
 	_label(_day_line(), 16)
 	_label("Päivän kilohinnat: Luonnonvarakeskuksen kalan tuottajahinnat, joissa päivittäistä vaihtelua.", 13, Color(0.7, 0.74, 0.68))
 	var total := 0.0
-	for sp in Species.DATA:
+	for item in Career.sale_species():
+		var sp: String = item[0]
 		var n := Career.storage_count(sp)
 		var kg := Career.storage_kg(sp)
 		var price := Career.price(sp)
 		var row := HBoxContainer.new()
 		row.add_theme_constant_override("separation", 10)
 		_panel.add_child(row)
-		var text := "%s: %s/kg" % [Species.DATA[sp]["name"], _eur(price)]
+		var text := "%s: %s/kg" % [item[1], _eur(price)]
 		if n > 0:
 			text += "\n   %d kpl, %s = %s" % [n, _kg(kg), _eur(kg * price)]
 			total += kg * price

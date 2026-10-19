@@ -42,9 +42,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   pohjaan ja nousevat vedettäessä hiljalleen, mutta pysyvät pinnan alla.
   Vaaput kelluvat levossa pinnalla ja uivat kelatessa ja uistellessa
   tavoitesyvyydessään. Pohjaa laahaava uistin voi tarttua kiinni.
-- **Kalat**: hauki, ahven, kuha ja taimen. Jokaisella lajilla on oma
-  elinpaikka (syvyys, rannan ja kaislikon läheisyys), vuorokausirytmi,
-  mieluisat uistimet ja uistinnopeus. Kalat ovat dataa: niitä ei näe,
+- **Kalat**: tekoaltaan kalakanta eli ahven, särki, hauki, kiiski, lahna
+  ja made. Jokaisella lajilla on oma elinpaikka (syvyys, rannan ja
+  kaislikon läheisyys), vuorokausirytmi, vuodenaikarytmi, mieluisat
+  uistimet ja uistinnopeus. Hauki ja ahven iskevät uistimiin; särki,
+  kiiski, lahna ja made syövät mieluiten syöttiä, eli niitä saa parhaiten
+  talvella pilkillä ja toukalla. Made on talven kala ja syö pimeällä. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
 - **Vetouistelu**: veneessä on kaksi vapaa. Heitä uistin veneen perään ja
   paina R, niin vapa menee perälaudan vapatelineeseen ja toinen vapa tulee

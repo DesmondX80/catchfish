@@ -871,10 +871,10 @@ func _fight(dt: float) -> void:
 	if _slack_time > 1.5 and _rng.randf() < (0.5 if _fish["sp"] == "hauki" else 0.3) * dt:
 		_lose_fish("Kala irtosi löysällä siimalla", false)
 		return
-	# Hauki ravistelee päätään ja taimen hyppää: löysä siima on silloin vaarallinen
+	# Hauki ravistelee päätään pinnassa: löysä siima on silloin vaarallinen
 	if _stamina > 0.3 and _fish_pos.y > -0.6 and (not on_ice or hole_dist < 0.3) and _rng.randf() < 0.08 * dt:
 		sound_event.emit("fish_splash", _fish_pos)
-		_msg("Taimen hyppää!" if _fish["sp"] == "taimen" else "%s rimpuilee pinnassa!" % data["name"])
+		_msg("%s rimpuilee pinnassa!" % data["name"])
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
 			return

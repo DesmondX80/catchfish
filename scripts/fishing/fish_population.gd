@@ -5,10 +5,11 @@ extends Node
 ## elinpaikkoihin ja liikkuvat hitaasti kotialueellaan.
 
 const GRID := 24.0 # spatiaalisen hakemiston solukoko (m)
-const WANDER_INTERVAL := 2.0 # jokainen kala liikkuu kerran tässä ajassa
+const WANDER_INTERVAL := 4.0 # jokainen kala liikkuu kerran tässä ajassa (matka ja nälkä skaalautuvat)
 
 var lake: LakeData
-## Talvi: jään alla ahven, kuha ja taimen pysyttelevät pohjan lähellä
+## Talvi: jään alla muut kuin hauki pysyttelevät pohjan lähellä, ja lajien
+## syöntiaktiivisuus muuttuu (Species "season")
 var winter := false
 var fish: Array[Dictionary] = []
 var _grid := {}
@@ -188,12 +189,13 @@ func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: 
 		var effective_speed := lure_speed + twitch * 0.8
 		interest *= exp(-pow((effective_speed - sp_speed[0]) / sp_speed[1], 2.0))
 		var activity := Species.activity(f["sp"], hour)
-		# Pilvisellä säällä hauki ja ahven syövät paremmin, ja valoa karttava
-		# kuha uskaltautuu syömään myös päivällä
-		if f["sp"] == "kuha":
+		# Pilvisellä säällä kalat syövät paremmin, ja valoa karttava made
+		# uskaltautuu syömään myös päivällä
+		if data.get("light_shy", false):
 			activity = lerpf(activity, 1.0, cloud * 0.5)
 		else:
 			activity *= 1.0 + cloud * 0.3
+		activity *= data["season"][1 if winter else 0]
 		interest *= activity
 		interest *= f["hunger"]
 		# Pieni tuulen väreily rohkaisee kaloja, kova tuuli samentaa
