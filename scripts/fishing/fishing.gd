@@ -28,6 +28,8 @@ const REEL_SPEED_FAST := 1.6
 const CAST_ANGLE := deg_to_rad(32.0)
 const SINK_MIN_DEPTH := 0.3 # m: vedettävä lusikka/lippa pysyy vähintään tässä syvyydessä
 const SINK_MAX_RISE := 0.3 # m/s: uppoavan uistimen suurin nousunopeus
+const RUN_MIN_SPEED := 0.15 # m/s: tätä hitaammin lusikka vajoaa kohti pohjaa
+const RUN_FULL_SPEED := 0.45 # m/s: tällä nopeudella lusikka ui uintisyvyydessään
 const DIVE_FULL_SPEED := 0.5 # m/s: tällä nopeudella vaappu ui tavoitesyvyydessään
 const DIVE_PER_METER := 0.35 # vaapun sukellus (m) vedettyä metriä kohden
 const GRAVITY := 9.81
@@ -755,7 +757,17 @@ func _lure_depth_dynamics(dt: float) -> void:
 	var l := lure()
 	var depth := lure_depth()
 	var bottom := lake.depth_at(lure_pos.x, lure_pos.z)
-	if l["kind"] == "sink":
+	if l["kind"] == "sink" and l.has("run_depth") and lure_speed > RUN_MIN_SPEED:
+		# Lusikka: levossa vajoaa pohjaan, kelatessa ja uistellessa ui
+		# uintisyvyydessään – syvältä se nousee sinne hiljalleen.
+		# Nopeasti kelattaessa se ui matalammalla.
+		var run: float = l["run_depth_fast"] if _reel_speed() >= REEL_SPEED_FAST else l["run_depth"]
+		var target: float = lerpf(bottom, run, smoothstep(RUN_MIN_SPEED, RUN_FULL_SPEED, lure_speed))
+		if target < depth:
+			depth = move_toward(depth, target, SINK_MAX_RISE * dt)
+		else:
+			depth = move_toward(depth, target, l["sink"] * dt)
+	elif l["kind"] == "sink":
 		# Levossa vajoaa nopeasti, vedettäessä nousee hiljalleen kohti
 		# pintaa – nousu hidastuu matalassa, eikä uistin nouse pinnalle
 		var rate: float = l["sink"] - l["lift"] * lure_speed

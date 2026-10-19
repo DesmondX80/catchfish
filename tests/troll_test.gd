@@ -160,7 +160,7 @@ func _physics_process(delta: float) -> void:
 				for i in 2:
 					var speed: float = f._rod_get(i, "lure_speed")
 					_check("vapa %d: %s kulkee perässä %.2f m/s, %.1f m syvyydessä, siimaa %.0f m" % [i + 1, rods[i]["lure"], speed, rods[i]["depth"], rods[i]["line"]], speed > 0.4 and rods[i]["state"] == Fishing.State.RETRIEVING)
-				_check("lusikka pysyy pinnan alla uistellessa", rods[0]["depth"] >= 0.25)
+				_check("lusikka ui uistellessa 1,5 m syvyydessä (%.2f m)" % rods[0]["depth"], absf(rods[0]["depth"] - 1.5) < 0.2)
 				_check("vaappu ui tavoitesyvyydessä", absf(rods[1]["depth"] - 1.6) < 0.3)
 				_force_bite(0)
 				_next()

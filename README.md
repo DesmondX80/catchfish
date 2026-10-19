@@ -39,7 +39,10 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti
-  pohjaan ja nousevat vedettäessä hiljalleen, mutta pysyvät pinnan alla.
+  pohjaan. Lusikka ui kelatessa ja uistellessa 1,5 metrin syvyydessä
+  ja nopeasti kelatessa 1 metrissä (syvältä se nousee sinne hiljalleen).
+  Kun kelaus tai uistelu pysähtyy, lusikka vajoaa pohjaan; lippa ja jigi nousevat vedettäessä
+  hiljalleen, mutta pysyvät pinnan alla.
   Vaaput kelluvat levossa pinnalla ja uivat kelatessa ja uistellessa
   tavoitesyvyydessään. Pohjaa laahaava uistin voi tarttua kiinni.
 - **Kalat**: tekoaltaan kalakanta eli ahven, särki, hauki, kiiski, lahna

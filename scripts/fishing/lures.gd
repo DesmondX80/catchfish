@@ -1,7 +1,8 @@
 class_name Lures
 ## Uistimet.
 ## sink-tyyppi: uppoaa levossa (sink m/s), nousee vedettäessä (lift m/s nopeuden m/s kohden),
-##             mutta pysyy aina pinnan alla
+##             mutta pysyy aina pinnan alla. run_depth: uintisyvyys (m) kelatessa
+##             ja uistellessa, run_depth_fast nopeasti kelatessa (lusikka)
 ## dive-tyyppi: kelluu levossa pinnalle (float m/s), vedettäessä ui max_dive-syvyydessä
 ## cast: heitto-ominaisuus (paino, ilmanvastus) – suurempi lentää pidemmälle
 ## snag: alttius tarttua pohjaan, kun uistin laahaa pohjaa
@@ -16,7 +17,7 @@ const ICE := [
 ]
 
 const LIST := [
-	{"id": "lusikka", "price": 6, "pull": 0.12, "name": "Lusikka 15 g", "kind": "sink", "sink": 0.9, "lift": 1.15, "cast": 1.0, "snag": 0.12, "color": Color(0.85, 0.75, 0.3)},
+	{"id": "lusikka", "price": 6, "pull": 0.12, "name": "Lusikka 15 g", "kind": "sink", "sink": 0.9, "lift": 1.15, "run_depth": 1.5, "run_depth_fast": 1.0, "cast": 1.0, "snag": 0.12, "color": Color(0.85, 0.75, 0.3)},
 	{"id": "vaappu", "price": 12, "pull": 0.22, "name": "Kelluva vaappu 9 cm", "kind": "dive", "float": 0.45, "max_dive": 1.6, "cast": 0.75, "snag": 0.05, "color": Color(0.2, 0.6, 0.3)},
 	{"id": "syvavaappu", "price": 14, "pull": 0.35, "name": "Syvävaappu 3 m", "kind": "dive", "float": 0.4, "max_dive": 3.0, "cast": 0.7, "snag": 0.12, "color": Color(0.85, 0.3, 0.2)},
 	{"id": "lippa", "price": 5, "pull": 0.08, "name": "Lippa 6 g", "kind": "sink", "sink": 0.6, "lift": 0.9, "cast": 0.65, "snag": 0.06, "color": Color(0.9, 0.9, 0.9)},

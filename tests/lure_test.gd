@@ -119,7 +119,7 @@ func _set_phase(p: String) -> void:
 func _physics_process(dt: float) -> void:
 	_t += dt
 	var f: Fishing = main.fishing
-	if _phase == "troll":
+	if _phase == "troll" or _phase == "troll_again":
 		_boat_pos += _dir * TROLL_SPEED * dt
 	_place_boat()
 	f.snagged = false # mitataan uintisyvyyttä: pohjakiinni (ja siiman katkeaminen) ohitetaan
@@ -145,10 +145,11 @@ func _physics_process(dt: float) -> void:
 				_press("reel")
 				_set_phase("reel")
 		"reel":
-			if _t > 12.0:
+			if _t > 16.0: # pohjasta noustessa lusikka ehtii uintisyvyyteensä
 				if sink:
 					_check("%s pysyy pinnan alla kelatessa: matalin %.2f m" % [name, _min_depth], _min_depth >= 0.25)
 					_check("%s nousee hiljalleen: nopein nousu %.2f m/s" % [name, _max_rise], _max_rise <= 0.35)
+					_check_run_depth(l, depth, "kelatessa")
 				else:
 					var target := minf(l["max_dive"], _bottom() - 0.05)
 					_check("%s ui kelatessa tavoitesyvyydessä: %.2f m (tavoite %.2f m)" % [name, depth, target], absf(depth - target) < 0.3)
@@ -166,19 +167,39 @@ func _physics_process(dt: float) -> void:
 			if _t > 15.0:
 				if sink:
 					_check("%s pysyy uistellessa pinnan alla: matalin %.2f m, nyt %.2f m" % [name, _min_depth, depth], _min_depth >= 0.25)
+					_check_run_depth(l, depth, "uistellessa")
 				else:
 					var target := minf(l["max_dive"], _bottom() - 0.05)
 					_check("%s ui uistellessa tavoitesyvyydessä: %.2f m (tavoite %.2f m)" % [name, depth, target], absf(depth - target) < 0.3)
-				if sink:
+				if l.has("run_depth"):
+					_set_phase("troll_stop") # vene pysähtyy
+				elif sink:
 					_start_fast()
 				else:
 					_next_lure()
+		"troll_stop":
+			if _t > 6.0:
+				_check("%s vajoaa pohjaan, kun uistelu pysähtyy: %.2f → %.2f m (pohja %.2f m)" % [name, _phase_start_depth, depth, _bottom()], depth > _bottom() - 0.2)
+				_set_phase("troll_again")
+		"troll_again":
+			if _t > 12.0:
+				_check_run_depth(l, depth, "uistelun jatkuessa")
+				_start_fast()
 		"fast":
 			if _t > 10.0:
 				_check("%s pysyy nopeassa kelauksessa pinnan alla: matalin %.2f m" % [name, _min_depth], _min_depth >= 0.25)
+				_check_run_depth(l, depth, "nopeassa kelauksessa", "run_depth_fast")
 				_press("reel", false)
 				_press("reel_fast", false)
 				_next_lure()
+
+
+## Lusikka ui kelatessa ja uistellessa uintisyvyydessään (run_depth) ja
+## vajoaa pohjaan, kun veto loppuu
+func _check_run_depth(l: Dictionary, depth: float, how: String, key := "run_depth") -> void:
+	if l.has(key):
+		var target := minf(l[key], _bottom() - 0.05)
+		_check("%s ui %s uintisyvyydessä: %.2f m (tavoite %.2f m)" % [l["name"], how, depth, target], absf(depth - target) < 0.2)
 
 
 ## Uistelu: uistin LINE metriä veneen perässä pohjassa (tai pinnalla), siima kireällä
