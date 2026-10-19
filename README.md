@@ -28,7 +28,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | L | vaihda uistin |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
 | T | ajan nopeus (x1 / x10 / x60) |
-| Tab | saaliskirja |
+| Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
 | F1 | ohje |
 | Esc | tauko |
 

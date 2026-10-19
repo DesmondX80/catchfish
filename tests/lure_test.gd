@@ -122,6 +122,7 @@ func _physics_process(dt: float) -> void:
 	if _phase == "troll":
 		_boat_pos += _dir * TROLL_SPEED * dt
 	_place_boat()
+	f.snagged = false # mitataan uintisyvyyttä: pohjakiinni (ja siiman katkeaminen) ohitetaan
 	if f.state != Fishing.State.RETRIEVING:
 		_check("%s: tila vaihtui kesken (%d)" % [_lure_data()["name"], f.state], false)
 		_next_lure()

@@ -155,7 +155,7 @@ func _build() -> void:
 	_catch_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_catch_panel.visible = false
 
-	_log_panel = _panel(center, center)
+	_log_panel = _panel(BoxContainer.ALIGNMENT_END, center) # saavin vieressä ruudun oikeassa reunassa
 	_log_label = _label(_log_panel, 16)
 	var mono := SystemFont.new()
 	mono.font_names = PackedStringArray(["Consolas", "DejaVu Sans Mono", "monospace"])
@@ -219,7 +219,7 @@ func help_text(start_hint := true) -> String:
 		"  Oikea hiiri  nosta pilkkiä   Välilyönti  nykäisy",
 		"",
 		"MUUTA",
-		"  T            ajan nopeus   Tab  saavi / painavimmat kalat   K  kartta   F1  ohje   M  äänet   Esc  valikko",
+		"  T            ajan nopeus   Tab  kalasaavi   K  kartta   F1  ohje   M  äänet   Esc  valikko",
 		"",
 	]
 	if start_hint:
@@ -254,15 +254,13 @@ func _on_caught(entry: Dictionary, record: bool) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("catch_log"):
-		_log_panel.visible = not _log_panel.visible
-		if _log_panel.visible:
-			_log_label.text = _log_text()
+		_show_tub(not _log_panel.visible)
 	elif event.is_action_pressed("help"):
 		_help_panel.visible = not _help_panel.visible
 	elif event.is_action_pressed("map"):
 		_map_panel.visible = not _map_panel.visible
 		if _map_panel.visible:
-			_log_panel.visible = false
+			_show_tub(false)
 			_help_panel.visible = false
 
 
@@ -270,26 +268,41 @@ func set_paused_view(paused: bool) -> void:
 	_help_panel.visible = paused
 
 
-## Tab: uramoodissa saavi (tämän reissun kalat), kertakalastuksessa koko pelin
-## painavimmat kalat, millä saatu ja milloin (koneen päiväys ja kellonaika)
+## Tab: kamera saavin yläpuolelle ja saaliin painot sivuikkunaan
+func _show_tub(on: bool) -> void:
+	_log_panel.visible = on
+	get_parent().camera_rig.tub_view = on
+	get_parent().tub.set_viewing(on)
+	if on:
+		_log_label.text = _log_text()
+
+
+func tub_open() -> bool:
+	return _log_panel.visible
+
+
+## Saavin kalat painoineen; kertakalastuksessa myös koko pelin painavimmat kalat,
+## millä saatu ja milloin (koneen päiväys ja kellonaika)
 func _log_text() -> String:
 	var lines: Array[String] = []
+	var trip: Array = get_parent().trip_catch
+	var kg := 0.0
+	lines.append("SAAVI – tämän kalareissun saalis   (Tab sulkee)")
+	lines.append("")
+	for e in trip:
+		kg += e["weight"]
+		lines.append("  %-7s %6s kg  %3.0f cm   %-22s klo %s" % [e["name"], _fi(e["weight"]), e["length"], e["lure"], e["time"]])
+	if trip.is_empty():
+		lines.append("  Saavi on tyhjä.")
+	lines.append("")
+	lines.append("Yhteensä %d kalaa, %s kg" % [trip.size(), _fi(kg)])
 	if Career.active:
-		var trip: Array = get_parent().trip_catch
-		var kg := 0.0
-		lines.append("SAAVI – tämän kalareissun saalis")
-		lines.append("")
-		for e in trip:
-			kg += e["weight"]
-			lines.append("  %-7s %6s kg  %3.0f cm   %-22s klo %s" % [e["name"], _fi(e["weight"]), e["length"], e["lure"], e["time"]])
-		if trip.is_empty():
-			lines.append("  Saavi on tyhjä.")
-		lines.append("")
-		lines.append("Yhteensä %d kalaa, %s kg – saalis viedään kotiin säilöön (Esc → Mene kotiin)" % [trip.size(), _fi(kg)])
+		lines.append("Saalis viedään kotiin säilöön (Esc → Mene kotiin)")
 	else:
+		lines.append("")
 		lines.append("PAINAVIMMAT KALAT")
 		lines.append("")
-		var top := CatchLog.top(10)
+		var top := CatchLog.top(5)
 		for i in top.size():
 			var e: Dictionary = top[i]
 			lines.append("%2d. %-7s %6s kg  %3.0f cm   %-22s %s" % [i + 1, e["name"], _fi(e["weight"]), e["length"], e["lure"], _real_date(e.get("date", ""))])
@@ -334,11 +347,13 @@ func _process(delta: float) -> void:
 		# Päivä vaihtuu reissulla, kun kello ohittaa puolenyön
 		var day := Career.day + int(sky.minutes / 1440.0)
 		clock = "Päivä %d (%s) %s" % [day, Career.WEEKDAYS[(day - 1) % 7].left(2), clock]
-		var trip: Array = get_parent().trip_catch
-		var kg := 0.0
-		for e in trip:
-			kg += e["weight"]
-		clock += "\nSaavi: %d kalaa, %s kg (Tab)" % [trip.size(), ("%.2f" % kg).replace(".", ",")]
+	var trip: Array = get_parent().trip_catch
+	var kg := 0.0
+	for e in trip:
+		kg += e["weight"]
+	clock += "\nSaavi: %d kalaa, %s kg (Tab)" % [trip.size(), ("%.2f" % kg).replace(".", ",")]
+	if _log_panel.visible:
+		_log_label.text = _log_text() # uusi saalis näkyy heti
 	var weather_text := weather.description()
 	if not is_nan(weather.temperature):
 		weather_text = "%s, %s °C" % [weather_text, ("%.1f" % weather.temperature).replace(".", ",")]

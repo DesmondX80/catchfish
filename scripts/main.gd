@@ -71,8 +71,9 @@ func _on_start_selected(index: int) -> void:
 	_start_game(index, career)
 
 
-## Uramoodin kalareissun saalis (kalareppu): viedään kotiin säilöön
+## Kalareissun saalis saavissa (uramoodissa viedään kotiin säilöön)
 var trip_catch: Array = []
+var tub: CatchTub
 
 
 func _start_game(start_index: int, career := false) -> void:
@@ -149,6 +150,12 @@ func _start_game(start_index: int, career := false) -> void:
 	add_child(fishing)
 	fishing.setup(boat, camera_rig, lake, population, weather, sky)
 	boat.angler.setup(boat, fishing)
+	fishing.caught.connect(func(entry, _record): trip_catch.append(entry))
+
+	tub = CatchTub.new()
+	add_child(tub)
+	tub.setup(boat, fishing, trip_catch)
+	camera_rig.tub = tub
 
 	fish_visuals = FishVisuals.new()
 	add_child(fish_visuals)
@@ -180,7 +187,6 @@ func _start_game(start_index: int, career := false) -> void:
 		fishing.inventory = Career.lures # sama sanakirja: menetetyt uistimet vähenevät urasta
 		fishing.lure_index = 0
 		fishing._lure_node.mesh.material.albedo_color = fishing.lure()["color"]
-		fishing.caught.connect(func(entry, _record): trip_catch.append(entry))
 		pause_menu.going_home.connect(func():
 			Career.end_trip(trip_catch, sky.minutes - Career.trip_start)
 			Main.return_to_career = true)
@@ -211,6 +217,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/troll_test.gd").new())
 	elif "--speciestest" in args:
 		add_child(load("res://tests/species_test.gd").new())
+	elif "--tubtest" in args:
+		add_child(load("res://tests/tub_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
