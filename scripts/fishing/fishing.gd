@@ -21,6 +21,10 @@ const LINE_STRENGTH := 6.5 # kg, 0,28 mm monofiili
 const REEL_SPEED := 0.85 # m/s
 const REEL_SPEED_FAST := 1.6
 const CAST_ANGLE := deg_to_rad(32.0)
+const SINK_MIN_DEPTH := 0.3 # m: vedettävä lusikka/lippa pysyy vähintään tässä syvyydessä
+const SINK_MAX_RISE := 0.3 # m/s: uppoavan uistimen suurin nousunopeus
+const DIVE_FULL_SPEED := 0.5 # m/s: tällä nopeudella vaappu ui tavoitesyvyydessään
+const DIVE_PER_METER := 0.35 # vaapun sukellus (m) vedettyä metriä kohden
 const GRAVITY := 9.81
 
 var boat: Boat
@@ -455,12 +459,21 @@ func _update_rod(dt: float) -> void:
 		_reel_handle.rotation.x -= _reel_speed() * dt * 8.0
 
 
-## Siima vetää uistinta kohti vavan kärkeä, kun siimaa on kelattu sisään
+## Siima vetää uistinta kohti vavan kärkeä, kun siimaa on kelattu sisään.
+## Veto siirtää uistinta vaakasuunnassa: syvyyden määrää uistimen oma
+## uintitapa (_lure_depth_dynamics), ei siiman kulma. Vasta aivan veneen
+## vieressä lyhyt siima nostaa uistimen ylös.
 func _constrain_lure() -> void:
 	var tip := rod_tip()
 	var d := lure_pos - tip
-	if d.length() > line_out:
-		lure_pos = tip + d.normalized() * line_out
+	if d.length() <= line_out:
+		return
+	var dy := minf(absf(d.y), line_out)
+	var h := Vector2(d.x, d.z)
+	var max_h := sqrt(maxf(0.0, line_out * line_out - dy * dy))
+	if h.length() > max_h:
+		h = h.normalized() * max_h
+	lure_pos = Vector3(tip.x + h.x, tip.y + signf(d.y) * dy, tip.z + h.y)
 
 
 func _lure_depth_dynamics(dt: float) -> void:
@@ -468,13 +481,24 @@ func _lure_depth_dynamics(dt: float) -> void:
 	var depth := lure_depth()
 	var bottom := lake.depth_at(lure_pos.x, lure_pos.z)
 	if l["kind"] == "sink":
-		depth += (l["sink"] - l["lift"] * lure_speed) * dt
-	else:
-		if lure_speed > 0.05:
-			var target: float = l["max_dive"] * clampf(lure_speed / 0.9, 0.0, 1.0)
-			depth = move_toward(depth, target, 0.6 * lure_speed * dt)
+		# Levossa vajoaa nopeasti, vedettäessä nousee hiljalleen kohti
+		# pintaa – nousu hidastuu matalassa, eikä uistin nouse pinnalle
+		var rate: float = l["sink"] - l["lift"] * lure_speed
+		if depth < SINK_MIN_DEPTH:
+			depth = move_toward(depth, SINK_MIN_DEPTH, l["sink"] * dt)
+		elif rate < 0.0:
+			var ease := clampf((depth - SINK_MIN_DEPTH) / 0.8, 0.0, 1.0)
+			depth = maxf(SINK_MIN_DEPTH, depth + maxf(rate, -SINK_MAX_RISE) * ease * dt)
 		else:
-			depth -= l["float"] * dt
+			depth += rate * dt
+	else:
+		# Vaappu kelluu levossa pinnalla ja vedettäessä sukeltaa
+		# tavoitesyvyyteensä, jossa se ui tasaisesti
+		var target: float = l["max_dive"] * smoothstep(0.05, DIVE_FULL_SPEED, lure_speed)
+		if target > depth:
+			depth = move_toward(depth, target, DIVE_PER_METER * lure_speed * dt)
+		else:
+			depth = move_toward(depth, target, l["float"] * dt)
 	depth = clampf(depth, 0.0, maxf(0.0, bottom - 0.05))
 	lure_pos.y = minf(-depth, lure_pos.y) if lure_pos.y > 0.0 else -depth
 	# Uistin laahaa pohjaa: voi tarttua kiinni

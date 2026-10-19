@@ -37,8 +37,10 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   ajelehdittaa, ankkuri pitää paikallaan, matalikolla vene osuu pohjaan.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee.
-- **Uistimet**: uppoavat (lusikka, lippa, jigi) nousevat vedettäessä,
-  vaaput sukeltavat nopeuden mukaan. Pohjaa laahaava uistin voi tarttua kiinni.
+- **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti
+  pohjaan ja nousevat vedettäessä hiljalleen, mutta pysyvät pinnan alla.
+  Vaaput kelluvat levossa pinnalla ja uivat kelatessa ja uistellessa
+  tavoitesyvyydessään. Pohjaa laahaava uistin voi tarttua kiinni.
 - **Kalat**: hauki, ahven, kuha ja taimen. Jokaisella lajilla on oma
   elinpaikka (syvyys, rannan ja kaislikon läheisyys), vuorokausirytmi,
   mieluisat uistimet ja uistinnopeus. Kalat ovat dataa: niitä ei näe,
