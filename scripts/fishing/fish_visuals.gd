@@ -64,9 +64,9 @@ func _process(delta: float) -> void:
 	var counts := {}
 	for sp in _multimeshes:
 		counts[sp] = 0
-	var hooked := fishing._fish_index if fishing.state in [Fishing.State.BITE, Fishing.State.FIGHT] else -1
+	var hooked := fishing.hooked_indices()
 	for i in _states:
-		if i == hooked or i >= population.fish.size():
+		if i in hooked or i >= population.fish.size():
 			continue
 		var f: Dictionary = population.fish[i]
 		var sp: String = f["sp"]

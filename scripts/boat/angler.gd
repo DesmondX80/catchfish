@@ -222,7 +222,7 @@ func _choose_pose() -> int:
 		if fishing.busy() or fishing.at_hole():
 			return Pose.ICE_SIT
 		return Pose.ICE_STAND
-	if fishing.state != Fishing.State.READY and fishing.state != Fishing.State.LANDED:
+	if fishing.busy():
 		return Pose.FISHING
 	if boat.motor_running or boat.motor_starting > 0.0:
 		return Pose.MOTOR
@@ -264,7 +264,7 @@ func _process(delta: float) -> void:
 	if pose == Pose.ROWING and boat._rowing:
 		var f := fmod(boat._row_phase, 1.0)
 		lean = lerpf(-0.35, 0.25, f / 0.45) if f < 0.45 else lerpf(0.25, -0.35, (f - 0.45) / 0.55)
-	elif (pose == Pose.FISHING or pose == Pose.ICE_SIT) and fishing.state == Fishing.State.FIGHT:
+	elif (pose == Pose.FISHING or pose == Pose.ICE_SIT) and fishing.state == Fishing.State.FIGHT and not fishing.hands_free():
 		lean = 0.12 + clampf(fishing.tension / 6.0, 0.0, 0.2) # nojaa taakse kalan vetäessä
 	torso.rotation.x = lerpf(torso.rotation.x, lean, minf(1.0, delta * 8.0))
 
@@ -294,6 +294,10 @@ func _hand_targets() -> Array:
 			var arm_swing := sin(_walk_phase) * clampf(boat.velocity.length() / 1.4, 0.0, 1.0) * 0.18
 			right = global_transform * Vector3(0.3, -0.08, -arm_swing)
 			left = global_transform * Vector3(-0.3, -0.08, arm_swing)
+		_ when fishing.hands_free():
+			# Vavat telineissä: kädet polvilla
+			right = global_transform * Vector3(0.12, 0.12, -0.32)
+			left = global_transform * Vector3(-0.12, 0.12, -0.32)
 		_:
 			right = fishing.rod_point(0.3) # kelan jalan kohdalla
 			left = fishing.reel_knob() if fishing.is_reeling() else fishing.rod_point(0.55)

@@ -26,6 +26,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | Välilyönti | nykäisy |
 | E / C | jarru kireämmälle / löysemmälle |
 | L | vaihda uistin |
+| R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | saaliskirja |
 | F1 | ohje |
@@ -45,6 +46,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   elinpaikka (syvyys, rannan ja kaislikon läheisyys), vuorokausirytmi,
   mieluisat uistimet ja uistinnopeus. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
+- **Vetouistelu**: veneessä on kaksi vapaa. Heitä uistin veneen perään ja
+  paina R, niin vapa menee perälaudan vapatelineeseen ja toinen vapa tulee
+  käteen. Kun molemmat vavat ovat telineissä, soutele tai aja moottorilla:
+  uistimet kulkevat perässä omassa uintisyvyydessään. Tärpin tullessa vavan
+  kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
+  tärppäävän vavan käteen väsytettäväksi.
 - **Väsytys**: kala ryntäilee ja lepää, jarru antaa siimaa, liian kireä
   jarru katkaisee siiman ja löysä siima päästää kalan irti.
 - Lajien arvot ovat tiedostossa `scripts/fishing/species.gd` ja uistinten

@@ -159,7 +159,7 @@ func _process(delta: float) -> void:
 
 	# Kela ja jarru
 	_set_loop(_reel, fishing.is_reeling(), -10.0, fishing.reel_speed() / Fishing.REEL_SPEED)
-	_set_loop(_drag, fishing.drag_slipping and fishing.state == Fishing.State.FIGHT, -4.0, 1.0 + clampf(fishing.tension / 6.0, 0.0, 0.5))
+	_set_loop(_drag, fishing.drag_screaming(), -4.0, 1.0 + clampf(fishing.tension / 6.0, 0.0, 0.5))
 
 	_birds(delta)
 

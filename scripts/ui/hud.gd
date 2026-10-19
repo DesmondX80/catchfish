@@ -210,6 +210,8 @@ func help_text(start_hint := true) -> String:
 		"  Välilyönti   nykäisy (jigi, lippa)",
 		"  E / C        jarru kireämmälle / löysemmälle",
 		"  L            vaihda uistin",
+		"  R            vetouistelu: heitetty vapa telineeseen ja toinen käteen,",
+		"               tai vapa telineestä käteen (ensin se, jossa on tärppi)",
 		"",
 		"PILKKIMINEN (talvella järvi on jäässä)",
 		"  W/A/S/D      kävely (Shift = juoksu)",
@@ -352,6 +354,27 @@ func _process(delta: float) -> void:
 	if fishing.limited:
 		lure_name = "%s (%d kpl)" % [lure_name, fishing.lure_count()] if fishing.has_lure() else "Ei uistimia – osta kaupasta"
 	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [lure_name, fishing.drag_kg, Fishing.LINE_STRENGTH]
+	if fishing.hands_free():
+		info = "Vavat telineissä – soutele ja odota tärppiä (R = ota vapa)   •   Jarru %.2f kg" % fishing.drag_kg
+	for r in fishing.holder_rods():
+		var st := "siimaa %.0f m, %.1f m syvyydessä" % [r["line"], r["depth"]]
+		if r["state"] == Fishing.State.BITE:
+			st = "TÄRPPI!"
+		elif r["state"] == Fishing.State.FIGHT:
+			st = "%s koukussa!" % r["fish"]
+		elif r["state"] == Fishing.State.READY:
+			st = "siima katkesi"
+		elif r["snagged"]:
+			st = "KIINNI!"
+		info += "\nTelineessä vapa %d: %s – %s" % [r["number"], r["lure"], st]
+	if fishing.hands_free():
+		_fishing_label.text = info
+		_power_bar.get_parent().visible = false
+		_tension_bar.get_parent().visible = false
+		_stamina_bar.get_parent().visible = false
+		_prompt.text = "Tärppi telineessä – R = ota vapa käteen" if fishing.alert_rod() >= 0 else ""
+		_catch_panel.visible = false
+		return
 	match fishing.state:
 		Fishing.State.READY:
 			if fishing.on_ice:
@@ -387,6 +410,8 @@ func _process(delta: float) -> void:
 	_stamina_bar.value = fishing.fish_stamina()
 
 	_prompt.text = ""
+	if fishing.alert_rod() >= 0:
+		_prompt.text = "Tärppi telineessä – R = ota vapa käteen"
 	if fishing.state == Fishing.State.BITE:
 		_prompt.text = "TÄRPPI! Vasen hiiri = vastaisku"
 	elif fishing.landing_ready():

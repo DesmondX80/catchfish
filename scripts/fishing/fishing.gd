@@ -2,6 +2,11 @@ class_name Fishing
 extends Node3D
 ## Virvelillä kalastus: heitto, uistimen uinti, tärppi ja vastaisku,
 ## väsytys jarrulla sekä haavinta.
+##
+## Veneessä on kaksi vapaa. Heitellessä käytetään yhtä, vetouistelussa
+## molempia: heitetty vapa laitetaan R-näppäimellä vapatelineeseen ja
+## toinen otetaan käteen. Vavan tila on tämän solmun muuttujissa
+## (ROD_VARS), ja ne vaihdetaan sen mukaan, mitä vapaa käsitellään.
 
 signal message(text: String)
 signal caught(entry: Dictionary, record: bool)
@@ -26,6 +31,19 @@ const SINK_MAX_RISE := 0.3 # m/s: uppoavan uistimen suurin nousunopeus
 const DIVE_FULL_SPEED := 0.5 # m/s: tällä nopeudella vaappu ui tavoitesyvyydessään
 const DIVE_PER_METER := 0.35 # vaapun sukellus (m) vedettyä metriä kohden
 const GRAVITY := 9.81
+const ROD_COUNT := 2
+## Käyttämätön vapa veneen pohjalla vasemmalla laidalla, kärki keulaan
+const SPARE_ROD := Transform3D(Basis.IDENTITY, Vector3(-0.45, 0.27, 1.25))
+## Vapakohtaiset muuttujat: tallennetaan vavan vaihtuessa
+const ROD_VARS := [
+	"state", "in_holder", "lure_index", "power", "line_out", "tension", "drag_slipping",
+	"lure_pos", "lure_speed", "lure_on_land", "snagged", "_lure_vel", "_prev_lure",
+	"_twitch", "_bite_timer", "_check_timer", "_fish_index", "_fish", "_fish_pos",
+	"_stamina", "_run_timer", "_run_dir", "_run_intensity", "_slack_time",
+	"_landing_prompt", "_rod_pivot", "_rod_pitch", "_rod_mesh", "_rod_points",
+	"_tip_world", "_bend", "_bend_vel", "_bend_dir", "_reel_handle", "_line_mesh",
+	"_lure_node", "_fish_node",
+]
 
 var boat: Boat
 var camera_rig: CameraRig
@@ -35,6 +53,13 @@ var weather: Weather
 var sky: SkyTime
 
 var state := State.READY
+## Vetouistelu: tämä vapa on vapatelineessä
+var in_holder := false
+## Kädessä olevan vavan numero (0..1), -1 = molemmat vavat telineissä
+var held := 0
+var _rods: Array[Dictionary] = []
+var _holders: Node3D
+var _cur := 0 # vapa, jonka tila on nyt muuttujissa
 ## Talvi: pilkkiminen avannosta (jäällä ei heitetä, vaan kairataan reikä)
 var on_ice := false
 var rod_length := ROD_LENGTH
@@ -135,6 +160,12 @@ func lure_count() -> int:
 
 ## Talvitila: lyhyt pilkkivapa ja pilkit
 func set_on_ice(on: bool) -> void:
+	_swap_to(0)
+	held = 0
+	in_holder = false
+	for i in range(1, _rods.size()):
+		_set_rod_visible(i, not on) # pilkillä on yksi vapa
+	_holders.visible = not on
 	on_ice = on
 	rod_length = 0.65 if on else ROD_LENGTH
 	lure_index = 0
@@ -143,7 +174,12 @@ func set_on_ice(on: bool) -> void:
 
 ## Kalastus käynnissä: kalastaja istuu paikallaan (ei kävellä)
 func busy() -> bool:
-	return state != State.READY and state != State.LANDED
+	return not in_holder and state != State.READY and state != State.LANDED
+
+
+## Vetouistelu: molemmat vavat telineissä, kädet vapaina soutamiseen
+func hands_free() -> bool:
+	return held < 0
 
 
 ## Kalastajan edessä oleva avanto, tai Vector3.INF
@@ -189,11 +225,199 @@ func last_catch() -> Dictionary:
 	return _last_catch
 
 
+# --- Kaksi vapaa ja vapatelineet ---------------------------------------------
+
+func rod_count() -> int:
+	return 1 if on_ice else mini(ROD_COUNT, _rods.size())
+
+
+## Vaihtaa toisen vavan tilan muuttujiin
+func _swap_to(i: int) -> void:
+	if i == _cur or i >= _rods.size():
+		return
+	_save_rod()
+	_cur = i
+	var r: Dictionary = _rods[i]
+	for v in ROD_VARS:
+		set(v, r[v])
+	# Uistinlista voi muuttua (uistin loppui), joten vapa muistaa uistimensa nimellä
+	var idx := lures().map(func(l): return l["id"]).find(r["lure_id"])
+	if idx >= 0:
+		lure_index = idx
+
+
+func _save_rod() -> void:
+	var r: Dictionary = _rods[_cur]
+	for v in ROD_VARS:
+		r[v] = get(v)
+	r["lure_id"] = lure()["id"]
+
+
+## Vavan muuttuja ilman vaihtoa
+func _rod_get(i: int, v: String) -> Variant:
+	return get(v) if i == _cur else _rods[i][v]
+
+
+func _set_rod_visible(i: int, on: bool) -> void:
+	for v in ["_rod_pivot", "_lure_node"]:
+		_rod_get(i, v).visible = on
+	for v in ["_rod_mesh", "_line_mesh"]:
+		var mesh: ImmediateMesh = _rod_get(i, v)
+		if not on:
+			mesh.clear_surfaces()
+
+
+## Telineessä oleva vapa, jossa on tärppi tai kala, tai -1
+func alert_rod() -> int:
+	for i in rod_count():
+		if _rod_get(i, "in_holder") and _rod_get(i, "state") in [State.BITE, State.FIGHT]:
+			return i
+	return -1
+
+
+func _first_rod(in_holder_wanted: bool) -> int:
+	for i in rod_count():
+		if i != held and _rod_get(i, "in_holder") == in_holder_wanted:
+			return i
+	return -1
+
+
+## Telineissä olevien vapojen tilat HUDia varten
+func holder_rods() -> Array:
+	var list := []
+	for i in rod_count():
+		if not _rod_get(i, "in_holder"):
+			continue
+		var fish: Dictionary = _rod_get(i, "_fish")
+		var st: int = _rod_get(i, "state")
+		list.append({
+			"number": i + 1,
+			"state": st,
+			"lure": Lures.name_of(lure()["id"] if i == _cur else _rods[i]["lure_id"]),
+			"line": _rod_get(i, "line_out"),
+			"depth": maxf(0.0, -_rod_get(i, "lure_pos").y) + 0.0,
+			"snagged": _rod_get(i, "snagged"),
+			"fish": Species.DATA[fish["sp"]]["name"] if st == State.FIGHT and not fish.is_empty() else "",
+		})
+	return list
+
+
+## Koukussa olevien tai tärppäävien kalojen indeksit (kaikki vavat)
+func hooked_indices() -> Array:
+	var list := []
+	for i in rod_count():
+		if _rod_get(i, "state") in [State.BITE, State.FIGHT]:
+			list.append(_rod_get(i, "_fish_index"))
+	return list
+
+
+## Jarru antaa siimaa jossain vavassa (ääni kuuluu myös telineestä)
+func drag_screaming() -> bool:
+	for i in rod_count():
+		if _rod_get(i, "state") == State.FIGHT and _rod_get(i, "drag_slipping"):
+			return true
+	return false
+
+
+## R: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen
+## (ensin se, jossa on tärppi)
+func _rod_holder_key() -> void:
+	if on_ice:
+		return
+	if held >= 0:
+		if state == State.RETRIEVING and not lure_on_land:
+			in_holder = true
+			_bend_vel += 2.0 # vapa heilahtaa telineeseen
+			sound_event.emit("oar_catch", rod_tip()) # kopsahdus telineeseen
+			held = -1
+			var next := alert_rod()
+			if next < 0:
+				next = _first_rod(false)
+			if next >= 0:
+				_take_rod(next, "Vapa %d telineeseen – vapa %d käteen" % [_cur + 1, next + 1])
+			else:
+				message.emit("Vapa %d telineeseen – molemmat vavat telineissä, soutele ja odota tärppiä" % (_cur + 1))
+		elif state == State.READY or state == State.LANDED:
+			var next := alert_rod()
+			if next < 0:
+				next = _first_rod(true)
+			if next < 0:
+				message.emit("Heitä uistin veneen perään ja paina R, niin vapa menee telineeseen")
+				return
+			state = State.READY
+			held = -1 # vapa veneen pohjalle
+			_take_rod(next, "Vapa %d telineestä käteen" % (next + 1))
+		else:
+			message.emit("Kädet täynnä – kelaa uistin ylös tai laita vapa telineeseen")
+	else:
+		var next := alert_rod()
+		if next < 0:
+			next = _first_rod(true)
+		if next >= 0:
+			_take_rod(next, "Vapa %d telineestä käteen" % (next + 1))
+
+
+func _take_rod(i: int, text: String) -> void:
+	_swap_to(i)
+	held = i
+	if in_holder:
+		in_holder = false
+		_bend_vel -= 2.0
+	_lure_node.mesh.material.albedo_color = lure()["color"]
+	if state == State.BITE:
+		text += " – TÄRPPI! Vastaisku – vasen hiiri!"
+	elif state == State.FIGHT:
+		text += " – kala koukussa, väsytä!"
+	message.emit(text)
+
+
+## Viesti vavasta: telineessä olevan vavan viestissä on vavan numero
+func _msg(text: String) -> void:
+	message.emit("Vapa %d: %s" % [_cur + 1, text] if in_holder else text)
+
+
+## Lusikka/vaappu on jo toisessa vavassa veden alla (uramoodissa uistimia on rajallisesti)
+func _lure_free(l: Dictionary) -> bool:
+	if not limited:
+		return true
+	var in_use := 0
+	for i in rod_count():
+		if i != _cur and _rods[i]["lure_id"] == l["id"] and _rods[i]["state"] != State.READY and _rods[i]["state"] != State.LANDED:
+			in_use += 1
+	return int(inventory.get(l["id"], 0)) > in_use
+
+
+## Valitsee vapaan uistimen, jos nykyinen on jo toisessa vavassa
+func _pick_free_lure() -> bool:
+	var list := lures()
+	for k in list.size():
+		var idx := (lure_index + k) % list.size()
+		if _lure_free(list[idx]):
+			if idx != lure_index % list.size():
+				lure_index = idx
+				_lure_node.mesh.material.albedo_color = lure()["color"]
+				message.emit("Uistin: " + lure()["name"])
+			return true
+	return false
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	if not GameInput.active():
 		return
+	if event.is_action_pressed("rod_holder"):
+		_rod_holder_key()
+		return
+	if held < 0:
+		# Kädet vapaina: vain jarrua voi säätää
+		if event.is_action_pressed("cast"):
+			message.emit("Vavat ovat telineissä – R ottaa vavan käteen")
+		if not (event.is_action_pressed("drag_up", true) or event.is_action_pressed("drag_down", true)):
+			return
 	if event.is_action_pressed("cast") and state == State.READY and not has_lure():
 		message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
+		return
+	if event.is_action_pressed("cast") and state == State.READY and not on_ice and not _pick_free_lure():
+		message.emit("Uistimet ovat jo toisessa vavassa – osta lisää kalastustarvikeliikkeestä")
 		return
 	if on_ice and _ice_input(event):
 		return
@@ -216,6 +440,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
 			return
 		lure_index = (lure_index + 1) % lures().size()
+		for k in lures().size(): # ohitetaan toisessa vavassa olevat
+			if _lure_free(lure()):
+				break
+			lure_index = (lure_index + 1) % lures().size()
 		_lure_node.mesh.material.albedo_color = lure()["color"]
 		message.emit("Uistin: " + lure()["name"] + (" (%d kpl)" % lure_count() if limited else ""))
 	elif event.is_action_pressed("twitch") and state == State.RETRIEVING and not lure_on_land:
@@ -228,13 +456,32 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _physics_process(dt: float) -> void:
-	_aim_angler(dt)
+	for i in rod_count():
+		_swap_to(i)
+		_process_rod(dt, i == held)
+	# Muuttujiin jää kädessä oleva vapa (HUD, äänet ja kalastaja lukevat sitä),
+	# kädet vapaina se vapa, jossa on tärppi
+	if held >= 0:
+		_swap_to(held)
+	elif alert_rod() >= 0:
+		_swap_to(alert_rod())
+
+
+func _process_rod(dt: float, in_hand: bool) -> void:
+	if in_hand:
+		_aim_angler(dt)
+	else:
+		# Telineessä, tai käyttämättömänä veneen pohjalla
+		_rod_pivot.global_transform = boat.hull.global_transform * (holder_transform(_cur) if in_holder else SPARE_ROD)
 	_update_rod(dt)
 	_twitch = move_toward(_twitch, 0.0, dt * 3.0)
 	match state:
 		State.READY, State.LANDED:
-			lure_pos = rod_tip() + Vector3(0, -0.12 if on_ice else -0.35, 0)
-			line_out = 0.12 if on_ice else 0.35
+			var hang := 0.12 if on_ice else 0.35
+			if not in_hand:
+				hang = 0.02 # uistin vavan kärjessä veneen pohjalla
+			lure_pos = rod_tip() + Vector3(0, -hang, 0)
+			line_out = hang
 			tension = 0.0
 		State.DRILLING:
 			_drill(dt)
@@ -330,8 +577,15 @@ func _fly(dt: float) -> void:
 			message.emit("Heitto meni rannalle")
 
 
+## Vapateline perälaudan kulmassa (veneen paikallisissa koordinaateissa, +Z = perä):
+## vapa osoittaa taakse, viistosti sivulle ja ylös
+func holder_transform(i: int) -> Transform3D:
+	var side := 1.0 if i == 0 else -1.0
+	return Transform3D(Basis.looking_at(Vector3(0.5 * side, 0.75, 1.0)), Vector3(0.55 * side, 0.42, 1.7))
+
+
 func _reel_speed() -> float:
-	if not Input.is_action_pressed("reel") or not GameInput.active():
+	if _cur != held or not Input.is_action_pressed("reel") or not GameInput.active():
 		return 0.0
 	return REEL_SPEED_FAST if Input.is_action_pressed("reel_fast") else REEL_SPEED
 
@@ -339,11 +593,16 @@ func _reel_speed() -> float:
 func _retrieve(dt: float) -> void:
 	var reel := _reel_speed()
 	if snagged:
-		tension = drag_kg if reel > 0.0 else 0.0
-		if reel > 0.0:
+		var pulling := reel > 0.0
+		var span := rod_tip().distance_to(lure_pos)
+		if in_holder and span > line_out:
+			pulling = true # vene vetää: jarru antaa siimaa
+			line_out = span
+		tension = drag_kg if pulling else 0.0
+		if pulling:
 			if _rng.randf() < 0.35 * dt:
 				snagged = false
-				message.emit("Uistin irtosi!")
+				_msg("Uistin irtosi!")
 			elif _rng.randf() < 0.12 * dt * (drag_kg / LINE_STRENGTH) * 2.0:
 				_lose_lure("Siima katkesi – uistin jäi kiinni")
 		return
@@ -373,8 +632,9 @@ func _retrieve(dt: float) -> void:
 				_fish = population.fish[idx]
 				state = State.BITE
 				_bite_timer = _rng.randf_range(0.6, 1.0)
+				_bend_vel += 3.0 # vavan kärki nykäisee
 				sound_event.emit("bite_tick", rod_tip())
-				message.emit("TÄRPPI! Vastaisku – vasen hiiri!")
+				_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
 	_prev_lure = lure_pos
 
 	if line_out < 1.0 or tip.distance_to(lure_pos) < 1.0:
@@ -442,7 +702,10 @@ func _update_rod(dt: float) -> void:
 	target = minf(target, dir0.angle_to(pull_dir) * 0.85) # ei taivu siiman suunnan ohi
 	_bend_vel += (ROD_STIFFNESS * (target - _bend) - ROD_DAMPING * _bend_vel) * dt
 	_bend = clampf(_bend + _bend_vel * dt, -0.6, ROD_MAX_BEND)
-	_bend_dir = _bend_dir.slerp(pull_dir, minf(1.0, dt * 10.0)).normalized()
+	if _bend_dir.dot(pull_dir) > 0.9999:
+		_bend_dir = pull_dir # slerp ei toimi lähes samansuuntaisilla vektoreilla
+	else:
+		_bend_dir = _bend_dir.slerp(pull_dir, minf(1.0, dt * 10.0)).normalized()
 	var axis := dir0.cross(_bend_dir)
 	if axis.length() < 0.001:
 		axis = dir0.cross(Vector3.UP)
@@ -505,7 +768,7 @@ func _lure_depth_dynamics(dt: float) -> void:
 	if bottom > 0.0 and depth >= bottom - 0.06 and lure_speed > 0.15:
 		if _rng.randf() < l["snag"] * dt:
 			snagged = true
-			message.emit("Pohjakiinni! Kelaa tai nykäise irti")
+			_msg("Pohjakiinni! Kelaa tai nykäise irti")
 
 
 func _bite(dt: float) -> void:
@@ -515,7 +778,11 @@ func _bite(dt: float) -> void:
 	if _reel_speed() > 0.0 and _bite_timer < 0.4:
 		_try_hook(0.45, "Kala tarttui kelatessa!")
 	elif _bite_timer <= 0.0:
-		_try_hook(0.15, "Kala koukuttui itse!")
+		if in_holder:
+			# Vetouistelussa veneen vauhti iskee koukun kalaan
+			_try_hook(0.25 + 0.5 * clampf(boat.velocity.length(), 0.0, 1.0), "Kala tarttui! R = ota vapa käteen")
+		else:
+			_try_hook(0.15, "Kala koukuttui itse!")
 
 
 func _try_hook(chance: float, success_text: String) -> void:
@@ -526,13 +793,13 @@ func _try_hook(chance: float, success_text: String) -> void:
 		_run_timer = 0.0
 		_slack_time = 0.0
 		_landing_prompt = false
-		message.emit(success_text)
+		_msg(success_text)
 	else:
 		population.spook(_fish_index)
 		_fish_index = -1
 		_fish = {}
 		state = State.RETRIEVING
-		message.emit("Kala ei tarttunut")
+		_msg("Kala ei tarttunut")
 
 
 func _fight(dt: float) -> void:
@@ -607,7 +874,7 @@ func _fight(dt: float) -> void:
 	# Hauki ravistelee päätään ja taimen hyppää: löysä siima on silloin vaarallinen
 	if _stamina > 0.3 and _fish_pos.y > -0.6 and (not on_ice or hole_dist < 0.3) and _rng.randf() < 0.08 * dt:
 		sound_event.emit("fish_splash", _fish_pos)
-		message.emit("Taimen hyppää!" if _fish["sp"] == "taimen" else "%s rimpuilee pinnassa!" % data["name"])
+		_msg("Taimen hyppää!" if _fish["sp"] == "taimen" else "%s rimpuilee pinnassa!" % data["name"])
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
 			return
@@ -672,7 +939,7 @@ func _lose_fish(text: String, lose_lure: bool) -> void:
 		_lose_lure(text)
 	else:
 		state = State.RETRIEVING
-		message.emit(text)
+		_msg(text)
 
 
 func _lose_lure(text: String) -> void:
@@ -688,12 +955,53 @@ func _lose_lure(text: String) -> void:
 			_lure_node.mesh.material.albedo_color = lure()["color"]
 	snagged = false
 	state = State.READY
-	message.emit(text)
+	_msg(text)
 
 
 # --- Ulkonäkö ---------------------------------------------------------------
 
 func _build_visuals() -> void:
+	_build_auger()
+	_build_net()
+	_build_holders()
+	# Kaksi vapaa: kumpikin omine kelan, siiman ja uistimen solmuineen
+	for i in ROD_COUNT:
+		_build_rod_visuals()
+		_rods.append({"lure_id": lure()["id"]})
+		_cur = i
+		_save_rod()
+	_swap_to(0)
+
+
+## Vapatelineet: putket perälaudan kulmissa
+func _build_holders() -> void:
+	_holders = Node3D.new()
+	boat.hull.add_child(_holders)
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = Color(0.1, 0.1, 0.1)
+	mat.roughness = 0.5
+	for i in ROD_COUNT:
+		var xf := holder_transform(i)
+		var tube := MeshInstance3D.new()
+		var cyl := CylinderMesh.new()
+		cyl.top_radius = 0.022
+		cyl.bottom_radius = 0.022
+		cyl.height = 0.28
+		cyl.material = mat
+		tube.mesh = cyl
+		# Sylinterin akseli (Y) vavan suuntaan (-Z), putken pohja telineen kohdalla
+		tube.transform = Transform3D(xf.basis * Basis(Vector3.RIGHT, -PI / 2.0), xf * Vector3(0, 0, -0.14))
+		_holders.add_child(tube)
+		var foot := MeshInstance3D.new()
+		var box := BoxMesh.new()
+		box.size = Vector3(0.06, 0.08, 0.1)
+		box.material = mat
+		foot.mesh = box
+		foot.position = xf.origin + Vector3(0, -0.02, 0)
+		_holders.add_child(foot)
+
+
+func _build_rod_visuals() -> void:
 	_rod_pivot = Node3D.new()
 	_rod_pivot.top_level = true # sijainti lasketaan itse: kädessä tai veneen pohjalla
 	boat.angler.rod_mount.add_child(_rod_pivot)
@@ -706,10 +1014,8 @@ func _build_visuals() -> void:
 	rod_mat.vertex_color_use_as_albedo = true
 	rod_mat.roughness = 0.35
 	rod.material_override = rod_mat
-	add_child(rod)
+	_rod_pivot.add_child(rod) # piilotetaan vavan mukana (top_level: sijainti maailmassa)
 	_build_reel()
-	_build_auger()
-	_build_net()
 
 	_line_mesh = ImmediateMesh.new()
 	var line := MeshInstance3D.new()
@@ -721,7 +1027,7 @@ func _build_visuals() -> void:
 	line_mat.albedo_color = Color(0.9, 0.9, 0.85, 0.8)
 	line_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	line.material_override = line_mat
-	add_child(line)
+	_rod_pivot.add_child(line)
 
 	_lure_node = MeshInstance3D.new()
 	var lure_mesh := SphereMesh.new()

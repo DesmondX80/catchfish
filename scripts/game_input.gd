@@ -10,6 +10,7 @@ const KEYS := {
 	"motor_toggle": [KEY_Q],
 	"anchor_toggle": [KEY_X],
 	"lure_next": [KEY_L],
+	"rod_holder": [KEY_R],
 	"drag_up": [KEY_E],
 	"drag_down": [KEY_C],
 	"reel_fast": [KEY_SHIFT],
