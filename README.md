@@ -56,7 +56,9 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
   tärppäävän vavan käteen väsytettäväksi.
 - **Väsytys**: kala ryntäilee ja lepää, jarru antaa siimaa, liian kireä
-  jarru katkaisee siiman ja löysä siima päästää kalan irti.
+  jarru katkaisee siiman ja löysä siima päästää kalan irti. Kalan lajin
+  näkee vasta, kun kala tulee tummassa humusvedessä näkyviin veneen
+  lähelle tai rimpuilee pinnassa.
 - Lajien arvot ovat tiedostossa `scripts/fishing/species.gd` ja uistinten
   `scripts/fishing/lures.gd`.
 

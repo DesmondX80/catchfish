@@ -227,6 +227,7 @@ func _hook(sp: String, weight: float) -> void:
 	f._run_dir = boat.forward()
 	f._run_timer = 10.0
 	f.drag_kg = 6.0
+	f._fish_known = true # kuvassa kala näkyy pinnan tuntumassa
 	f.state = Fishing.State.FIGHT
 
 

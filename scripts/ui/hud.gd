@@ -392,8 +392,7 @@ func _process(delta: float) -> void:
 			if fishing.snagged:
 				info += "\nKIINNI!"
 		Fishing.State.FIGHT:
-			var fish := fishing.hooked_fish()
-			info += "\n%s koukussa!   Siimaa %.1f m%s" % [Species.DATA[fish["sp"]]["name"] if not fish.is_empty() else "Kala", fishing.line_out, "   JARRU LAULAA" if fishing.drag_slipping else ""]
+			info += "\n%s koukussa!   Siimaa %.1f m%s" % [fishing.fish_name(), fishing.line_out, "   JARRU LAULAA" if fishing.drag_slipping else ""]
 		Fishing.State.LANDING:
 			info += "\nNostetaan jäälle..." if fishing.on_ice else "\nHaavitaan..."
 		Fishing.State.LANDED:

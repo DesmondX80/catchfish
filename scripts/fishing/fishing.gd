@@ -32,6 +32,11 @@ const DIVE_FULL_SPEED := 0.5 # m/s: tällä nopeudella vaappu ui tavoitesyvyydes
 const DIVE_PER_METER := 0.35 # vaapun sukellus (m) vedettyä metriä kohden
 const GRAVITY := 9.81
 const ROD_COUNT := 2
+## Koukussa olevan kalan lajin tunnistaa vasta, kun kala näkyy humusvedessä:
+## lähellä venettä ja pinnan tuntumassa (jäällä avannon suulla)
+const IDENTIFY_DISTANCE := 6.0 # m veneestä
+const IDENTIFY_DEPTH := 1.5 # m
+const IDENTIFY_SPLASH := 15.0 # m: pinnassa rimpuileva kala tunnistetaan kauempaakin
 ## Käyttämätön vapa veneen pohjalla vasemmalla laidalla, kärki keulaan
 const SPARE_ROD := Transform3D(Basis.IDENTITY, Vector3(-0.45, 0.27, 1.25))
 ## Vapakohtaiset muuttujat: tallennetaan vavan vaihtuessa
@@ -40,7 +45,7 @@ const ROD_VARS := [
 	"lure_pos", "lure_speed", "lure_on_land", "snagged", "_lure_vel", "_prev_lure",
 	"_twitch", "_bite_timer", "_check_timer", "_fish_index", "_fish", "_fish_pos",
 	"_stamina", "_run_timer", "_run_dir", "_run_intensity", "_slack_time",
-	"_landing_prompt", "_rod_pivot", "_rod_pitch", "_rod_mesh", "_rod_points",
+	"_landing_prompt", "_fish_known", "_rod_pivot", "_rod_pitch", "_rod_mesh", "_rod_points",
 	"_tip_world", "_bend", "_bend_vel", "_bend_dir", "_reel_handle", "_line_mesh",
 	"_lure_node", "_fish_node",
 ]
@@ -107,6 +112,7 @@ var _run_dir := Vector2.ZERO
 var _run_intensity := 0.0
 var _slack_time := 0.0
 var _landing_prompt := false
+var _fish_known := false # koukussa olevan kalan laji tunnistettu
 var _last_catch: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
@@ -213,6 +219,15 @@ func hooked_fish() -> Dictionary:
 	return _fish if state == State.FIGHT else {}
 
 
+## Koukussa olevan kalan nimi, tai "Kala", jos lajia ei vielä tunnista
+func fish_name() -> String:
+	return _fish_name(_fish, _fish_known)
+
+
+func _fish_name(fish: Dictionary, known: bool) -> String:
+	return Species.DATA[fish["sp"]]["name"] if known and not fish.is_empty() else "Kala"
+
+
 func fish_stamina() -> float:
 	return _stamina
 
@@ -297,7 +312,7 @@ func holder_rods() -> Array:
 			"line": _rod_get(i, "line_out"),
 			"depth": maxf(0.0, -_rod_get(i, "lure_pos").y) + 0.0,
 			"snagged": _rod_get(i, "snagged"),
-			"fish": Species.DATA[fish["sp"]]["name"] if st == State.FIGHT and not fish.is_empty() else "",
+			"fish": _fish_name(fish, _rod_get(i, "_fish_known")) if st == State.FIGHT else "",
 		})
 	return list
 
@@ -793,6 +808,7 @@ func _try_hook(chance: float, success_text: String) -> void:
 		_run_timer = 0.0
 		_slack_time = 0.0
 		_landing_prompt = false
+		_fish_known = false
 		_msg(success_text)
 	else:
 		population.spook(_fish_index)
@@ -874,11 +890,14 @@ func _fight(dt: float) -> void:
 	# Hauki ravistelee päätään pinnassa: löysä siima on silloin vaarallinen
 	if _stamina > 0.3 and _fish_pos.y > -0.6 and (not on_ice or hole_dist < 0.3) and _rng.randf() < 0.08 * dt:
 		sound_event.emit("fish_splash", _fish_pos)
-		_msg("%s rimpuilee pinnassa!" % data["name"])
+		if Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).length() < IDENTIFY_SPLASH and not on_ice:
+			_fish_known = true
+		_msg("%s rimpuilee pinnassa!" % fish_name())
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
 			return
 
+	_identify_fish(hole_dist)
 	_stamina = clampf(_stamina - (tension / maxf(weight, 0.2)) * 0.03 * dt / fish_power - _run_intensity * 0.006 * dt + (0.004 * dt if tension < 0.3 else 0.0), 0.0, 1.0)
 	lure_pos = _fish_pos
 	if on_ice:
@@ -886,6 +905,16 @@ func _fight(dt: float) -> void:
 	else:
 		_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2
 	tension = maxf(tension, 0.0)
+
+
+## Kalan laji selviää, kun kala tulee näkyviin
+func _identify_fish(hole_dist: float) -> void:
+	if _fish_known:
+		return
+	var near := hole_dist < 1.2 if on_ice else Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).length() < IDENTIFY_DISTANCE
+	if near and -_fish_pos.y < IDENTIFY_DEPTH:
+		_fish_known = true
+		_msg("Se on %s!" % Species.DATA[_fish["sp"]]["name"].to_lower())
 
 
 func _try_land() -> void:
@@ -1056,7 +1085,7 @@ func _update_visuals() -> void:
 
 	# Koukussa oleva kala: lajin malli rimpuilee nopealla uintiliikkeellä.
 	# Humusvesi haalistaa syvällä olevan kalan (fish.gdshader).
-	var show_fish := state == State.FIGHT and boat.global_position.distance_to(_fish_pos) < 15.0
+	var show_fish := state == State.FIGHT and _fish_known # kala näkyy, kun sen tunnistaa
 	_fish_node.visible = show_fish
 	if show_fish:
 		var sp: String = _fish["sp"]

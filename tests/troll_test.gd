@@ -15,6 +15,7 @@ var _spot := Vector2.ZERO
 var _dir := Vector2.ZERO
 var _forced := 0
 var _catches := []
+var _identified := false
 var _shots := ""
 var _shot_done := {}
 
@@ -113,9 +114,11 @@ func _physics_process(delta: float) -> void:
 	_t += delta
 	var f: Fishing = main.fishing
 	var boat: Boat = main.boat
+	if _step <= 4:
+		Input.action_press("boat_forward") # vene liikkeelle ennen uistinten laskua, ettei lusikka vajoa pohjaan
 	match _step:
 		0:
-			if _t > 0.5:
+			if _t > 3.0:
 				f.lure_index = 0 # lusikka
 				_lure_behind(1.5)
 				_next()
@@ -139,7 +142,6 @@ func _physics_process(delta: float) -> void:
 				_check("molemmat vavat telineissä, kädet vapaina", f.hands_free() and f.holder_rods().size() == 2)
 				var lures := f.holder_rods().map(func(r): return r["lure"])
 				_check("telineissä eri uistimet: %s" % ", ".join(lures), lures[0] != lures[1])
-				_press("boat_forward")
 				_next()
 		5:
 			Input.action_press("boat_forward")
@@ -185,12 +187,16 @@ func _physics_process(delta: float) -> void:
 				_check("R otti tärppäävän vavan 1 käteen kesken soudun", f.held == 0 and not f.in_holder and f.state == Fishing.State.FIGHT)
 				_check("vapa 2 jäi telineeseen", f.holder_rods().size() == 1 and f.holder_rods()[0]["number"] == 2)
 				_check("kalastaja väsyttää", boat.angler.pose == Angler.Pose.FISHING)
+				_check("kaukana olevan kalan lajia ei tunnista: \"%s\"" % f.fish_name(), f.fish_name() == "Kala")
 				_press("reel")
 				_next()
 		9:
 			# Väsytys: kelataan ja haavitaan, kun kala on veneen vieressä
 			Input.action_press("reel")
 			_shot("v3-vasytys-telineesta", 2.0, 0.3, 6.0)
+			if f.landing_ready() and not _identified:
+				_identified = true
+				_check("laji tunnistettiin veneen vieressä: %s" % f.fish_name(), f.fish_name() != "Kala")
 			if f.landing_ready() and f.fish_stamina() < 0.35:
 				_press("reel", false)
 				_tap("cast")
