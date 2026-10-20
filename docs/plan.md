@@ -1,6 +1,6 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 20.10.2026. Nykyinen versio **0.23.1** (release tekemättä; edellinen
+Päivitetty 20.10.2026. Nykyinen versio **0.24.0** (release tekemättä; edellinen
 [v0.23.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.23.1)
+### Valmiina (versiot 0.1–0.24)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -26,6 +26,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori, kela, jarru, linnut, sade |
+| Kalastaja | Vuodenajan mukainen vaatetus (kesällä kelluntaliivi ja lippis, talvella haalari ja pipo), kasvot ja parta, kumisaappaat; katse seuraa uistinta, kohoa, kalaa, menosuuntaa ja avantoa, silmät räpyttelevät |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
 ### Tehtävänhallinta
@@ -64,7 +65,6 @@ tunnisteita (CATCHFISH-N).
 | # | Tehtävä |
 |---|---|
 | 37 | Veneen malli |
-| 32 | Hahmon parannus |
 | 39 | Kodan ulkoasu kodannäköiseksi |
 | 40 | Lintutornin ulkoasu |
 | 35 | Tuulisella säällä vaahtopäiset aallot |
@@ -119,6 +119,7 @@ godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunni
 godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
+godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo: vaatetus, katse, räpytys
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen äänet
@@ -126,6 +127,7 @@ godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
+godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (--day=40 talvella)
 ```
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
@@ -152,7 +154,19 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   laituria pitkin; kovasta törmäyksestä kolahdus ja viesti. Samalla korjattiin
   aloituspaikat, joissa vene oli asetettu osittain laiturin kannen alle (vene
   siirtyy alussa noin 0,4 m irti laiturista). Testi `--docktest`.
-  Release (Windows-vienti ja GitHub-release) ja Planen tila ovat vielä tekemättä.
+- **#32 Hahmon parannus – tehty (0.24.0).** Planen tehtävässä ei ollut tähän
+  tiedostoon kirjattua kuvausta, joten sisältö on oma tulkinta: vaatetus
+  vuodenajan mukaan (kesällä maastotakki, oranssi kelluntaliivi, tummat housut,
+  lippis; talvella tumma pilkkihaalari punaisella kauluksella, tupsupipo ja
+  lapaset), kasvot (silmät, kulmakarvat, viikset, lyhyt parta; lipan alta
+  näkyvät nyt silmät), kumisaappaat. Pää kääntyy katseen kohteeseen: uistin,
+  koho tai kala, moottoriajossa menosuunta, pilkkiessä avanto; soutaja
+  vilkaisee välillä olan yli. Silmät räpyttelevät. Testi `--anglertest` ja
+  lähikuvat `--anglershots=KANSIO`. Hahmo on yhä primitiiveistä koottu; oikea
+  rigattu malli olisi seuraava askel, jos halutaan enemmän.
+
+Releaset (0.23.1 ja 0.24.0: Windows-vienti ja GitHub-release) ja Planen tilat
+ovat vielä tekemättä.
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).

@@ -90,6 +90,7 @@ func set_on_ice(on: bool) -> void:
 		if child != angler:
 			child.visible = not on
 	wake.visible = not on
+	angler.set_winter(on)
 	hull.position = Vector3.ZERO
 	hull.rotation = Vector3.ZERO
 	anchored = false

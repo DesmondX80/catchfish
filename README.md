@@ -67,6 +67,10 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   nykii tai vavan kärki värähtelee, ja vastaisku tehdään vasta, kun koho
   painuu pinnan alle tai siima kiristyy. Särki, lahna, kiiski, ahven ja made
   syövät matoa, hauki tuskin koskaan.
+- **Kalastaja**: kesällä maastotakki, oranssi kelluntaliivi, lippalakki ja
+  kumisaappaat, talvella tumma pilkkihaalari, tupsupipo ja lapaset. Katse
+  seuraa uistinta, kohoa tai väsytettävää kalaa, moottoriajossa menosuuntaa
+  ja pilkkiessä avantoa; soutaja vilkaisee välillä olan yli menosuuntaan.
 - **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
   repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
   näkyy myös tekstityksenä.
