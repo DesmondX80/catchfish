@@ -1,0 +1,150 @@
+# Catchfish – suunnitelma ja tilanne
+
+Päivitetty 20.10.2026. Nykyinen versio **0.23.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.0)).
+
+Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
+Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
+tai ajaa moottorilla, heittelee virvelillä, uistelee, onkii ja pilkkii talvella.
+Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
+
+## Tähänastinen tilanne
+
+### Valmiina (versiot 0.1–0.23)
+
+| Alue | Ominaisuudet |
+|---|---|
+| Vene | Oma vesifysiikka, soutu ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus |
+| Maailma | MML-aineistosta tehty järvi ja maasto, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
+| Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
+| Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
+| Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
+| Onki | Koho-onki (syvyys F/G ennen heittoa) ja pohjaonki (mato 0,5 m pohjasta), tärpissä koho nykii ja uppoaa, kamera zoomaa kohoon |
+| Heitto | Tähtäin näyttää osumapisteen (sama lentofysiikka kuin heitossa) ja varoittaa rantaan menevästä heitosta |
+| Talvi | Pilkkiminen avannosta: kairaus, pilkki ja tasapainopilkki, kävely jäällä |
+| Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Laji tunnistetaan vasta, kun kala näkyy veneen lähellä |
+| Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
+| Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
+| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori, kela, jarru, linnut, sade |
+| Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
+
+### Tehtävänhallinta
+
+Tehtävät ovat Plane Cloudissa, projekti **CATCHFISH**. Tila 20.10.2026:
+14 tehtävää valmiina, 1 peruttu, 26 avoinna.
+
+## Suunnitelma: seuraavat tehtävät
+
+Prioriteetti Planen mukaan, sitten oma suositusjärjestys. Numerot ovat Planen
+tunnisteita (CATCHFISH-N).
+
+### Kiireelliset ja korkeat (Todo)
+
+| # | Tehtävä | Prioriteetti | Huomio |
+|---|---|---|---|
+| 30 | Vene menee laitureiden läpi | kiireellinen | Laitureille törmäystarkistus veneen fysiikkaan |
+| 29 | Kalat eivät saa näkyä vedessä | korkea | FishVisuals näyttää kalat veden alla; humusvedessä niitä ei pitäisi nähdä (koukussa oleva kala näkyy jo vasta tunnistettaessa) |
+| 17 | Hauki seuraa uistinta | korkea | Näkyvä seuranta veneelle asti, isku viime hetkellä. Huom. ristiriita #29:n kanssa: seuraava kala näkyy vain lähellä pintaa/venettä |
+
+### Pelattavuus ja realismi (Todo)
+
+| # | Tehtävä | Huomio |
+|---|---|---|
+| 31 | Alle metrin syvyydessä potkuri osuu pohjaan | Moottorin pohjakosketus |
+| 34 | Haavinta aivan omaksi animaatiokseen | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
+| 38 | Ankkurianimaatio | |
+| 19 | Kalojen vuodenaikakäytös | Kutu keväällä matalassa, kesähelteellä syvemmälle |
+| 20 | Ilmanpaineen ja sään vaikutus syöntiin | |
+| 18 | Kaikuluotaimen kalakaaret ja pohjan laatu | Liittyy #10:een |
+| 10 | Järven syvyydet | Syvyys on nyt arvioitu etäisyydestä rantaan |
+| 36 | Verkkokalastus | Uusi pyyntitapa |
+| 8 | Lisää välineitä | Onki tehty (#15); syöttikala virvelillä puuttuu |
+
+### Grafiikka ja äänet (Todo/Backlog)
+
+| # | Tehtävä |
+|---|---|
+| 37 | Veneen malli |
+| 32 | Hahmon parannus |
+| 39 | Kodan ulkoasu kodannäköiseksi |
+| 40 | Lintutornin ulkoasu |
+| 35 | Tuulisella säällä vaahtopäiset aallot |
+| 41 | Koho kelluu aaltojen mukana (backlog) |
+| 33 | Moottorin ääni |
+
+### Palkitsevuus ja uramoodi (Todo)
+
+| # | Tehtävä |
+|---|---|
+| 23 | Kalakirja (keskitaso) |
+| 22 | Trofeekuva saaliista |
+| 24 | Uramoodi: kalastonhoitomaksu ja kalan vapautus |
+| 25 | Uramoodi: tilauskalat |
+| 7 | Uramoodin laajennus: kauppa, välineiden päivitykset ja tehtävät |
+
+### Käytettävyys (Todo/Backlog)
+
+| # | Tehtävä |
+|---|---|
+| 26 | Asetukset: hiiren herkkyys, käänteinen ohjaus, äänenvoimakkuudet |
+| 27 | Peliohjaimen tuki |
+| 28 | Ensimmäisen kerran vinkit |
+| 6 | Ohjeen päivitys (backlog) – README:n "Kalat ovat dataa: niitä ei näe" -kohta ja ohjaustaulukko kannattaa tarkistaa |
+
+Peruttu: #21 Tuulikellunta ja uistinankkuri.
+
+## Arkkitehtuuri lyhyesti
+
+| Tiedosto | Tehtävä |
+|---|---|
+| `scripts/main.gd` | Pelin käynnistys, järjestelmien kytkentä, testien valinta komentoriviltä |
+| `scripts/fishing/fishing.gd` | Kalastuksen tilakone (heitto, uinti, tärppi, väsytys), kaksi vapaa (`ROD_VARS` vaihdetaan käsiteltävän vavan mukaan), tähtäin, koho ja mato |
+| `scripts/fishing/landing_net.gd` | Haavinta-animaatio ja sen kamerakuva |
+| `scripts/fishing/lures.gd` | Uistimet ja syöttivälineet (kind: sink, dive, bobber, bottom) |
+| `scripts/fishing/species.gd` | Lajien ominaisuudet |
+| `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
+| `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
+| `scripts/boat/` | Vene, kalastaja, kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
+| `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
+| `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta |
+| `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
+
+## Testaus
+
+Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita):
+
+```bash
+godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet
+godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunnistus, haavinta
+godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
+godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
+godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
+godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
+godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen äänet
+godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
+godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
+godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
+godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
+```
+
+`--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
+läpi/hylätty-testiksi. Useimmissa testeissä on `--*-shots=KANSIO` kuvakaappauksia
+varten (vaatii ikkunan).
+
+Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
+
+## Työtapa
+
+1. Tehtävä Planesta → tila *In Progress*.
+2. Toteutus, testit (uusi ominaisuus saa oman testinsä), README ja F1-ohje.
+3. Versio `project.godot`:iin: uusi ominaisuus nostaa minor-versiota, korjaus patch-versiota.
+4. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
+   GitHub-release suomenkielisin julkaisutiedoin ja exe liitteenä →
+   **tehtävä Planessa *Done***.
+
+## Huomioita ja avoimia kysymyksiä
+
+- **Järven syvyys on arvioitu** (enintään 4 m), koska tekoaltaasta ei ole avointa syvyysaineistoa (#10).
+- **Puhesynteesiääni** `fi_FI-harri`: opetusaineisto CC0, mutta malli on jatkokoulutettu lessac-äänestä, jonka ehdot ovat rajoitetummat. Jos peliä joskus jaetaan kaupallisesti, omat äänitykset ovat varmempi valinta.
+- **Kalojen näkyvyys (#29) ja hauen seuranta (#17)** pitää suunnitella yhdessä: kalat eivät saa näkyä humusvedessä, mutta seuraava hauki kannattaa näyttää, kun se on lähellä pintaa ja venettä.
+- **Vanhat uratallennukset** voivat sisältää kuhia ja taimenia (poistettu 0.18.0); ne voi yhä myydä.
