@@ -4,6 +4,9 @@ class_name Lures
 ##             mutta pysyy aina pinnan alla. run_depth: uintisyvyys (m) kelatessa
 ##             ja uistellessa, run_depth_fast nopeasti kelatessa (lusikka)
 ## dive-tyyppi: kelluu levossa pinnalle (float m/s), vedettäessä ui max_dive-syvyydessä
+## bobber-tyyppi (koho-onki): koho kelluu pinnalla, mato roikkuu kohon alla
+##             säädetyssä syvyydessä (F/G); vedettäessä mato nousee pintaa kohti
+## bottom-tyyppi (pohjaonki): paino pohjassa, mato noin 0,5 m pohjan yläpuolella
 ## cast: heitto-ominaisuus (paino, ilmanvastus) – suurempi lentää pidemmälle
 ## snag: alttius tarttua pohjaan, kun uistin laahaa pohjaa
 ## price: hinta uramoodin kalastustarvikeliikkeessä (€)
@@ -22,6 +25,8 @@ const LIST := [
 	{"id": "syvavaappu", "price": 14, "pull": 0.35, "name": "Syvävaappu 3 m", "kind": "dive", "float": 0.4, "max_dive": 3.0, "cast": 0.7, "snag": 0.12, "color": Color(0.85, 0.3, 0.2)},
 	{"id": "lippa", "price": 5, "pull": 0.08, "name": "Lippa 6 g", "kind": "sink", "sink": 0.6, "lift": 0.9, "cast": 0.65, "snag": 0.06, "color": Color(0.9, 0.9, 0.9)},
 	{"id": "jigi", "price": 4, "pull": 0.05, "name": "Jigi 10 g", "kind": "sink", "sink": 1.1, "lift": 0.9, "cast": 0.85, "snag": 0.05, "color": Color(0.95, 0.85, 0.15)},
+	{"id": "koho", "price": 4, "pull": 0.04, "name": "Koho-onki + mato", "kind": "bobber", "sink": 0.5, "cast": 0.6, "snag": 0.01, "color": Color(0.8, 0.38, 0.4)},
+	{"id": "pohja", "price": 3, "pull": 0.06, "name": "Pohjaonki + mato", "kind": "bottom", "sink": 0.6, "cast": 0.8, "snag": 0.04, "color": Color(0.75, 0.4, 0.4)},
 ]
 
 

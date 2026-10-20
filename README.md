@@ -25,7 +25,8 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | Oikea hiiri | kelaa (Shift = nopeasti) |
 | Välilyönti | nykäisy |
 | E / C | jarru kireämmälle / löysemmälle |
-| L | vaihda uistin |
+| L | vaihda uistin tai syöttiväline (koho-onki, pohjaonki) |
+| F / G | kohon syvyys matalammalle / syvemmälle (ennen heittoa) |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
@@ -58,6 +59,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   uistimet kulkevat perässä omassa uintisyvyydessään. Tärpin tullessa vavan
   kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
   tärppäävän vavan käteen väsytettäväksi.
+- **Onki ja syötit**: koho-ongella mato roikkuu kohon alla syvyydessä, jonka
+  säädät ennen heittoa (F/G). Pohjaongella paino on pohjassa ja mato noin
+  puolen metrin korkeudella pohjasta. Tärpissä kala maistelee ensin: koho
+  nykii tai vavan kärki värähtelee, ja vastaisku tehdään vasta, kun koho
+  painuu pinnan alle tai siima kiristyy. Särki, lahna, kiiski, ahven ja made
+  syövät matoa, hauki tuskin koskaan.
 - **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
   repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
   näkyy myös tekstityksenä.

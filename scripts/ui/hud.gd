@@ -222,7 +222,8 @@ func help_text(start_hint := true) -> String:
 		"  Oikea hiiri  kelaa (Shift = nopeasti)",
 		"  Välilyönti   nykäisy (jigi, lippa)",
 		"  E / C        jarru kireämmälle / löysemmälle",
-		"  L            vaihda uistin",
+		"  L            vaihda uistin tai syöttiväline (koho-onki, pohjaonki)",
+		"  F / G        kohon syvyys matalammalle / syvemmälle (ennen heittoa)",
 		"  R            vetouistelu: heitetty vapa telineeseen ja toinen käteen,",
 		"               tai vapa telineestä käteen (ensin se, jossa on tärppi)",
 		"",
@@ -419,6 +420,8 @@ func _process(delta: float) -> void:
 				info += "\nAvanto edessä – vasen hiiri laskee pilkin" if fishing.at_hole() else "\nKairaa reikä: vasen hiiri pohjassa (kävele W/A/S/D)"
 			else:
 				info += "\nValmiina heittoon"
+				if fishing.lure()["kind"] == "bobber":
+					info += "   •   kohon syvyys %.1f m (F/G säätää)" % fishing.float_depth
 		Fishing.State.DRILLING:
 			info += "\nKairataan reikää... %d %%" % int(fishing.power * 100.0)
 		Fishing.State.CHARGING:
@@ -431,7 +434,9 @@ func _process(delta: float) -> void:
 		Fishing.State.FLYING:
 			info += "\nUistin lentää – siimaa %.0f m" % fishing.line_out
 		Fishing.State.RETRIEVING, Fishing.State.BITE:
-			info += "\nSiimaa %.1f m   •   uistin %.1f m syvyydessä   •   %.1f m/s" % [fishing.line_out, fishing.lure_depth(), fishing.lure_speed]
+			info += "\nSiimaa %.1f m   •   %s %.1f m syvyydessä   •   %.1f m/s" % [fishing.line_out, "mato" if fishing.bait() else "uistin", fishing.lure_depth(), fishing.lure_speed]
+			if fishing.lure()["kind"] == "bobber":
+				info += "\nKoho: syötti %.1f m syvyydessä" % fishing.float_depth
 			if fishing.snagged:
 				info += "\nKIINNI!"
 		Fishing.State.FIGHT:
@@ -454,7 +459,9 @@ func _process(delta: float) -> void:
 	_prompt.text = ""
 	if fishing.alert_rod() >= 0:
 		_prompt.text = "Tärppi telineessä – R = ota vapa käteen"
-	if fishing.state == Fishing.State.BITE:
+	if fishing.state == Fishing.State.BITE and fishing.bait() and fishing._bite_timer > Fishing.BAIT_SINK_TIME:
+		_prompt.text = "Kala maistelee matoa – odota..."
+	elif fishing.state == Fishing.State.BITE:
 		_prompt.text = "TÄRPPI! Vasen hiiri = vastaisku"
 	elif fishing.landing_ready():
 		_prompt.text = "Kala on avannossa – vasen hiiri = nosta jäälle" if fishing.on_ice else "Kala on veneen vieressä – vasen hiiri = haavi"

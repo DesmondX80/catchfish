@@ -11,6 +11,8 @@ const KEYS := {
 	"anchor_toggle": [KEY_X],
 	"lure_next": [KEY_L],
 	"rod_holder": [KEY_R],
+	"float_shallower": [KEY_F],
+	"float_deeper": [KEY_G],
 	"drag_up": [KEY_E],
 	"drag_down": [KEY_C],
 	"reel_fast": [KEY_SHIFT],

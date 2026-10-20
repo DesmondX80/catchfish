@@ -10,7 +10,7 @@ class_name Species
 ## activity       syöntiaktiivisuus vuorokauden tunnin mukaan [[tunti, arvo], ...]
 ## season         aktiivisuuden kerroin [avovesikausi, talvi] – made syö kylmässä vedessä
 ## light_shy      valoa karttava: syö pilvisellä säällä myös päivällä (made)
-## lures          kiinnostus uistintyyppeihin (0..1)
+## lures          kiinnostus uistintyyppeihin ja syöttiin (koho, pohja = mato) (0..1)
 ## speed          mieluisin uistimen nopeus (m/s) [paras, sallittu poikkeama]
 ## detect         havaintoetäisyys (m) – tummassa humusvedessä kala vaistoaa uistimen värinän
 ## aggression     iskuherkkyys
@@ -30,7 +30,7 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.25], [4, 0.6], [7, 1.0], [12, 0.6], [17, 0.9], [21, 0.8], [24, 0.25]],
 		"season": [1.0, 0.7],
-		"lures": {"lusikka": 1.0, "vaappu": 0.9, "syvavaappu": 0.5, "lippa": 0.45, "jigi": 0.5, "pilkki": 0.3, "tasuri": 0.8},
+		"lures": {"lusikka": 1.0, "vaappu": 0.9, "syvavaappu": 0.5, "lippa": 0.45, "jigi": 0.5, "pilkki": 0.3, "tasuri": 0.8, "koho": 0.05, "pohja": 0.08},
 		"speed": [0.9, 0.6],
 		"detect": 10.0,
 		"aggression": 0.9,
@@ -49,7 +49,7 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.05], [5, 0.4], [9, 1.0], [15, 1.0], [20, 0.5], [23, 0.05], [24, 0.05]],
 		"season": [1.0, 0.8],
-		"lures": {"lusikka": 0.5, "vaappu": 0.5, "syvavaappu": 0.4, "lippa": 1.0, "jigi": 0.95, "pilkki": 1.0, "tasuri": 0.85},
+		"lures": {"lusikka": 0.5, "vaappu": 0.5, "syvavaappu": 0.4, "lippa": 1.0, "jigi": 0.95, "pilkki": 1.0, "tasuri": 0.85, "koho": 0.8, "pohja": 0.6},
 		"speed": [0.6, 0.5],
 		"detect": 6.0,
 		"aggression": 1.4,
@@ -68,7 +68,7 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.2], [5, 0.7], [10, 1.0], [16, 0.9], [21, 0.6], [24, 0.2]],
 		"season": [1.0, 0.7],
-		"lures": {"lusikka": 0.04, "vaappu": 0.03, "syvavaappu": 0.02, "lippa": 0.2, "jigi": 0.15, "pilkki": 1.0, "tasuri": 0.12},
+		"lures": {"lusikka": 0.04, "vaappu": 0.03, "syvavaappu": 0.02, "lippa": 0.2, "jigi": 0.15, "pilkki": 1.0, "tasuri": 0.12, "koho": 1.0, "pohja": 0.8},
 		"speed": [0.25, 0.35],
 		"detect": 4.0,
 		"aggression": 0.6,
@@ -87,7 +87,7 @@ const DATA := {
 		"bottom": true,
 		"activity": [[0, 0.6], [5, 0.8], [10, 0.6], [16, 0.6], [21, 0.9], [24, 0.6]],
 		"season": [1.0, 1.1],
-		"lures": {"lusikka": 0.04, "vaappu": 0.02, "syvavaappu": 0.05, "lippa": 0.15, "jigi": 0.55, "pilkki": 1.0, "tasuri": 0.3},
+		"lures": {"lusikka": 0.04, "vaappu": 0.02, "syvavaappu": 0.05, "lippa": 0.15, "jigi": 0.55, "pilkki": 1.0, "tasuri": 0.3, "koho": 0.7, "pohja": 1.0},
 		"speed": [0.15, 0.35],
 		"detect": 3.0,
 		"aggression": 1.0,
@@ -106,7 +106,7 @@ const DATA := {
 		"bottom": true,
 		"activity": [[0, 0.7], [4, 1.0], [8, 0.5], [16, 0.4], [20, 0.9], [24, 0.7]],
 		"season": [1.0, 0.35],
-		"lures": {"lusikka": 0.02, "vaappu": 0.01, "syvavaappu": 0.02, "lippa": 0.04, "jigi": 0.08, "pilkki": 0.7, "tasuri": 0.04},
+		"lures": {"lusikka": 0.02, "vaappu": 0.01, "syvavaappu": 0.02, "lippa": 0.04, "jigi": 0.08, "pilkki": 0.7, "tasuri": 0.04, "koho": 0.9, "pohja": 1.0},
 		"speed": [0.1, 0.3],
 		"detect": 4.0,
 		"aggression": 0.35,
@@ -126,7 +126,7 @@ const DATA := {
 		"activity": [[0, 1.0], [5, 0.6], [8, 0.15], [16, 0.15], [20, 0.7], [24, 1.0]],
 		"season": [0.25, 1.6],
 		"light_shy": true,
-		"lures": {"lusikka": 0.05, "vaappu": 0.03, "syvavaappu": 0.08, "lippa": 0.05, "jigi": 0.3, "pilkki": 1.0, "tasuri": 0.5},
+		"lures": {"lusikka": 0.05, "vaappu": 0.03, "syvavaappu": 0.08, "lippa": 0.05, "jigi": 0.3, "pilkki": 1.0, "tasuri": 0.5, "koho": 0.3, "pohja": 1.0},
 		"speed": [0.1, 0.3],
 		"detect": 5.0,
 		"aggression": 0.7,

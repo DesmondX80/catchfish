@@ -228,8 +228,12 @@ func _start_fast() -> void:
 func _next_lure() -> void:
 	_press("reel", false)
 	_press("reel_fast", false)
-	if _lure + 1 < main.fishing.lures().size():
-		_start_lure(_lure + 1)
+	var next := _lure + 1
+	var list: Array = main.fishing.lures()
+	while next < list.size() and not list[next]["kind"] in ["sink", "dive"]:
+		next += 1 # syöttivälineet testataan tiedostossa bait_test.gd
+	if next < list.size():
+		_start_lure(next)
 	else:
 		for l in _log:
 			print(l)

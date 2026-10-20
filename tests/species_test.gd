@@ -20,6 +20,8 @@ func _ready() -> void:
 	var summer_spoon := _trial(false, "lusikka", 0.85, 0.0, 10.0, "kesä, lusikka, klo 10")
 	var summer_jig := _trial(false, "jigi", 0.4, 0.3, 10.0, "kesä, jigi, klo 10")
 	var summer_night := _trial(false, "pilkki", 0.15, 0.3, 23.0, "kesä, toukka, klo 23")
+	var summer_float := _trial(false, "koho", 0.0, 0.0, 9.0, "kesä, koho-onki + mato, klo 9")
+	var summer_bottom := _trial(false, "pohja", 0.0, 0.0, 21.0, "kesä, pohjaonki + mato, klo 21")
 	var winter_day := _trial(true, "pilkki", 0.15, 0.3, 12.0, "talvi, pilkki + toukka, klo 12")
 	var winter_night := _trial(true, "pilkki", 0.15, 0.3, 21.0, "talvi, pilkki + toukka, klo 21")
 
@@ -28,6 +30,9 @@ func _ready() -> void:
 	_check("made syö talvella pimeällä (yöllä %d, päivällä %d)" % [winter_night.get("made", 0), winter_day.get("made", 0)], winter_night.get("made", 0) > winter_day.get("made", 0))
 	_check("made on talven kala (talviyö %d, kesäyö %d)" % [winter_night.get("made", 0), summer_night.get("made", 0)], winter_night.get("made", 0) > summer_night.get("made", 0) * 2)
 	_check("lahna on harvinainen saalis (talvipilkillä %.0f %%)" % _share(winter_day, ["lahna"]), _share(winter_day, ["lahna"]) < 15.0)
+	_check("kesällä koho-ongella saa särkikaloja (särki + lahna %.0f %%)" % _share(summer_float, ["sarki", "lahna"]), _share(summer_float, ["sarki", "lahna"]) > 30.0)
+	_check("hauki ei juuri syö matoa (%.0f %%)" % _share(summer_float, ["hauki"]), _share(summer_float, ["hauki"]) < 10.0)
+	_check("pohjaongella saa kiiskeä ja lahnaa (%d + %d)" % [summer_bottom.get("kiiski", 0), summer_bottom.get("lahna", 0)], summer_bottom.get("kiiski", 0) > 0 and summer_bottom.get("lahna", 0) > 0)
 	_check("jokainen laji on saatavissa jollakin tavalla", Species.DATA.keys().all(func(sp): return [summer_spoon, summer_jig, summer_night, winter_day, winter_night].any(func(r): return r.get(sp, 0) > 0)))
 	for l in _log:
 		print(l)
@@ -69,6 +74,8 @@ func _trial(winter: bool, lure_id: String, speed: float, twitch: float, hour: fl
 		tries += 1
 		var bottom := lake.depth_at(p.x, p.y)
 		var depth := bottom - 0.3 if winter else _rng.randf_range(0.4, bottom - 0.1)
+		if lure_id == "pohja":
+			depth = maxf(0.3, bottom - 0.5) # pohjaongen mato puolen metrin korkeudella
 		var idx := pop.check_lure(p, depth, speed, twitch, lure, hour, 3.0, 5.0, 0.3)
 		if idx >= 0:
 			var sp: String = pop.fish[idx]["sp"]

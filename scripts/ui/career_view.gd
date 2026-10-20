@@ -166,7 +166,7 @@ func show_shop() -> void:
 	_clear()
 	_title("Kalastustarvikeliike")
 	_label("Rahaa: %s" % _eur(Career.money), 18)
-	for group in [["Avovesi (virveli)", Lures.LIST], ["Talvi (pilkki)", Lures.ICE]]:
+	for group in [["Avovesi (virveli ja onki)", Lures.LIST], ["Talvi (pilkki)", Lures.ICE]]:
 		_label(group[0], 16, Color(0.95, 0.85, 0.45))
 		for l in group[1]:
 			var row := HBoxContainer.new()

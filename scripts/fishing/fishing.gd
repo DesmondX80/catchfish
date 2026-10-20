@@ -52,7 +52,7 @@ const ROD_VARS := [
 	"_stamina", "_run_timer", "_run_dir", "_run_intensity", "_slack_time",
 	"_landing_prompt", "_fish_known", "_rod_pivot", "_rod_pitch", "_rod_mesh", "_rod_points",
 	"_tip_world", "_bend", "_bend_vel", "_bend_dir", "_reel_handle", "_line_mesh",
-	"_lure_node", "_fish_node",
+	"_lure_node", "_fish_node", "_bobber_node", "_worm_node", "float_depth",
 ]
 
 var boat: Boat
@@ -135,6 +135,18 @@ var _bend_dir := Vector3.DOWN
 var _reel_handle: Node3D
 var _line_mesh: ImmediateMesh
 var _lure_node: MeshInstance3D
+var _bobber_node: Node3D # koho-ongen koho
+var _worm_node: MeshInstance3D # ongen mato koukussa
+static var _worm_mesh: ArrayMesh
+## Koho-ongen syötin syvyys kohon alla (F/G, vain ennen heittoa)
+var float_depth := 1.0
+const FLOAT_DEPTH_MIN := 0.3
+const FLOAT_DEPTH_MAX := 4.0
+## Syöttitärppi: kala nykii syöttiä ensin, ja koho painuu pinnan alle vasta
+## tämän verran ennen kuin kala päästää irti – vastaisku vasta silloin
+const BAIT_SINK_TIME := 1.0
+const BOTTOM_BAIT_HEIGHT := 0.5 # m: pohjaongen mato pohjan yläpuolella
+const BOTTOM_BAIT_MIN_DEPTH := 0.3 # m: matalassa mato pysyy pinnan alla
 var _fish_node: MeshInstance3D
 
 
@@ -166,6 +178,11 @@ func lure() -> Dictionary:
 	if list.is_empty():
 		return (Lures.ICE if on_ice else Lures.LIST)[0] # vain ulkonäköä varten
 	return list[lure_index % list.size()]
+
+
+## Syöttiväline (koho- tai pohjaonki, mato)
+func bait() -> bool:
+	return lure()["kind"] in ["bobber", "bottom"]
 
 
 func lure_count() -> int:
@@ -279,6 +296,11 @@ func _save_rod() -> void:
 ## Vavan muuttuja ilman vaihtoa
 func _rod_get(i: int, v: String) -> Variant:
 	return get(v) if i == _cur else _rods[i][v]
+
+
+## Toinen vapa on piilossa jäällä (pilkillä on yksi vapa)
+func _rods_hidden_on_ice() -> bool:
+	return on_ice and _cur > 0
 
 
 func _set_rod_visible(i: int, on: bool) -> void:
@@ -450,7 +472,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				state = State.CHARGING
 				power = 0.0
 			State.BITE:
-				_try_hook(0.85, "Vastaisku!")
+				if bait() and not on_ice and _bite_timer > BAIT_SINK_TIME:
+					_msg("Liian aikaisin – kala vasta maistelee!")
+					_try_hook(0.3, "Vastaisku!")
+				else:
+					_try_hook(0.85, "Vastaisku!")
 			State.FIGHT:
 				if _landing_prompt:
 					_try_land()
@@ -472,6 +498,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	elif event.is_action_pressed("twitch") and state == State.RETRIEVING and not lure_on_land:
 		line_out = maxf(0.0, line_out - 0.5)
 		_twitch = 1.0
+	elif (event.is_action_pressed("float_deeper", true) or event.is_action_pressed("float_shallower", true)) and lure()["kind"] == "bobber" and not on_ice:
+		# Koho siirretään siimalla oikeaan kohtaan ennen heittoa
+		if state != State.READY and state != State.LANDED:
+			message.emit("Kohon syvyyden voi säätää vain ennen heittoa")
+			return
+		var step := 0.1 if event.is_action_pressed("float_deeper", true) else -0.1
+		float_depth = clampf(snappedf(float_depth + step, 0.1), FLOAT_DEPTH_MIN, FLOAT_DEPTH_MAX)
+		message.emit("Kohon syvyys %.1f m" % float_depth)
 	elif event.is_action_pressed("drag_up", true):
 		drag_kg = minf(10.0, drag_kg + 0.25)
 	elif event.is_action_pressed("drag_down", true):
@@ -489,6 +523,10 @@ func _physics_process(dt: float) -> void:
 	elif alert_rod() >= 0:
 		_swap_to(alert_rod())
 	_update_aim(dt)
+	# Onkiessa kamera katsoo kohoa läheltä
+	camera_rig.bobber_view = held >= 0 and _bobber_node.visible and state in [State.RETRIEVING, State.BITE]
+	if camera_rig.bobber_view:
+		camera_rig.bobber_pos = _bobber_pos()
 
 
 # --- Heiton tähtäin ------------------------------------------------------------
@@ -754,7 +792,13 @@ func _retrieve(dt: float) -> void:
 				_bend_vel += 3.0 # vavan kärki nykäisee
 				sound_event.emit("bite_tick", rod_tip())
 				voice.emit("bite")
-				_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
+				if bait():
+					# Kala maistelee matoa ensin: koho nykii, vavan kärki värähtää
+					_bite_timer = BAIT_SINK_TIME + _rng.randf_range(0.8, 2.0)
+					_bend_vel -= 2.0
+					_msg("R = ota vapa käteen – kala maistelee matoa" if in_holder else ("Koho nykii... odota, että se uppoaa!" if lure()["kind"] == "bobber" else "Vavan kärki nykii... odota!"))
+				else:
+					_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
 	_prev_lure = lure_pos
 
 	if line_out < 1.0 or tip.distance_to(lure_pos) < 1.0:
@@ -863,7 +907,16 @@ func _lure_depth_dynamics(dt: float) -> void:
 	var l := lure()
 	var depth := lure_depth()
 	var bottom := lake.depth_at(lure_pos.x, lure_pos.z)
-	if l["kind"] == "sink" and l.has("run_depth") and lure_speed > RUN_MIN_SPEED:
+	if l["kind"] == "bobber":
+		# Koho-onki: mato roikkuu kohon alla; vedettäessä koho laahaa sitä
+		# lähempänä pintaa
+		var target := float_depth if lure_speed < 0.25 else minf(float_depth, 0.4)
+		depth = move_toward(depth, target, (l["sink"] if target > depth else 0.6) * dt)
+	elif l["kind"] == "bottom":
+		# Pohjaonki: paino on pohjassa, ja mato leijuu tafsin päässä
+		# noin puolen metrin korkeudella pohjasta
+		depth = move_toward(depth, maxf(BOTTOM_BAIT_MIN_DEPTH, bottom - BOTTOM_BAIT_HEIGHT), l["sink"] * dt)
+	elif l["kind"] == "sink" and l.has("run_depth") and lure_speed > RUN_MIN_SPEED:
 		# Lusikka: levossa vajoaa pohjaan, kelatessa ja uistellessa ui
 		# uintisyvyydessään – syvältä se nousee sinne hiljalleen.
 		# Nopeasti kelattaessa se ui matalammalla.
@@ -903,7 +956,21 @@ func _lure_depth_dynamics(dt: float) -> void:
 
 
 func _bite(dt: float) -> void:
+	var before := _bite_timer
 	_bite_timer -= dt
+	if bait() and not on_ice:
+		# Syötti: kala nykii, ja lopuksi vie syötin (koho painuu pinnan alle)
+		if _rng.randf() < 3.0 * dt:
+			_bend_vel += 1.5
+		if before > BAIT_SINK_TIME and _bite_timer <= BAIT_SINK_TIME:
+			_bend_vel += 4.0
+			sound_event.emit("bite_tick", rod_tip())
+			_msg(("KOHO UPPOSI!" if lure()["kind"] == "bobber" else "SIIMA KIRISTYY!") + (" R = ota vapa käteen" if in_holder else " Vastaisku – vasen hiiri!"))
+		if _reel_speed() > 0.0 and _bite_timer < 0.4:
+			_try_hook(0.45, "Kala tarttui kelatessa!")
+		elif _bite_timer <= 0.0:
+			_try_hook(0.25 if in_holder else 0.1, "Kala koukuttui itse!")
+		return
 	if not on_ice:
 		lure_pos += Vector3(_rng.randf_range(-1, 1), 0, _rng.randf_range(-1, 1)) * dt * 0.5
 	if _reel_speed() > 0.0 and _bite_timer < 0.4:
@@ -1198,6 +1265,12 @@ func _build_rod_visuals() -> void:
 	_lure_node.mesh = lure_mesh
 	_lure_node.top_level = true
 	add_child(_lure_node)
+	_build_bobber()
+	_worm_node = MeshInstance3D.new()
+	_worm_node.mesh = _worm()
+	_worm_node.top_level = true
+	_worm_node.visible = false
+	add_child(_worm_node)
 
 	_fish_node = MeshInstance3D.new()
 	_fish_node.top_level = true
@@ -1208,6 +1281,16 @@ func _build_rod_visuals() -> void:
 
 func _update_visuals() -> void:
 	_lure_node.global_position = lure_pos
+	# Ongen syötti (mato) ei näy veden alla; vavan kärjessä se roikkuu koukussa
+	var shown := not (bait() and lure_pos.y < -0.02 and state in [State.RETRIEVING, State.BITE, State.FIGHT]) and not _rods_hidden_on_ice()
+	_lure_node.visible = shown and not bait()
+	_worm_node.visible = shown and bait()
+	if _worm_node.visible:
+		var t := Time.get_ticks_msec() / 1000.0 + _cur * 1.7
+		_worm_node.global_transform = Transform3D(Basis(Vector3.UP, t * 0.8) * Basis(Vector3.RIGHT, sin(t * 2.3) * 0.25), lure_pos)
+	_bobber_node.visible = lure()["kind"] == "bobber" and not on_ice and not lure_on_land and state in [State.RETRIEVING, State.BITE, State.FIGHT]
+	if _bobber_node.visible:
+		_bobber_node.global_position = _bobber_pos()
 	_draw_rod()
 	_draw_line()
 
@@ -1327,6 +1410,109 @@ func _draw_rod() -> void:
 	_rod_mesh.surface_end()
 
 
+## Koho pinnalla syötin yläpuolella. Tärpissä koho nykii ja lopuksi painuu
+## pinnan alle; väsytyksessä kala vetää sen pinnan alle.
+func _bobber_pos() -> Vector3:
+	var y := 0.0
+	if state == State.BITE:
+		if _bite_timer > BAIT_SINK_TIME:
+			y = -absf(sin(_bite_timer * 17.0)) * 0.03 # nykii
+		else:
+			y = -0.18 # upposi
+	elif state == State.FIGHT:
+		y = -0.25
+	return Vector3(lure_pos.x, y, lure_pos.z)
+
+
+## Mato koukussa: kaareva, kapeneva putki, jossa tummempi vyö. Roikkuu
+## kiinnityskohdasta (origo) alaspäin noin 7 cm.
+static func _worm() -> ArrayMesh:
+	if _worm_mesh:
+		return _worm_mesh
+	var st := SurfaceTool.new()
+	st.begin(Mesh.PRIMITIVE_TRIANGLES)
+	var rings := 24
+	var sides := 8
+	var length := 0.075
+	var points := []
+	for i in rings + 1:
+		var u := float(i) / rings
+		# Mato on puolivälistä koukussa: molemmat päät roikkuvat ja kiemurtelevat
+		var y := -length * absf(u * 2.0 - 1.0) * 0.6 - 0.004 # keskeltä koukussa, päät roikkuvat
+		var x := (u - 0.5) * 0.035 + sin(u * PI * 3.0) * 0.006
+		var z := cos(u * PI * 2.0) * 0.005
+		points.append(Vector3(x, y, z))
+	var pink := Color(0.78, 0.42, 0.42)
+	var band := Color(0.6, 0.28, 0.3)
+	var prev := []
+	for i in points.size():
+		var u := float(i) / rings
+		var a: Vector3 = points[maxi(i - 1, 0)]
+		var b: Vector3 = points[mini(i + 1, points.size() - 1)]
+		var dir := (b - a).normalized()
+		var side := dir.cross(Vector3.FORWARD).normalized()
+		if side.length() < 0.1:
+			side = dir.cross(Vector3.UP).normalized()
+		var up := side.cross(dir).normalized()
+		var r := 0.0032 * clampf(minf(u, 1.0 - u) * 6.0, 0.35, 1.0) # kapenevat päät
+		var col := band if absf(u - 0.3) < 0.05 else pink.darkened(0.1 * sin(u * 60.0)) # vyö ja renkaat
+		var ring := []
+		for k in sides:
+			var ang := TAU * k / sides
+			var n := side * cos(ang) + up * sin(ang)
+			ring.append([points[i] + n * r, n, col])
+		if i > 0:
+			for k in sides:
+				var k2 := (k + 1) % sides
+				for v in [prev[k], ring[k], ring[k2], prev[k], ring[k2], prev[k2]]:
+					st.set_color(v[2])
+					st.set_normal(v[1])
+					st.add_vertex(v[0])
+		prev = ring
+	var mat := StandardMaterial3D.new()
+	mat.vertex_color_use_as_albedo = true
+	mat.roughness = 0.35 # kostea pinta
+	mat.cull_mode = BaseMaterial3D.CULL_DISABLED
+	st.set_material(mat)
+	_worm_mesh = st.commit()
+	return _worm_mesh
+
+
+## Koho: punainen yläpää, valkoinen alapää ja keltainen tikku. Hieman
+## oikeaa isompi, jotta sen näkee pelikamerasta heittomatkan päästä.
+func _build_bobber() -> void:
+	_bobber_node = Node3D.new()
+	_bobber_node.scale = Vector3.ONE * 2.2
+	_bobber_node.top_level = true
+	_bobber_node.visible = false
+	add_child(_bobber_node)
+	for part in [[Color(0.9, 0.12, 0.08), 0.012], [Color(0.95, 0.95, 0.92), -0.012]]:
+		var mi := MeshInstance3D.new()
+		var sphere := SphereMesh.new()
+		sphere.radius = 0.022
+		sphere.height = 0.04
+		var mat := StandardMaterial3D.new()
+		mat.albedo_color = part[0]
+		sphere.material = mat
+		mi.mesh = sphere
+		mi.position = Vector3(0, part[1], 0)
+		mi.scale = Vector3(1.0, 0.7, 1.0)
+		_bobber_node.add_child(mi)
+	var stick := MeshInstance3D.new()
+	var cyl := CylinderMesh.new()
+	cyl.top_radius = 0.003
+	cyl.bottom_radius = 0.003
+	cyl.height = 0.08
+	var yellow := StandardMaterial3D.new()
+	yellow.albedo_color = Color(1.0, 0.85, 0.1)
+	yellow.emission_enabled = true
+	yellow.emission = Color(0.5, 0.4, 0.0) # erottuu kaukaakin
+	cyl.material = yellow
+	stick.mesh = cyl
+	stick.position = Vector3(0, 0.06, 0)
+	_bobber_node.add_child(stick)
+
+
 ## Siima vavan kärjestä uistimelle (tai kalalle):
 ## - roikkuma riippuu jännityksestä (kireä siima on suora)
 ## - ylimääräinen siima (siimaa ulkona enemmän kuin välimatka) roikkuu kaarella
@@ -1335,7 +1521,8 @@ func _draw_rod() -> void:
 func _draw_line() -> void:
 	_line_mesh.clear_surfaces()
 	var tip := rod_tip()
-	var span := tip.distance_to(lure_pos)
+	var end := _bobber_pos() if _bobber_node.visible else lure_pos # koho-ongella siima kohoon (kohon alla oleva siima ei näy)
+	var span := tip.distance_to(end)
 	if span < 0.02:
 		return
 	var in_water := state in [State.RETRIEVING, State.BITE, State.FIGHT] and not lure_on_land
@@ -1345,7 +1532,7 @@ func _draw_line() -> void:
 	var tension_n := tension * 9.81 + 0.25
 	var sag := maxf(LINE_WEIGHT * span * span / (8.0 * tension_n), sqrt(3.0 * span * excess / 8.0))
 	sag = minf(sag, span * 0.45)
-	var chord := lure_pos - tip
+	var chord := end - tip
 	var flat := Vector3(chord.x, 0, chord.z)
 	var perp := Vector3(-flat.z, 0, flat.x).normalized() if flat.length() > 0.01 else Vector3.ZERO
 	var wind := weather.vector()
@@ -1356,7 +1543,7 @@ func _draw_line() -> void:
 	for i in n + 1:
 		var t := float(i) / n
 		var hump := 4.0 * t * (1.0 - t)
-		var p := tip.lerp(lure_pos, t)
+		var p := tip.lerp(end, t)
 		p.y -= sag * hump
 		p += perp * bow * hump
 		if in_water:
@@ -1364,9 +1551,10 @@ func _draw_line() -> void:
 				entry_t = t
 			if entry_t >= 0.0:
 				var u := (t - entry_t) / maxf(1.0 - entry_t, 0.001)
-				p.y = maxf(p.y, lerpf(0.0, lure_pos.y, u)) # pinnalta suoraan uistimelle
+				p.y = maxf(p.y, lerpf(0.0, end.y, u)) # pinnalta suoraan uistimelle
 		_line_mesh.surface_add_vertex(p)
 	_line_mesh.surface_end()
+
 
 
 
