@@ -66,6 +66,12 @@ var in_holder := false
 var held := 0
 var _rods: Array[Dictionary] = []
 var _holders: Node3D
+## Heiton tähtäin: {point, water, distance, ground} heittoa ladatessa, muuten tyhjä
+var cast_preview: Dictionary = {}
+var _aim_marker: MeshInstance3D
+var _aim_material: StandardMaterial3D
+var _aim_arc: ImmediateMesh
+var _aim_arc_node: MeshInstance3D
 var _cur := 0 # vapa, jonka tila on nyt muuttujissa
 ## Talvi: pilkkiminen avannosta (jäällä ei heitetä, vaan kairataan reikä)
 var on_ice := false
@@ -479,6 +485,88 @@ func _physics_process(dt: float) -> void:
 		_swap_to(held)
 	elif alert_rod() >= 0:
 		_swap_to(alert_rod())
+	_update_aim(dt)
+
+
+# --- Heiton tähtäin ------------------------------------------------------------
+
+## Heittoa ladatessa: arvio osumapisteestä (sama lentofysiikka kuin heitossa)
+func _update_aim(dt: float) -> void:
+	var aiming := held >= 0 and state == State.CHARGING and not on_ice
+	_aim_marker.visible = aiming
+	_aim_arc_node.visible = aiming
+	_aim_arc.clear_surfaces()
+	if not aiming:
+		cast_preview = {}
+		return
+	var pos := rod_tip()
+	var vel := _cast_velocity()
+	var step_dt := maxf(dt, 1.0 / 60.0)
+	var points := PackedVector3Array([pos])
+	var water := false
+	for i in 600:
+		var step := _flight_step(pos, vel, step_dt)
+		pos = step[0]
+		vel = step[1]
+		if i % 3 == 0:
+			points.append(pos)
+		if lake.is_water(pos.x, pos.z):
+			if pos.y <= 0.0:
+				pos.y = 0.0
+				water = true
+				break
+		elif pos.y <= lake.height_at(pos.x, pos.z):
+			pos.y = lake.height_at(pos.x, pos.z)
+			break
+	points.append(pos)
+	var ground := -1 if water else lake.ground_at(pos.x, pos.z)
+	var distance := Vector2(pos.x - boat.pos.x, pos.z - boat.pos.y).length()
+	cast_preview = {"point": pos, "water": water, "distance": distance, "ground": ground}
+	var color := Color(0.35, 0.95, 0.9) if water else Color(1.0, 0.45, 0.15)
+	_aim_material.albedo_color = color
+	# Rengas kallistuu kameraa kohti, jotta se erottuu matalalta katsottuna
+	# kaukaakin (vaakasuora rengas näkyisi vain viivana)
+	var to_cam := (camera_rig.camera.global_position - pos).normalized()
+	var normal := Vector3.UP.lerp(to_cam, 0.8).normalized()
+	var size := 0.6 + distance * 0.035
+	_aim_marker.global_transform = Transform3D(Basis(Quaternion(Vector3.UP, normal)).scaled(Vector3.ONE * size), pos + Vector3(0, size * 0.7, 0))
+	# Lentorata katkoviivana
+	_aim_arc.surface_begin(Mesh.PRIMITIVE_LINES)
+	_aim_arc.surface_set_color(Color(color, 0.85))
+	for i in range(0, points.size() - 1, 2):
+		_aim_arc.surface_add_vertex(points[i])
+		_aim_arc.surface_add_vertex(points[i + 1])
+	_aim_arc.surface_end()
+
+
+func _build_aim() -> void:
+	_aim_material = StandardMaterial3D.new()
+	_aim_material.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	_aim_material.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_aim_material.no_depth_test = true # näkyy aaltojen ja kaislojen läpi
+	_aim_marker = MeshInstance3D.new()
+	var ring := TorusMesh.new()
+	ring.inner_radius = 0.8
+	ring.outer_radius = 1.0
+	ring.rings = 24
+	ring.material = _aim_material
+	_aim_marker.mesh = ring
+	_aim_marker.top_level = true
+	_aim_marker.visible = false
+	_aim_marker.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	add_child(_aim_marker)
+	_aim_arc = ImmediateMesh.new()
+	_aim_arc_node = MeshInstance3D.new()
+	_aim_arc_node.mesh = _aim_arc
+	_aim_arc_node.top_level = true
+	_aim_arc_node.visible = false
+	_aim_arc_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	var arc_mat := StandardMaterial3D.new()
+	arc_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	arc_mat.vertex_color_use_as_albedo = true
+	arc_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	_aim_arc_node.material_override = arc_mat
+	add_child(_aim_arc_node)
 
 
 func _process_rod(dt: float, in_hand: bool) -> void:
@@ -550,9 +638,7 @@ func _aim_angler(dt: float) -> void:
 
 
 func _cast() -> void:
-	var dir := camera_rig.aim_direction()
-	var speed: float = 6.0 + 20.0 * power * (0.7 + 0.3 * lure()["cast"])
-	_lure_vel = Vector3(dir.x * cos(CAST_ANGLE), sin(CAST_ANGLE), dir.y * cos(CAST_ANGLE)) * speed
+	_lure_vel = _cast_velocity()
 	lure_pos = rod_tip()
 	_bend_vel -= 9.0 * power # vapa ponnahtaa suoraksi ja kärki värähtää
 	sound_event.emit("cast_swish", rod_tip())
@@ -561,12 +647,27 @@ func _cast() -> void:
 	lure_on_land = false
 
 
-func _fly(dt: float) -> void:
+## Uistimen lento: painovoima ja ilmanvastus tuulen suhteen. Palauttaa
+## [paikka, nopeus]. Sama laskenta ennustaa heiton osumapisteen (tähtäin).
+func _flight_step(pos: Vector3, vel: Vector3, dt: float) -> Array:
 	var wind := weather.vector()
-	var rel := _lure_vel - Vector3(wind.x, 0, wind.y)
+	var rel := vel - Vector3(wind.x, 0, wind.y)
 	var k: float = 0.014 / lure()["cast"]
-	_lure_vel += (Vector3(0, -GRAVITY, 0) - rel * rel.length() * k) * dt
-	lure_pos += _lure_vel * dt
+	vel += (Vector3(0, -GRAVITY, 0) - rel * rel.length() * k) * dt
+	return [pos + vel * dt, vel]
+
+
+## Heiton alkunopeus nykyisellä heittovoimalla ja kameran suuntaan
+func _cast_velocity() -> Vector3:
+	var dir := camera_rig.aim_direction()
+	var speed: float = 6.0 + 20.0 * power * (0.7 + 0.3 * lure()["cast"])
+	return Vector3(dir.x * cos(CAST_ANGLE), sin(CAST_ANGLE), dir.y * cos(CAST_ANGLE)) * speed
+
+
+func _fly(dt: float) -> void:
+	var step := _flight_step(lure_pos, _lure_vel, dt)
+	lure_pos = step[0]
+	_lure_vel = step[1]
 	line_out = rod_tip().distance_to(lure_pos)
 	var ground := lake.height_at(lure_pos.x, lure_pos.z)
 	var in_water := lake.is_water(lure_pos.x, lure_pos.z)
@@ -997,6 +1098,7 @@ func _lose_lure(text: String) -> void:
 
 func _build_visuals() -> void:
 	_build_auger()
+	_build_aim()
 	_landing_net = LandingNet.new()
 	add_child(_landing_net)
 	_landing_net.setup(boat)

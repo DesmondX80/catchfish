@@ -204,7 +204,7 @@ func help_text(start_hint := true) -> String:
 		"",
 		"KALASTUS",
 		"  Hiiri        kameran ja heittosuunnan kääntö, rulla = zoomaus",
-		"  Vasen hiiri  pidä pohjassa = heittovoima, päästä = heitto",
+		"  Vasen hiiri  pidä pohjassa = heittovoima (rengas näyttää osumapisteen), päästä = heitto",
 		"               tärpätessä vastaisku, väsytyksen lopussa haavinta",
 		"  Oikea hiiri  kelaa (Shift = nopeasti)",
 		"  Välilyönti   nykäisy (jigi, lippa)",
@@ -400,6 +400,11 @@ func _process(delta: float) -> void:
 			info += "\nKairataan reikää... %d %%" % int(fishing.power * 100.0)
 		Fishing.State.CHARGING:
 			info += "\nHeittovoima..."
+			var aim: Dictionary = fishing.cast_preview
+			if not aim.is_empty():
+				info += "  noin %.0f m" % aim["distance"]
+				if not aim["water"]:
+					info += {LakeData.Ground.REEDS: " – KAISLIKKOON!", LakeData.Ground.FOREST: " – PUSIKKOON!"}.get(aim["ground"], " – RANTAAN!")
 		Fishing.State.FLYING:
 			info += "\nUistin lentää – siimaa %.0f m" % fishing.line_out
 		Fishing.State.RETRIEVING, Fishing.State.BITE:

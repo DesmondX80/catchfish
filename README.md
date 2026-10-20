@@ -21,7 +21,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | Q | perämoottori käyntiin / sammuksiin (sammuksissa soudetaan) |
 | X | ankkuri alas / ylös |
 | Hiiri | kameran ja heittosuunnan kääntö, rulla = zoomaus |
-| Vasen hiiri | pidä = heittovoima, päästä = heitto; tärpätessä vastaisku; lopuksi haavinta |
+| Vasen hiiri | pidä = heittovoima (tähtäin näyttää osumapisteen), päästä = heitto; tärpätessä vastaisku; lopuksi haavinta |
 | Oikea hiiri | kelaa (Shift = nopeasti) |
 | Välilyönti | nykäisy |
 | E / C | jarru kireämmälle / löysemmälle |
