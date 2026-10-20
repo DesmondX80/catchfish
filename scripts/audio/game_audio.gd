@@ -5,7 +5,7 @@ extends Node
 ## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py.
 
 const DIR := "res://assets/sounds/"
-const LOOPS := ["wind_loop", "water_lap_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
+const LOOPS := ["wind_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
 const MAX_ONE_SHOTS := 24
 
 ## Kertaäänet: [voimakkuus dB, unit_size (m), sävelkorkeuden satunnaisuus]
@@ -39,7 +39,8 @@ var lake: LakeData
 var _streams := {}
 var _wind: AudioStreamPlayer
 var _rain: AudioStreamPlayer
-var _lap: AudioStreamPlayer3D
+var _lap: AudioStreamPlayer3D # tyyni liplatus
+var _waves: AudioStreamPlayer3D # tuulinen aallokko
 var _motor: AudioStreamPlayer3D
 var _reel: AudioStreamPlayer3D
 var _drag: AudioStreamPlayer3D
@@ -85,6 +86,8 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 
 	_lap = _attached_loop("water_lap_loop", 6.0)
 	_lap.play()
+	_waves = _attached_loop("water_waves_loop", 8.0)
+	_waves.play()
 	_motor = _attached_loop("motor_loop", 20.0)
 	_reel = _attached_loop("reel_loop", 3.0)
 	_drag = _attached_loop("drag_loop", 4.0)
@@ -142,9 +145,17 @@ func _process(delta: float) -> void:
 	elif _rain.playing:
 		_rain.stop()
 
-	# Laineet veneen kyljessä: aallokon ja vauhdin mukaan
-	var lap := 0.0 if boat.on_ice else clampf(0.25 + Waves.strength * 0.8 + boat.velocity.length() * 0.08, 0.0, 1.0)
+	# Vesi veneen kyljessä: tyynellä pientä liplatusta, tuulen voimistuessa
+	# aallot loiskivat ja pärskyvät. Liikkuva vene voimistaa molempia.
+	var speed := boat.velocity.length()
+	var s := Waves.strength
+	var lap := clampf(0.35 + speed * 0.08, 0.0, 0.8) * (1.0 - 0.75 * s)
+	var waves := clampf(s * 1.15 - 0.1, 0.0, 1.0) * (1.0 + speed * 0.05)
+	if boat.on_ice:
+		lap = 0.0
+		waves = 0.0
 	_lap.volume_db = linear_to_db(maxf(lap, 0.0001)) - 6.0
+	_waves.volume_db = linear_to_db(maxf(waves, 0.0001)) - 4.0
 
 	# Moottori: kierrokset kaasun mukaan, käynnistyksen jälkeen pehmeä aloitus
 	if boat.motor_running:

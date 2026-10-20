@@ -5,9 +5,11 @@ Kaikki äänet tehdään tässä itse, joten niissä ei ole lisenssirajoituksia.
 Toistuvat taustaäänet (*_loop) on tehty taajuustasossa, jolloin ne ovat
 jaksollisia ja toistuvat saumattomasti.
 
-Käyttö: python3 tools/make_sounds.py
+Käyttö: python3 tools/make_sounds.py            (kaikki äänet)
+        python3 tools/make_sounds.py NIMI ...   (vain nimetyt, esim. water_waves_loop)
 """
 import os
+import sys
 import wave
 
 import numpy as np
@@ -130,19 +132,74 @@ def wind_loop():
     return (base + 0.15 * whistle) * gust
 
 
+def soft_burst(g, seconds, lo, hi, attack, decay, slope=1.5):
+    """Vesiloiske: suodatettua kohinaa pehmeällä alulla (ei sävelkorkeutta,
+    jottei ääni soi metallisesti)."""
+    n = int(seconds * SR)
+    t = np.arange(n) / SR
+    rise = np.sin(np.clip(t / attack, 0, 1) * np.pi / 2) ** 2
+    env = rise * np.exp(-np.clip(t - attack, 0, None) / decay)
+    return filtered(g.standard_normal(n), band(lo, hi, slope)) * env
+
+
+def periodic_noise(g, seconds, shape):
+    """Jaksollinen muotoiltu kohina omalla satunnaislukugeneraattorilla."""
+    n = int(seconds * SR)
+    spectrum = np.fft.rfft(g.standard_normal(n))
+    spectrum *= shape(np.maximum(np.fft.rfftfreq(n, 1 / SR), 1.0))
+    out = np.fft.irfft(spectrum, n)
+    return out / (np.max(np.abs(out)) + 1e-9)
+
+
 def water_lap_loop():
-    """Pienet laineet läiskähtävät veneen kylkeen."""
-    seconds = 10.0
-    out = np.zeros(int(seconds * SR))
+    """Tyyni vesi: pientä liplatusta veneen kyljessä ja hiljaista kuplintaa."""
+    g = np.random.default_rng(11)
+    seconds = 12.0
+    t = t_axis(seconds)
+    out = np.zeros(len(t))
     time = 0.0
     while time < seconds:
-        slap = splash_burst(0.5, 250, 2200, attack=0.015, decay=rng.uniform(0.08, 0.22))
-        glug = damped_sine(rng.uniform(110, 190), 0.3, 0.08, glide=0.8)
-        place(out, mix(slap, 0.35 * glug), time, rng.uniform(0.4, 1.0), wrap=True)
-        for _ in range(rng.integers(0, 3)):
-            place(out, drop(f0=rng.uniform(900, 1500), f1=rng.uniform(1800, 2800)), time + rng.uniform(0.05, 0.3), 0.25, wrap=True)
-        time += rng.uniform(0.35, 1.1)
-    return out + 0.08 * shaped_noise(seconds, band(200, 1500))
+        gain = g.uniform(0.3, 0.8)
+        lap = soft_burst(g, 0.5, g.uniform(300, 600), g.uniform(1500, 3200), g.uniform(0.02, 0.05), g.uniform(0.06, 0.15))
+        place(out, lap, time, gain, wrap=True)
+        if g.random() < 0.35:  # kaksoisliplatus
+            place(out, soft_burst(g, 0.4, 400, 2800, 0.02, 0.08), time + g.uniform(0.08, 0.16), gain * 0.6, wrap=True)
+        for _ in range(g.integers(0, 3)):  # pienet kuplat
+            bubble = soft_burst(g, 0.05, 1500, g.uniform(3000, 4500), 0.001, g.uniform(0.008, 0.02), slope=3)
+            place(out, bubble, time + g.uniform(0.05, 0.4), 0.12, wrap=True)
+        time += g.uniform(0.25, 0.8)
+    # Hiljainen solina, joka vaihtelee hitaasti (kokonaislukumäärä jaksoja -> saumaton)
+    trickle = periodic_noise(g, seconds, band(300, 2500)) * (0.7 + 0.3 * np.sin(2 * np.pi * 3 * t / seconds))
+    return out + 0.05 * trickle
+
+
+def water_waves_loop():
+    """Tuulinen järvi: aallot loiskivat veneen kylkeen, runko tömähtää ja
+    kovalla tuulella vaahtopäät suhisevat."""
+    g = np.random.default_rng(12)
+    seconds = 16.0
+    t = t_axis(seconds)
+    out = np.zeros(len(t))
+    period = seconds / 6  # aallonharjat noin 2,7 s välein
+    for k in range(6):
+        arrive = k * period + g.uniform(-0.3, 0.3)
+        # Aallon runko: matala, hitaasti nouseva loiske
+        body = soft_burst(g, 1.2, g.uniform(80, 150), g.uniform(700, 1200), g.uniform(0.08, 0.15), g.uniform(0.35, 0.6))
+        place(out, body, arrive, g.uniform(0.8, 1.0), wrap=True)
+        # Pärske: harja hajoaa kylkeen
+        spray = soft_burst(g, 0.8, 600, 4000, 0.01, g.uniform(0.15, 0.3))
+        place(out, spray, arrive + g.uniform(0.05, 0.15), g.uniform(0.3, 0.6), wrap=True)
+        # Rungon pehmeä tömähdys
+        if g.random() < 0.7:
+            place(out, soft_burst(g, 0.3, 60, 260, 0.008, 0.09, slope=2), arrive + 0.04, 0.5, wrap=True)
+        # Välissä pienempiä loiskeita
+        for _ in range(g.integers(1, 4)):
+            small = soft_burst(g, 0.5, 250, 2500, 0.03, g.uniform(0.08, 0.2))
+            place(out, small, arrive + g.uniform(0.6, period - 0.3), g.uniform(0.2, 0.45), wrap=True)
+    swell = 0.6 + 0.4 * np.sin(2 * np.pi * 6 * t / seconds - 1.2)  # aallokon kohina aaltojen tahdissa
+    bed = periodic_noise(g, seconds, lambda f: band(80, 1200)(f) / np.sqrt(f / 80)) * swell
+    foam = periodic_noise(g, seconds, band(2000, 7000)) * (0.5 + 0.5 * np.sin(2 * np.pi * 4 * t / seconds))
+    return out + 0.35 * bed + 0.12 * foam
 
 
 def rain_loop():
@@ -387,7 +444,7 @@ def record_chime():
     return out
 
 
-def main():
+def main(only=None):
     loops = {
         'wind_loop': wind_loop, 'water_lap_loop': water_lap_loop, 'motor_loop': motor_loop,
         'reel_loop': reel_loop, 'drag_loop': drag_loop,
@@ -400,6 +457,16 @@ def main():
         'record_chime': record_chime, 'bird_chaffinch': chaffinch_song, 'bird_great_tit': great_tit_call,
         'bird_loon': loon_call,
     }
+    if only:
+        # Vain nimetyt äänet: muut tiedostot pysyvät ennallaan
+        waves = {'water_waves_loop': water_waves_loop}
+        for name in only:
+            fn = loops.get(name) or waves.get(name)
+            if fn:
+                save(name, fn(), fades=False)
+            else:
+                save(name, sounds[name]())
+        return
     for name, fn in loops.items():
         save(name, fn(), fades=False)
     for name, fn in sounds.items():
@@ -408,7 +475,8 @@ def main():
     save('rain_loop', rain_loop(), fades=False)
     save('ice_drill', ice_drill())
     save('snow_step', snow_step())
+    save('water_waves_loop', water_waves_loop(), fades=False)
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])

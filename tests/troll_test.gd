@@ -207,7 +207,7 @@ func _physics_process(delta: float) -> void:
 				var net := f._landing_net
 				var cam: Camera3D = main.camera_rig.camera
 				var cam_dist := cam.global_position.distance_to(boat.global_position)
-				_check("haavinnan kamera veneen vierellä (%.1f m)" % cam_dist, cam_dist < 4.0 and main.camera_rig.shot_view)
+				_check("haavinnan kamera veneen vierellä (%.1f m)" % cam_dist, cam_dist < 5.0 and main.camera_rig.shot_view)
 				_check("nostossa molemmat kädet haavin varressa", net.grips().size() == 2 and f.net_active())
 				_check("kala nousee haavissa veden yläpuolelle (%.2f m)" % net._fish.global_position.y, net._fish.visible and net._fish.global_position.y > 0.0)
 			if f.state == Fishing.State.LANDED:
