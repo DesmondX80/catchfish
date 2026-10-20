@@ -21,6 +21,7 @@ var rocks: Array = []
 var places: Array = [] # [{name, x, z}]
 var starts: Array = [] # aloituspaikat: [{id, name, description, x, z, yaw_deg, dock_length}]
 var start_index := 0
+var docks: Array = [] # laiturien kannet törmäystarkistukseen: [{center, x_axis, z_axis, half}]
 var buildings: Array = [] # [{points: [[x, z], ...], height}]
 var towers: Array = []
 
@@ -51,6 +52,7 @@ static func load_from(dir: String) -> LakeData:
 	lake.starts = meta.get("starts", [meta["start"]])
 	lake.buildings = meta.get("buildings", [])
 	lake.towers = meta.get("towers", [])
+	lake._build_docks()
 
 	lake.heights = FileAccess.get_file_as_bytes(dir.path_join("heights.bin")).to_float32_array()
 	lake.water = FileAccess.get_file_as_bytes(dir.path_join("water.bin"))
@@ -67,6 +69,58 @@ func select_start(index: int) -> void:
 	start_position = Vector3(s["x"], 0.0, s["z"])
 	start_yaw = deg_to_rad(s["yaw_deg"])
 	dock_length = s.get("dock_length", 10.0)
+
+
+## Laiturin kannen keskilinja laiturin paikallisessa x:ssä: laituri on veneen vasemmalla kyljellä
+static func dock_side_x(width: float) -> float:
+	return -1.1 - width / 2.0
+
+
+## Laiturin suunta: laituri jatkuu veneeltä paikallisen +Z:n suuntaan rantaan
+static func dock_yaw(s: Dictionary) -> float:
+	return deg_to_rad(s.get("dock_yaw_deg", s["yaw_deg"]))
+
+
+## Laiturien kannet suorakulmioina ylhäältä katsottuna (sama mitoitus kuin
+## lake_world.gd:n laiturimallissa: kansi alkaa 2 m veneen keulan puolelta)
+func _build_docks() -> void:
+	docks.clear()
+	for s in starts:
+		var yaw := dock_yaw(s)
+		var length: float = s.get("dock_length", 10.0)
+		var width: float = s.get("dock_width", 1.8)
+		var x_axis := Vector2(cos(yaw), -sin(yaw))
+		var z_axis := Vector2(sin(yaw), cos(yaw))
+		var center := Vector2(s["x"], s["z"]) + x_axis * dock_side_x(width) + z_axis * (length / 2.0 - 2.0)
+		docks.append({"center": center, "x_axis": x_axis, "z_axis": z_axis, "half": Vector2(width / 2.0, length / 2.0)})
+
+
+## Lyhin siirtymä, jolla piste p pääsee ulos laiturin kannen alta (nolla, jos ei ole sen alla)
+func dock_push(p: Vector2) -> Vector2:
+	var best := Vector2.ZERO
+	for d in docks:
+		var local: Vector2 = p - d["center"]
+		var lx := local.dot(d["x_axis"])
+		var lz := local.dot(d["z_axis"])
+		var half: Vector2 = d["half"]
+		var dx := half.x - absf(lx)
+		var dz := half.y - absf(lz)
+		if dx <= 0.0 or dz <= 0.0:
+			continue
+		var push: Vector2 = d["x_axis"] * signf(lx) * dx if dx < dz else d["z_axis"] * signf(lz) * dz
+		if push.length() > best.length():
+			best = push
+	return best
+
+
+## Laiturin kannen kulmat (kärjen kulmat osuvat veneen kylkeen ennen kuin
+## mikään rungon ääriviivan piste on kannen alla)
+func dock_corners(d: Dictionary) -> Array:
+	var half: Vector2 = d["half"]
+	var ax: Vector2 = d["x_axis"] * half.x
+	var az: Vector2 = d["z_axis"] * half.y
+	var c: Vector2 = d["center"]
+	return [c + ax + az, c + ax - az, c - ax + az, c - ax - az]
 
 
 func world_size() -> Vector2:

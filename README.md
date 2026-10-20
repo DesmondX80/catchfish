@@ -37,6 +37,8 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 
 - **Vene**: oma vesifysiikka (työntövoima, vastus, sivuttaisvastus), tuuli
   ajelehdittaa, ankkuri pitää paikallaan, matalikolla vene osuu pohjaan.
+  Laituriin vene kolahtaa ja pysähtyy, viistossa törmäyksessä se liukuu
+  laituria pitkin.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti

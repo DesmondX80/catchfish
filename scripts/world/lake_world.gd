@@ -403,9 +403,8 @@ func _build_dock() -> void:
 			_build_ramp(dock, s)
 
 
-## Laiturin suunta: rakennettu laituri jatkuu veneeltä paikallisen +Z:n suuntaan rantaan
 func _dock_yaw(s: Dictionary) -> float:
-	return deg_to_rad(s.get("dock_yaw_deg", s["yaw_deg"]))
+	return LakeData.dock_yaw(s)
 
 
 ## Laituri: kansi paaluilla. Leveä laituri saa tiheämmät paalut ja kaiteet.
@@ -423,7 +422,7 @@ func _dock(at: Vector3, yaw: float, length: float, width := 1.8) -> Node3D:
 	box.material = mat
 	deck.mesh = box
 	# Vene on laiturin vieressä, laituri jatkuu taaksepäin rantaan
-	var side_x := -1.1 - width / 2.0 # laituri veneen vasemmalla kyljellä
+	var side_x := LakeData.dock_side_x(width) # laituri veneen vasemmalla kyljellä; törmäyslaatikko: LakeData.docks
 	deck.position = Vector3(side_x, 0.55, length / 2.0 - 2.0)
 	dock.add_child(deck)
 	var post_mesh := CylinderMesh.new()

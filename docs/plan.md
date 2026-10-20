@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 20.10.2026. Nykyinen versio **0.23.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.0)).
+Päivitetty 20.10.2026. Nykyinen versio **0.23.1** (release tekemättä; edellinen
+[v0.23.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,11 +10,11 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.23)
+### Valmiina (versiot 0.1–0.23.1)
 
 | Alue | Ominaisuudet |
 |---|---|
-| Vene | Oma vesifysiikka, soutu ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus |
+| Vene | Oma vesifysiikka, soutu ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
 | Maailma | MML-aineistosta tehty järvi ja maasto, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
@@ -42,7 +42,6 @@ tunnisteita (CATCHFISH-N).
 
 | # | Tehtävä | Prioriteetti | Huomio |
 |---|---|---|---|
-| 30 | Vene menee laitureiden läpi | kiireellinen | Laitureille törmäystarkistus veneen fysiikkaan |
 | 29 | Kalat eivät saa näkyä vedessä | korkea | FishVisuals näyttää kalat veden alla; humusvedessä niitä ei pitäisi nähdä (koukussa oleva kala näkyy jo vasta tunnistettaessa) |
 | 17 | Hauki seuraa uistinta | korkea | Näkyvä seuranta veneelle asti, isku viime hetkellä. Huom. ristiriita #29:n kanssa: seuraava kala näkyy vain lähellä pintaa/venettä |
 
@@ -104,7 +103,8 @@ Peruttu: #21 Tuulikellunta ja uistinankkuri.
 | `scripts/fishing/species.gd` | Lajien ominaisuudet |
 | `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
 | `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
-| `scripts/boat/` | Vene, kalastaja, kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
+| `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
+| `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja, kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
 | `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta |
 | `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
@@ -118,6 +118,7 @@ godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet
 godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunnistus, haavinta
 godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
+godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen äänet
@@ -141,6 +142,20 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 4. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
    GitHub-release suomenkielisin julkaisutiedoin ja exe liitteenä →
    **tehtävä Planessa *Done***.
+
+## Edistyminen tämän suunnitelman jälkeen
+
+- **#30 Vene menee laitureiden läpi – korjattu (0.23.1).** Laiturien kannet ovat
+  törmäyssuorakulmioita (`LakeData.docks`, sama mitoitus kuin laiturimallissa).
+  Veneen rungon ääriviivaa verrataan niihin joka fysiikka-askeleella: runko
+  työnnetään irti kannesta, laituria kohti oleva nopeus pysähtyy ja vene liukuu
+  laituria pitkin; kovasta törmäyksestä kolahdus ja viesti. Samalla korjattiin
+  aloituspaikat, joissa vene oli asetettu osittain laiturin kannen alle (vene
+  siirtyy alussa noin 0,4 m irti laiturista). Testi `--docktest`.
+  Release (Windows-vienti ja GitHub-release) ja Planen tila ovat vielä tekemättä.
+
+Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
+seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).
 
 ## Huomioita ja avoimia kysymyksiä
 

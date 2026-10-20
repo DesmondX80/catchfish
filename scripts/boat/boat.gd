@@ -57,6 +57,12 @@ func setup(lake_data: LakeData, weather_node: Weather) -> void:
 	weather = weather_node
 	pos = Vector2(lake.start_position.x, lake.start_position.z)
 	yaw = lake.start_yaw
+	# Aloituspaikan suunta voi poiketa laiturin suunnasta: vene laiturin viereen, ei kannen alle
+	for i in 10:
+		var push := _dock_push(pos, yaw)
+		if push == Vector2.ZERO:
+			break
+		pos += push * 1.05
 	_build_visuals()
 	_apply_transform()
 
@@ -216,6 +222,7 @@ func _physics_process(dt: float) -> void:
 	yaw = wrapf(yaw + yaw_rate * dt, -PI, PI)
 
 	var new_pos := pos + velocity * dt
+	new_pos += _dock_collision(new_pos)
 	var old_clearance := _min_depth(pos, yaw)
 	var new_clearance := _min_depth(new_pos, yaw)
 	if new_clearance < DRAFT and new_clearance < old_clearance:
@@ -236,7 +243,69 @@ func _physics_process(dt: float) -> void:
 	_apply_transform()
 
 
-## Pienin syvyys keulassa, keskellä ja perässä
+## Rungon ääriviiva ylhäältä (paikallinen x oikealle, y perään), samat mitat kuin _hull_mesh
+const OUTLINE: Array[Vector2] = [
+	Vector2(0.0, -2.2), Vector2(0.4, -1.8), Vector2(0.68, -1.0), Vector2(0.76, 0.0),
+	Vector2(0.72, 1.2), Vector2(0.62, 2.2), Vector2(-0.62, 2.2), Vector2(-0.72, 1.2),
+	Vector2(-0.76, 0.0), Vector2(-0.68, -1.0), Vector2(-0.4, -1.8),
+]
+
+
+## Rungon ääriviiva maailmassa
+func _outline(p: Vector2, heading: float) -> PackedVector2Array:
+	var side := Vector2(cos(heading), -sin(heading))
+	var back := Vector2(sin(heading), cos(heading))
+	var poly := PackedVector2Array()
+	for o in OUTLINE:
+		poly.append(p + side * o.x + back * o.y)
+	return poly
+
+
+## Siirtymä, jolla runko kohdassa p pääsee irti laitureista: syvin rungon piste
+## laiturin kannen alla tai syvin laiturin kulma rungon sisällä
+func _dock_push(p: Vector2, heading: float) -> Vector2:
+	var best := Vector2.ZERO
+	var poly := _outline(p, heading)
+	for v in poly:
+		var push := lake.dock_push(v)
+		if push.length() > best.length():
+			best = push
+	for d in lake.docks:
+		var half: Vector2 = d["half"]
+		if p.distance_to(d["center"]) > half.length() + LENGTH:
+			continue
+		for corner in lake.dock_corners(d):
+			if not Geometry2D.is_point_in_polygon(corner, poly):
+				continue
+			# Rungon lähin reuna siirtyy kulman kohdalle
+			var nearest := Vector2.ZERO
+			for i in poly.size():
+				var edge := Geometry2D.get_closest_point_to_segment(corner, poly[i], poly[(i + 1) % poly.size()])
+				if nearest == Vector2.ZERO or (corner - edge).length() < nearest.length():
+					nearest = corner - edge
+			if nearest.length() > best.length():
+				best = nearest
+	return best
+
+
+## Laiturikosketus: runko työnnetään irti kannesta ja laituria kohti oleva
+## nopeus pysäytetään (hieman kimmoten), jolloin vene liukuu laituria pitkin.
+## Palauttaa siirtymän, joka lisätään uuteen paikkaan.
+func _dock_collision(new_pos: Vector2) -> Vector2:
+	var push := _dock_push(new_pos, yaw)
+	if push == Vector2.ZERO:
+		return push
+	var n := push.normalized()
+	var v_in := velocity.dot(n)
+	if v_in < 0.0:
+		if v_in < -0.4 and _bump_cooldown <= 0.0:
+			sound_event.emit("boat_bump", global_position)
+			if v_in < -1.0:
+				message.emit("Kolahdus! Vene törmäsi laituriin")
+			_bump_cooldown = 3.0
+		velocity -= n * v_in * 1.2
+		yaw_rate *= 0.6
+	return push
 func _min_depth(p: Vector2, heading: float) -> float:
 	var f := Vector2(-sin(heading), -cos(heading)) * LENGTH * 0.45
 	return minf(lake.depth_at(p.x + f.x, p.y + f.y), minf(lake.depth_at(p.x, p.y), lake.depth_at(p.x - f.x, p.y - f.y)))
