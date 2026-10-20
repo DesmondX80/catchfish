@@ -16,6 +16,8 @@ var _tension_bar: ProgressBar
 var _stamina_bar: ProgressBar
 var _message: Label
 var _message_timer := 0.0
+var _speech: Label # kalastajan repliikki tekstityksenä
+var _speech_timer := 0.0
 var _prompt: Label
 var _catch_panel: PanelContainer
 var _catch_label: Label
@@ -134,6 +136,17 @@ func _build() -> void:
 	_message.offset_left = -500
 	_message.offset_right = 500
 
+	_speech = Label.new()
+	_speech.add_theme_font_size_override("font_size", 22)
+	_speech.add_theme_color_override("font_color", Color(1.0, 0.95, 0.75))
+	_speech.add_theme_color_override("font_outline_color", Color.BLACK)
+	_speech.add_theme_constant_override("outline_size", 6)
+	_speech.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	add_child(_speech)
+	_speech.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP, Control.PRESET_MODE_KEEP_WIDTH, 130)
+	_speech.offset_left = -500
+	_speech.offset_right = 500
+
 	_prompt = Label.new()
 	_prompt.add_theme_font_size_override("font_size", 22)
 	_prompt.add_theme_color_override("font_color", Color(1.0, 0.9, 0.4))
@@ -231,6 +244,13 @@ func help_text(start_hint := true) -> String:
 	if lake.depth_estimated:
 		lines.append("Järven syvyys on arvioitu – tekoaltaasta ei ole avointa syvyysaineistoa.")
 	return "\n".join(lines)
+
+
+## Kalastajan repliikki tekstityksenä
+func show_speech(text: String) -> void:
+	_speech.text = "”%s”" % text
+	_speech_timer = 3.0
+	_speech.modulate.a = 1.0
 
 
 func show_message(text: String) -> void:
@@ -333,6 +353,9 @@ func _process(delta: float) -> void:
 	_message_timer -= delta
 	if _message_timer < 1.0:
 		_message.modulate.a = maxf(0.0, _message_timer)
+	_speech_timer -= delta
+	if _speech_timer < 1.0:
+		_speech.modulate.a = maxf(0.0, _speech_timer)
 
 	var motor := "Airot"
 	if boat.on_ice:

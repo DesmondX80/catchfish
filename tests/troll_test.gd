@@ -198,6 +198,7 @@ func _physics_process(delta: float) -> void:
 			if f.landing_ready() and not _identified:
 				_identified = true
 				_check("laji tunnistettiin veneen vieressä: %s" % f.fish_name(), f.fish_name() != "Kala")
+				_check("kalastaja huusi lajin: \"%s\"" % main.hud._speech.text, main.voice.last_line == "fish_" + f._fish["sp"])
 			if f.landing_ready() and f.fish_stamina() < 0.35:
 				_press("reel", false)
 				_tap("cast")

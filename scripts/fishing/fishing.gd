@@ -12,6 +12,9 @@ signal message(text: String)
 signal caught(entry: Dictionary, record: bool)
 signal sound_event(sound: String, at: Vector3)
 signal lure_lost(lure_id: String)
+## Kalastajan repliikin aihe (angler_voice.gd): bite, hooked, lost, snap, snag,
+## shore, landed, big, small, hole, fish_<laji> (laji tunnistettu)
+signal voice(event: String)
 
 enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED, DRILLING, LANDING }
 
@@ -684,6 +687,7 @@ func _fly(dt: float) -> void:
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
 		_leave_slack()
+		voice.emit("shore")
 		var g := lake.ground_at(lure_pos.x, lure_pos.z)
 		if (g == LakeData.Ground.FOREST or g == LakeData.Ground.REEDS) and _rng.randf() < 0.5:
 			snagged = true
@@ -749,6 +753,7 @@ func _retrieve(dt: float) -> void:
 				_bite_timer = _rng.randf_range(0.6, 1.0)
 				_bend_vel += 3.0 # vavan kärki nykäisee
 				sound_event.emit("bite_tick", rod_tip())
+				voice.emit("bite")
 				_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
 	_prev_lure = lure_pos
 
@@ -893,6 +898,7 @@ func _lure_depth_dynamics(dt: float) -> void:
 	if bottom > 0.0 and depth >= bottom - 0.06 and lure_speed > 0.15:
 		if _rng.randf() < l["snag"] * dt:
 			snagged = true
+			voice.emit("snag")
 			_msg("Pohjakiinni! Kelaa tai nykäise irti")
 
 
@@ -919,6 +925,7 @@ func _try_hook(chance: float, success_text: String) -> void:
 		_slack_time = 0.0
 		_landing_prompt = false
 		_fish_known = false
+		voice.emit("hooked")
 		_msg(success_text)
 	else:
 		population.spook(_fish_index)
@@ -1001,7 +1008,7 @@ func _fight(dt: float) -> void:
 	if _stamina > 0.3 and _fish_pos.y > -0.6 and (not on_ice or hole_dist < 0.3) and _rng.randf() < 0.08 * dt:
 		sound_event.emit("fish_splash", _fish_pos)
 		if Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).length() < IDENTIFY_SPLASH and not on_ice:
-			_fish_known = true
+			_recognize_fish()
 		_msg("%s rimpuilee pinnassa!" % fish_name())
 		if tension < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
@@ -1023,8 +1030,15 @@ func _identify_fish(hole_dist: float) -> void:
 		return
 	var near := hole_dist < 1.2 if on_ice else Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).length() < IDENTIFY_DISTANCE
 	if near and -_fish_pos.y < IDENTIFY_DEPTH:
-		_fish_known = true
-		_msg("Se on %s!" % Species.DATA[_fish["sp"]]["name"].to_lower())
+		_recognize_fish()
+
+
+## Laji tunnistettu: kalastaja huutaa sen ääneen ("Hauki!")
+func _recognize_fish() -> void:
+	if _fish_known:
+		return
+	_fish_known = true
+	voice.emit("fish_" + _fish["sp"])
 
 
 func _try_land() -> void:
@@ -1075,6 +1089,7 @@ func _lose_fish(text: String, lose_lure: bool) -> void:
 		_lose_lure(text)
 	else:
 		state = State.RETRIEVING
+		voice.emit("lost")
 		_msg(text)
 
 
@@ -1091,6 +1106,7 @@ func _lose_lure(text: String) -> void:
 			_lure_node.mesh.material.albedo_color = lure()["color"]
 	snagged = false
 	state = State.READY
+	voice.emit("snap")
 	_msg(text)
 
 
@@ -1401,6 +1417,7 @@ func _drill(dt: float) -> void:
 		_add_hole_visual(hole)
 		_auger.visible = false
 		state = State.READY
+		voice.emit("hole")
 		message.emit("Reikä valmis (jää %d cm) – vasen hiiri laskee pilkin" % _rng.randi_range(35, 55))
 
 
@@ -1438,6 +1455,7 @@ func _ice_retrieve(dt: float) -> void:
 			_bite_timer = _rng.randf_range(0.6, 1.0)
 			_bend_vel += 3.0 # vavan kärki nykäisee
 			sound_event.emit("bite_tick", tip)
+			voice.emit("bite")
 			message.emit("TÄRPPI! Vastaisku – vasen hiiri!")
 	if depth <= 0.01 and reel > 0.0 and line_out <= tip_to_hole + 0.01:
 		state = State.READY # pilkki ylhäällä
@@ -1522,6 +1540,8 @@ func _finish_landing() -> void:
 	_last_catch = _landing_entry
 	state = State.LANDED
 	caught.emit(_landing_entry, _landing_record)
+	var kg: float = _landing_entry["weight"]
+	voice.emit("big" if kg >= 2.0 or _landing_record else ("small" if kg < 0.08 else "landed"))
 
 
 func _place_fish_model(sp: String, len_m: float, xf: Transform3D, wiggle: float) -> void:

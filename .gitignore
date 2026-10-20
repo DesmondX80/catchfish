@@ -10,3 +10,6 @@ data/mml/*.tif
 data/mml/*.gpkg
 data/mml/*.aux.xml
 assets/lake/*.aux.xml
+
+# Piper-puhesynteesin äänimalli (tools/make_voice.py lataa)
+data/piper/

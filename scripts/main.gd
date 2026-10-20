@@ -74,6 +74,7 @@ func _on_start_selected(index: int) -> void:
 ## Kalareissun saalis saavissa (uramoodissa viedään kotiin säilöön)
 var trip_catch: Array = []
 var tub: CatchTub
+var voice: AnglerVoice
 
 
 func _start_game(start_index: int, career := false) -> void:
@@ -194,6 +195,9 @@ func _start_game(start_index: int, career := false) -> void:
 	audio = GameAudio.new()
 	add_child(audio)
 	audio.setup(boat, fishing, weather, sky, lake)
+	voice = AnglerVoice.new()
+	add_child(voice)
+	voice.setup(boat, fishing, weather, hud)
 
 	load_ms = Time.get_ticks_msec() - t0
 	running = true
@@ -221,6 +225,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/tub_test.gd").new())
 	elif "--casttest" in args:
 		add_child(load("res://tests/cast_test.gd").new())
+	elif "--voicetest" in args:
+		add_child(load("res://tests/voice_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

@@ -58,6 +58,9 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   uistimet kulkevat perässä omassa uintisyvyydessään. Tärpin tullessa vavan
   kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
   tärppäävän vavan käteen väsytettäväksi.
+- **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
+  repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
+  näkyy myös tekstityksenä.
 - **Väsytys**: kala ryntäilee ja lepää, jarru antaa siimaa, liian kireä
   jarru katkaisee siiman ja löysä siima päästää kalan irti. Kalan lajin
   näkee vasta, kun kala tulee tummassa humusvedessä näkyviin veneen
@@ -91,3 +94,8 @@ Raakadataa ei ole versionhallinnassa (`.gitignore`).
 
 Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 -aineistoa (CC BY 4.0).
+
+Kalastajan puhe on tehty Piper-puhesynteesillä suomenkielisellä
+fi_FI-harri-äänellä (opetusaineisto CC0). Repliikit voi tehdä uudelleen
+komennolla `python3 tools/make_voice.py` (vaatii uv:n) tai korvata omilla
+äänityksillä kansiossa `assets/sounds/voice/`.
