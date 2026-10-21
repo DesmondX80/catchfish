@@ -28,14 +28,16 @@ from make_sounds import OUT, SR, band, damped_sine, filtered, mix, place, rng, s
 
 SOURCES = os.path.join(os.path.dirname(__file__), '..', 'data', 'sounds')
 
-# Silmukat: nimi -> (lähde, alku s, loppu s, ylipäästö Hz, tavoite-RMS)
+# Silmukat: nimi -> (lähde, alku s, loppu s, ylipäästö Hz, alipäästö Hz, tavoite-RMS).
+# Pienten aaltojen nauhoitus on hiljainen ja sitä vahvistetaan paljon, jolloin
+# mp3-pakkauksen sihinä kuuluisi löylyn kihinänä: alipäästö poistaa sen.
 LOOPS = {
-    'water_lap_loop': ('waves_small_mcmikai_532179.mp3', 20.5, 40.5, 60, 0.077),
-    'water_waves_loop': ('waves_big_ali6868_384360.mp3', 38.5, 58.5, 40, 0.095),
-    'wind_light_loop': ('wind_light_kyles_454360.mp3', 43.0, 63.0, 25, 0.155),
-    'wind_strong_loop': ('wind_strong_teadrinker_403051.mp3', 21.5, 41.5, 25, 0.155),
-    'wind_light_winter_loop': ('wind_light_winter_mhcerberus_141143.mp3', 1.0, 15.5, 25, 0.155),
-    'wind_strong_winter_loop': ('wind_strong_winter_jpnien_97397.mp3', 1.0, 21.0, 40, 0.155),
+    'water_lap_loop': ('waves_small_mcmikai_532179.mp3', 20.5, 40.5, 60, 2500, 0.077),
+    'water_waves_loop': ('waves_big_ali6868_384360.mp3', 38.5, 58.5, 40, None, 0.095),
+    'wind_light_loop': ('wind_light_kyles_454360.mp3', 43.0, 63.0, 25, None, 0.155),
+    'wind_strong_loop': ('wind_strong_teadrinker_403051.mp3', 21.5, 41.5, 25, None, 0.155),
+    'wind_light_winter_loop': ('wind_light_winter_mhcerberus_141143.mp3', 1.0, 15.5, 25, None, 0.155),
+    'wind_strong_winter_loop': ('wind_strong_winter_jpnien_97397.mp3', 1.0, 21.0, 40, None, 0.155),
 }
 CROSSFADE = 1.0  # taustaäänten silmukan saumaan (s)
 
@@ -98,8 +100,10 @@ def main():
     save('motor_loop', loop, fades=False)
     save('motor_start', motor_start(loop))
     save('motor_stop', motor_stop(loop))
-    for name, (source, start, end, highpass, rms) in LOOPS.items():
+    for name, (source, start, end, highpass, lowpass, rms) in LOOPS.items():
         x = filtered(load(source), lambda f, hp=highpass: 1.0 / (1.0 + (hp / f) ** 4))
+        if lowpass:
+            x = filtered(x, lambda f, lp=lowpass: 1.0 / (1.0 + (f / lp) ** 4))
         save_rms(name, make_loop(x, start, end, CROSSFADE), rms)
 
 
