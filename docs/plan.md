@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.27.0** (release tekemättä; edellinen
-[v0.26.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.26.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.27.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.27.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -220,6 +220,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Kova pohja: kirkas kaiku ja toinen heijastus; muta: himmeä ja pehmeä;
   kasvillisuus: tupsuja pohjasta. Testi `--sonartest`. Uistin- ja onkitestien
   paikat rajattu enintään 4 m syvyisiin (syvänteessä uistin vajoaa liian syvälle).
+  Julkaistu [v0.27.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.27.0).
 
 Seuraavaksi suunnitelman mukaan #31 (potkuri osuu pohjaan alle metrin syvyydessä).
 
