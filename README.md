@@ -104,6 +104,9 @@ Raakadataa ei ole versionhallinnassa (`.gitignore`).
 Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 -aineistoa (CC BY 4.0).
 
+Kalastajahahmo on Quaterniuksen "Adventurer"-malli (CC0, ks.
+`assets/characters/LICENSE.txt`).
+
 Kalastajan puhe on tehty Piper-puhesynteesillä suomenkielisellä
 fi_FI-harri-äänellä (opetusaineisto CC0). Repliikit voi tehdä uudelleen
 komennolla `python3 tools/make_voice.py` (vaatii uv:n) tai korvata omilla

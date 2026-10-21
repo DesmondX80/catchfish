@@ -233,12 +233,16 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/bait_test.gd").new())
 	elif "--docktest" in args:
 		add_child(load("res://tests/dock_test.gd").new())
+	elif "--anglertest" in args:
+		add_child(load("res://tests/angler_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
 				add_child(load("res://tests/season_shot.gd").new())
 			if arg.begins_with("--screenshots="):
 				add_child(load("res://tests/screenshots.gd").new())
+			elif arg.begins_with("--anglershots="):
+				add_child(load("res://tests/angler_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):
 				add_child(load("res://tests/audio_preview.gd").new())
 

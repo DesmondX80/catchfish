@@ -874,7 +874,9 @@ func _update_rod(dt: float) -> void:
 	if axis.length() < 0.001:
 		axis = dir0.cross(Vector3.UP)
 	axis = axis.normalized()
-	_rod_points.clear()
+	# Uusi taulukko: pakatut taulukot jaetaan viittauksena, ja vavat vaihtavat
+	# muuttujiaan (ROD_VARS), joten clear() tyhjentäisi myös toisen vavan pisteet
+	_rod_points = PackedVector3Array()
 	var p := base
 	_rod_points.append(p)
 	for i in ROD_SEGMENTS:

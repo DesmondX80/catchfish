@@ -1,0 +1,7 @@
+adventurer.glb – "Adventurer" (Quaternius, https://quaternius.com)
+Lähde: Poly Pizza, https://poly.pizza/m/5EGWBMpuXq
+Lisenssi: CC0 1.0 (Public Domain), https://creativecommons.org/publicdomain/zero/1.0/
+
+Pelissä mallista on poistettu reppu, materiaalit on muutettu mattapintaisiksi,
+ja kalastajalle on lisätty lippalakki (kesä) sekä pilkkihaalarin värit, hihat
+ja pipo (talvi). Ks. scripts/boat/angler.gd.

@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 20.10.2026. Nykyinen versio **0.23.1** (release tekemättä; edellinen
-[v0.23.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.24.0** (release tekemättä; edellinen
+[v0.23.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.23.1)
+### Valmiina (versiot 0.1–0.24.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -26,6 +26,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori, kela, jarru, linnut, sade |
+| Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
 ### Tehtävänhallinta
@@ -64,7 +65,6 @@ tunnisteita (CATCHFISH-N).
 | # | Tehtävä |
 |---|---|
 | 37 | Veneen malli |
-| 32 | Hahmon parannus |
 | 39 | Kodan ulkoasu kodannäköiseksi |
 | 40 | Lintutornin ulkoasu |
 | 35 | Tuulisella säällä vaahtopäiset aallot |
@@ -104,7 +104,7 @@ Peruttu: #21 Tuulikellunta ja uistinankkuri.
 | `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
 | `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
 | `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
-| `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja, kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
+| `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja (malli `assets/characters/`, luut ohjataan `AnglerPoser`-muokkaimella animaation jälkeen), kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
 | `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta |
 | `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
@@ -119,6 +119,7 @@ godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunni
 godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
+godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen äänet
@@ -126,6 +127,7 @@ godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
+godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 ```
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
@@ -152,7 +154,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   laituria pitkin; kovasta törmäyksestä kolahdus ja viesti. Samalla korjattiin
   aloituspaikat, joissa vene oli asetettu osittain laiturin kannen alle (vene
   siirtyy alussa noin 0,4 m irti laiturista). Testi `--docktest`.
-  Release (Windows-vienti ja GitHub-release) ja Planen tila ovat vielä tekemättä.
+  Julkaistu [v0.23.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.23.1).
+- **#32 Hahmon parannus – tehty (0.24.0).** Palikkahahmon tilalle Quaterniuksen
+  riggattu "Adventurer"-malli (CC0, Poly Pizza). Asennot ja IK-kohteet ennallaan,
+  mutta raajat ohjataan luurangon luilla (`SkeletonModifier3D`) mallin oman
+  lepo-/kävelyanimaation päälle. Kesällä maastoasu ja lippalakki, talvella
+  pilkkihaalari (punamusta), hihat ja pipo; päähineen alta tukka leikataan
+  varjostimella (`shaders/hair_cut.gdshader`), parta jää. Mallin käsivarret ovat
+  lyhyet, joten kaukaiseen kohteeseen nivelet venyvät enintään 15 cm.
+  Samalla korjattiin vanha bugi: vavat jakoivat saman `_rod_points`-taulukon,
+  jolloin kädet hakeutuivat veneen pohjalla olevan varavavan kohdalle.
+  Testi `--anglertest`, kuvat `--anglershots`.
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).
