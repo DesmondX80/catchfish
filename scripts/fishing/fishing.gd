@@ -42,6 +42,14 @@ const ROD_COUNT := 2
 const IDENTIFY_DISTANCE := 6.0 # m veneestä
 const IDENTIFY_DEPTH := 1.5 # m
 const IDENTIFY_SPLASH := 15.0 # m: pinnassa rimpuileva kala tunnistetaan kauempaakin
+## Hauen seuranta (#17): osa kaukana veneestä tulevista hauen iskuista muuttuu
+## seurannaksi, ja seuraaja iskee yleensä viime hetkellä veneen vieressä
+const FOLLOW_CHANCE := 0.6
+const FOLLOW_MIN_DISTANCE := 7.0 # m: uistin vähintään näin kaukana vavan kärjestä
+const FOLLOW_STRIKE_CHANCE := 0.65 # iskee tasaisesti kelattuun uistimeen
+const FOLLOW_TWITCH_CHANCE := 0.45 # nykäisy veneen lähellä saa iskemään
+const FOLLOW_STOP_SPEED := 0.25 # m/s: kelaamatta tätä hitaampi uistin on pysähtynyt (vajoaa)
+const FOLLOW_FAST_SPEED := 1.3 # m/s: tätä nopeampaa hauki ei jaksa seurata
 ## Käyttämätön vapa veneen pohjalla vasemmalla laidalla, kärki keulaan
 const SPARE_ROD := Transform3D(Basis.IDENTITY, Vector3(-0.45, 0.27, 1.25))
 ## Vapakohtaiset muuttujat: tallennetaan vavan vaihtuessa
@@ -121,6 +129,8 @@ var _run_intensity := 0.0
 var _slack_time := 0.0
 var _landing_prompt := false
 var _fish_known := false # koukussa olevan kalan laji tunnistettu
+## Uistinta seuraava hauki: {rod, index, sp, weight, pos, heading, speed, ...}, tyhjä = ei seuraajaa
+var follower: Dictionary = {}
 var _last_catch: Dictionary = {}
 var _rng := RandomNumberGenerator.new()
 
@@ -644,6 +654,8 @@ func _process_rod(dt: float, in_hand: bool) -> void:
 			_bite(dt)
 		State.FIGHT:
 			_fight(dt)
+	if not follower.is_empty() and follower["rod"] == _cur:
+		_update_follow(dt)
 	_update_visuals()
 
 
@@ -781,28 +793,166 @@ func _retrieve(dt: float) -> void:
 		if not lake.is_water(lure_pos.x, lure_pos.z):
 			lure_on_land = true
 		_check_timer -= dt
-		if _check_timer <= 0.0:
+		# Seuraavan hauen aikana muut kalat eivät iske (hauki päättää itse)
+		if _check_timer <= 0.0 and not _following():
 			_check_timer = 0.2
 			var idx := population.check_lure(Vector2(lure_pos.x, lure_pos.z), lure_depth(), lure_speed, _twitch, lure(), sky.hour(), weather.speed(), 0.2, weather.cloud_cover)
 			if idx >= 0:
-				_fish_index = idx
-				_fish = population.fish[idx]
-				state = State.BITE
-				_bite_timer = _rng.randf_range(0.6, 1.0)
-				_bend_vel += 3.0 # vavan kärki nykäisee
-				sound_event.emit("bite_tick", rod_tip())
-				voice.emit("bite")
-				if bait():
-					# Kala maistelee matoa ensin: koho nykii, vavan kärki värähtää
-					_bite_timer = BAIT_SINK_TIME + _rng.randf_range(0.8, 2.0)
-					_bend_vel -= 2.0
-					_msg("R = ota vapa käteen – kala maistelee matoa" if in_holder else ("Koho nykii... odota, että se uppoaa!" if lure()["kind"] == "bobber" else "Vavan kärki nykii... odota!"))
+				if _may_follow(idx):
+					_start_follow(idx)
 				else:
-					_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
+					_start_bite(idx)
 	_prev_lure = lure_pos
 
 	if line_out < 1.0 or tip.distance_to(lure_pos) < 1.0:
 		state = State.READY
+
+
+## Tärppi: kala iskee uistimeen
+func _start_bite(idx: int) -> void:
+	_fish_index = idx
+	_fish = population.fish[idx]
+	state = State.BITE
+	_bite_timer = _rng.randf_range(0.6, 1.0)
+	_bend_vel += 3.0 # vavan kärki nykäisee
+	sound_event.emit("bite_tick", rod_tip())
+	voice.emit("bite")
+	if bait():
+		# Kala maistelee matoa ensin: koho nykii, vavan kärki värähtää
+		_bite_timer = BAIT_SINK_TIME + _rng.randf_range(0.8, 2.0)
+		_bend_vel -= 2.0
+		_msg("R = ota vapa käteen – kala maistelee matoa" if in_holder else ("Koho nykii... odota, että se uppoaa!" if lure()["kind"] == "bobber" else "Vavan kärki nykii... odota!"))
+	else:
+		_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
+
+
+# --- Hauki seuraa uistinta -----------------------------------------------------
+# Kun hauki iskisi kaukana veneestä heitellessä, se voi iskun sijaan lähteä
+# seuraamaan uistinta. Humusvedessä seuraaja näkyy vasta pinnan lähellä
+# veneen vieressä (fish.gdshader). Tasaisesti kelattuna hauki iskee yleensä
+# viime hetkellä veneen vieressä; nykäisy lähellä venettä houkuttelee iskuun.
+# Jos uistin pysähtyy tai sitä kelataan liian lujaa, hauki kääntyy pois.
+
+## Seuraako hauki tämän vavan uistinta
+func _following() -> bool:
+	return not follower.is_empty() and follower["rod"] == _cur and not follower["leaving"]
+
+
+func _may_follow(idx: int) -> bool:
+	if in_holder or bait() or on_ice or _cur != held or not follower.is_empty():
+		return false
+	if population.fish[idx]["sp"] != "hauki":
+		return false
+	var tip := rod_tip()
+	if Vector2(lure_pos.x - tip.x, lure_pos.z - tip.z).length() < FOLLOW_MIN_DISTANCE:
+		return false
+	return _rng.randf() < FOLLOW_CHANCE
+
+
+func _start_follow(idx: int) -> void:
+	var f: Dictionary = population.fish[idx]
+	var start := Vector3(f["pos"].x, -f["depth"], f["pos"].y)
+	follower = {
+		"rod": _cur,
+		"index": idx,
+		"sp": f["sp"],
+		"weight": f["weight"],
+		"pos": start.lerp(lure_pos, 0.5),
+		"heading": atan2(-(lure_pos.x - start.x), -(lure_pos.z - start.z)),
+		"speed": 0.5,
+		"last_lure": lure_pos,
+		"strike": _rng.randf() < FOLLOW_STRIKE_CHANCE, # iskeekö tasaisesti kelattuun
+		"strike_at": _rng.randf_range(1.6, 3.5), # m vavan kärjestä
+		"stopped": 0.0,
+		"fast": 0.0,
+		"twitched": false,
+		"seen": false,
+		"leaving": false,
+		"timer": 0.0,
+		"time": _rng.randf() * TAU,
+	}
+
+
+## Seuraajan liike ja päätökset (kutsutaan seurattavan vavan vuorolla)
+func _update_follow(dt: float) -> void:
+	var f := follower
+	if f["leaving"]:
+		# Kääntyy pois ja painuu syvemmälle, jolloin humusvesi kätkee sen
+		f["timer"] -= dt
+		var fwd := Vector3(-sin(f["heading"]), 0.0, -cos(f["heading"]))
+		f["speed"] = lerpf(f["speed"], 1.6, minf(1.0, dt * 3.0))
+		f["pos"] += fwd * f["speed"] * dt + Vector3.DOWN * 0.7 * dt
+		if f["timer"] <= 0.0:
+			follower = {}
+		return
+	if state != State.RETRIEVING or in_holder or snagged or lure_on_land:
+		_follow_leave("Hauki kääntyi pois veneen vierestä" if state == State.READY else "")
+		return
+	var motion: Vector3 = (lure_pos - f["last_lure"]) / maxf(dt, 0.001)
+	f["last_lure"] = lure_pos
+	var flat := Vector2(motion.x, motion.z)
+	var tip := rod_tip()
+	var to_tip := Vector2(lure_pos.x - tip.x, lure_pos.z - tip.z).length()
+	# Uistimen perässä: lähellä venettä hauki kirii aivan kiinni
+	var gap := lerpf(0.35, 1.1, clampf(to_tip / 10.0, 0.0, 1.0))
+	var back := Vector3(-flat.x, 0.0, -flat.y).normalized() if flat.length() > 0.05 else Vector3(-sin(f["heading"]), 0.0, -cos(f["heading"])) * -1.0
+	# Hauki kaartelee uistimen perässä puolelta toiselle, jolloin veneestä
+	# näkee sen kyljen eikä vain kuonoa
+	f["time"] += dt
+	var side := Vector3(back.z, 0.0, -back.x)
+	var target := lure_pos + back * gap + side * sin(f["time"] * 1.1) * 0.45 + Vector3.DOWN * 0.12
+	# Veneen lähellä hauki nousee uistimen perässä pinnan tuntumaan
+	target.y = lerpf(maxf(target.y, -0.6), target.y, clampf((to_tip - 3.0) / 7.0, 0.0, 1.0))
+	var bottom := lake.depth_at(target.x, target.z)
+	target.y = clampf(target.y, -maxf(0.2, bottom - 0.1), -0.08)
+	var before: Vector3 = f["pos"]
+	f["pos"] = before.lerp(target, minf(1.0, dt * 2.5))
+	var step: Vector3 = f["pos"] - before
+	f["speed"] = step.length() / maxf(dt, 0.001)
+	var look: Vector3 = lure_pos - f["pos"]
+	if Vector2(look.x, look.z).length() > 0.05:
+		f["heading"] = lerp_angle(f["heading"], atan2(-look.x, -look.z), minf(1.0, dt * 6.0))
+	# Näkyviin pinnan lähellä veneen vieressä
+	if not f["seen"] and f["pos"].y > -1.2 and to_tip < 8.0:
+		f["seen"] = true
+		_msg("Hauki seuraa uistinta! Kelaa tasaisesti")
+		voice.emit("fish_hauki")
+	# Väärä uistinliike: pysähdys (ei kelata, eikä uistin liiku) tai liian kova
+	# vauhti. Kelattaessa löysää siimaa hauki odottaa uistimen vieressä.
+	f["stopped"] = f["stopped"] + dt if lure_speed < FOLLOW_STOP_SPEED and _reel_speed() <= 0.0 else 0.0
+	f["fast"] = f["fast"] + dt if lure_speed > FOLLOW_FAST_SPEED else 0.0
+	if f["stopped"] > 0.8:
+		_follow_leave("Uistin pysähtyi – hauki kääntyi pois")
+		return
+	if f["fast"] > 1.2:
+		_follow_leave("Liian kova vauhti – hauki jäi jälkeen")
+		return
+	# Isku viime hetkellä, tai nykäisy veneen lähellä houkuttelee
+	var strike: bool = f["strike"] and to_tip < f["strike_at"]
+	if _twitch > 0.9 and not f["twitched"] and to_tip < 6.0:
+		f["twitched"] = true
+		strike = strike or _rng.randf() < FOLLOW_TWITCH_CHANCE
+	elif _twitch < 0.5:
+		f["twitched"] = false
+	if strike:
+		var idx: int = f["index"]
+		follower = {}
+		sound_event.emit("fish_splash", lure_pos)
+		_start_bite(idx)
+
+
+func _follow_leave(text: String) -> void:
+	follower["leaving"] = true
+	follower["timer"] = 2.0
+	follower["heading"] = follower["heading"] + PI + _rng.randf_range(-0.6, 0.6)
+	population.spook(follower["index"])
+	if text != "" and follower["seen"]:
+		_msg(text)
+
+
+## Vedessä näkyvät kalat (FishVisuals): vain uistinta seuraava hauki
+func visible_fish() -> Array:
+	return [] if follower.is_empty() else [follower]
 
 
 ## Piste vavalla annetun matkan päässä tyvestä (kalastajan kädet)

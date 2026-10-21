@@ -55,6 +55,10 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   kiiski, lahna ja made syövät mieluiten syöttiä, eli niitä saa parhaiten
   talvella pilkillä ja toukalla. Made on talven kala ja syö pimeällä. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
+- **Hauki seuraa uistinta**: hauki voi lähteä seuraamaan heitettyä uistinta
+  ja tulla näkyviin pinnan lähellä veneen vieressä. Kelaa tasaisesti, niin se
+  iskee usein viime hetkellä; nykäisy veneen lähellä houkuttelee. Jos uistin
+  pysähtyy tai kelaat liian lujaa, hauki kääntyy pois.
 - **Vetouistelu**: veneessä on kaksi vapaa. Heitä uistin veneen perään ja
   paina R, niin vapa menee perälaudan vapatelineeseen ja toinen vapa tulee
   käteen. Kun molemmat vavat ovat telineissä, soutele tai aja moottorilla:

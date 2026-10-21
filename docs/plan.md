@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.25.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.25.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.26.0** (release tekemättä; edellinen
+[v0.25.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.25.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.25.0)
+### Valmiina (versiot 0.1–0.26.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -22,7 +22,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Onki | Koho-onki (syvyys F/G ennen heittoa) ja pohjaonki (mato 0,5 m pohjasta), tärpissä koho nykii ja uppoaa, kamera zoomaa kohoon |
 | Heitto | Tähtäin näyttää osumapisteen (sama lentofysiikka kuin heitossa) ja varoittaa rantaan menevästä heitosta |
 | Talvi | Pilkkiminen avannosta: kairaus, pilkki ja tasapainopilkki, kävely jäällä |
-| Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Laji tunnistetaan vasta, kun kala näkyy veneen lähellä |
+| Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Moottori, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
@@ -41,10 +41,7 @@ tunnisteita (CATCHFISH-N).
 
 ### Kiireelliset ja korkeat (Todo)
 
-| # | Tehtävä | Prioriteetti | Huomio |
-|---|---|---|---|
-| 29 | Kalat eivät saa näkyä vedessä | korkea | FishVisuals näyttää kalat veden alla; humusvedessä niitä ei pitäisi nähdä (koukussa oleva kala näkyy jo vasta tunnistettaessa) |
-| 17 | Hauki seuraa uistinta | korkea | Näkyvä seuranta veneelle asti, isku viime hetkellä. Huom. ristiriita #29:n kanssa: seuraava kala näkyy vain lähellä pintaa/venettä |
+Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 ### Pelattavuus ja realismi (Todo)
 
@@ -118,6 +115,7 @@ godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunni
 godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
+godot --headless --fixed-fps 30 -- --day=180 --piketest     # kalat eivät näy, hauki seuraa uistinta
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -190,13 +188,24 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Pelin alussa kuulunut kohina poistettiin: tuuliäänet alkoivat täydellä
   voimakkuudella ennen ensimmäistä ruutua, nyt hiljaa ja tasot asetetaan heti.
   Julkaistu [v0.25.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.25.0).
+- **#29 Kalat eivät näy vedessä ja #17 Hauki seuraa uistinta – tehty (0.26.0).**
+  FishVisuals ei enää piirrä kalakantaa: vapaasti uivat kalat näkyvät vain
+  kaikuluotaimessa. Vedessä näkyy vain uistinta seuraava hauki (ja koukussa
+  oleva kala tunnistettaessa, kuten ennenkin). Kun hauki iskisi heitettyyn
+  uistimeen yli 7 m päässä vavan kärjestä, se lähtee 60 %:n todennäköisyydellä
+  seuraamaan: ui uistimen perässä puolelta toiselle kaarrellen ja nousee veneen
+  lähellä noin 0,6 m syvyyteen,
+  jolloin humusvesi ei enää kätke sitä ("Hauki seuraa uistinta!" ja kalastajan
+  huudahdus). Tasaisesti kelattuun uistimeen se iskee 65 %:n todennäköisyydellä
+  viime hetkellä 1,6–3,5 m päässä vavan kärjestä; nykäisy veneen lähellä
+  houkuttelee iskuun. Jos uistin pysähtyy (ei kelata, uistin alle 0,25 m/s) 0,8 s tai sitä kelataan
+  liian lujaa (yli 1,3 m/s), hauki kääntyy pois, painuu syvälle ja on hetken
+  varovainen. Muut kalat eivät iske seurannan aikana. Testi `--piketest`.
 
-Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
-seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).
+Seuraavaksi suunnitelman mukaan #31 (potkuri osuu pohjaan alle metrin syvyydessä).
 
 ## Huomioita ja avoimia kysymyksiä
 
 - **Järven syvyys on arvioitu** (enintään 4 m), koska tekoaltaasta ei ole avointa syvyysaineistoa (#10).
 - **Puhesynteesiääni** `fi_FI-harri`: opetusaineisto CC0, mutta malli on jatkokoulutettu lessac-äänestä, jonka ehdot ovat rajoitetummat. Jos peliä joskus jaetaan kaupallisesti, omat äänitykset ovat varmempi valinta.
-- **Kalojen näkyvyys (#29) ja hauen seuranta (#17)** pitää suunnitella yhdessä: kalat eivät saa näkyä humusvedessä, mutta seuraava hauki kannattaa näyttää, kun se on lähellä pintaa ja venettä.
 - **Vanhat uratallennukset** voivat sisältää kuhia ja taimenia (poistettu 0.18.0); ne voi yhä myydä.

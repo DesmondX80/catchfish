@@ -160,7 +160,7 @@ func _start_game(start_index: int, career := false) -> void:
 
 	fish_visuals = FishVisuals.new()
 	add_child(fish_visuals)
-	fish_visuals.setup(population, boat, fishing, lake)
+	fish_visuals.setup(fishing)
 
 	# Talvi: järvi jäässä, kävellään ja pilkitään
 	if season.frozen():
@@ -235,6 +235,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/dock_test.gd").new())
 	elif "--anglertest" in args:
 		add_child(load("res://tests/angler_test.gd").new())
+	elif "--piketest" in args:
+		add_child(load("res://tests/pike_follow_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
