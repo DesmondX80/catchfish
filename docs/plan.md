@@ -210,8 +210,11 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (pohjoisosa) syvenee 7 metriin, lounaispään syvänne padon lähellä lähes yhtä
   syväksi. Rannoilla vesi syvenee heti ~0,8 m:iin (laiturit ja aloituspaikat
   pysyvät ennallaan). Keskisyvyys 2,7 m. Pelin kartan värit skaalattu 7 m:iin.
-  Kaikuluotain piirtää kuvan sarakkeittain: kalan kaiku vinoetäisyydelle, jolloin
-  ylitetystä kalasta piirtyy kaari, väri voimakkuuden mukaan. Pohjan laatu
+  Kaikuluotain piirtää kuvan sarakkeittain (7 näytettä/s): kalan kaiku
+  vinoetäisyydelle, jolloin keilan läpi kulkevasta kalasta piirtyy kaari, väri
+  voimakkuuden mukaan. Kalakannan sijainnit muuttuvat harvakseltaan, joten
+  luotaimessa kalat uiskentelevat edestakaisin (±3 m, oma suunta ja tahti):
+  paikallaankin kalat piirtyvät kaarina eivätkä vaakaviivoina. Pohjan laatu
   (`LakeData.bottom_at`): kasvillisuus matalassa kaislikon lähellä ja laikkuina,
   kova pohja matalassa, jyrkissä rinteissä ja kivien lähellä, muuten muta.
   Kova pohja: kirkas kaiku ja toinen heijastus; muta: himmeä ja pehmeä;

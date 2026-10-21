@@ -3,7 +3,8 @@ extends Node
 ##   godot --headless --fixed-fps 30 -- --day=180 --sonartest [--sonartest-shots=KANSIO]
 ## Syvyydet tulevat korkeuskäyristä (syvin kohta noin 7 m), pohjan laatu
 ## vaihtelee (kova, muta, kasvillisuus) ja kalasta piirtyy kaari, kun vene
-## ajaa sen yli. Kuvat vaativat ikkunan.
+## ajaa sen yli, ja myös paikallaan olevan veneen alla (kala uiskentelee).
+## Kuvat vaativat ikkunan.
 
 var main: Node
 var _log: Array[String] = []
@@ -51,11 +52,20 @@ func _physics_process(delta: float) -> void:
 			boat.pos = _start + _dir * _t
 			boat.velocity = Vector2.ZERO
 			if _t > 12.0:
-				_check_arc()
+				_check_arc("vene ajaa kalan yli")
 				if _shots != "":
 					get_viewport().get_texture().get_image().save_png(_shots.path_join("luotain-kalakaari.png"))
 				_next()
 		2:
+			# Vene paikallaan kalan kohdalla: uiskenteleva kala piirtää kaaria
+			boat.pos = _start + Vector2(6.0, 0.0)
+			boat.velocity = Vector2.ZERO
+			if _t > 26.0:
+				_check_sway()
+				if _shots != "":
+					get_viewport().get_texture().get_image().save_png(_shots.path_join("luotain-paikallaan.png"))
+				_next()
+		3:
 			if _shots == "" or _shot >= _spots.size():
 				_finish()
 				return
@@ -125,19 +135,31 @@ func _prepare_pass(lake: LakeData) -> void:
 
 
 ## Kalan kaiut: vinoetäisyys pienin kalan kohdalla ja kasvaa molempiin suuntiin
-func _check_arc() -> void:
+func _check_arc(what: String) -> void:
 	var sounder: EchoSounder = main.hud.sounder
 	var ranges := []
 	for c in sounder._columns:
 		for e in c["fish"]:
 			ranges.append(e[0])
 	if ranges.size() < 5:
-		_check("kalasta tuli kaikuja (%d)" % ranges.size(), false)
+		_check("%s: kalasta tuli kaikuja (%d)" % [what, ranges.size()], false)
 		return
 	var low: float = ranges.min()
 	var mid := ranges.find(low)
 	var arc: bool = ranges[0] > low + 0.1 and ranges[-1] > low + 0.1 and mid > 0 and mid < ranges.size() - 1
-	_check("kalasta piirtyi kaari: %d kaikua, %.2f m → %.2f m → %.2f m" % [ranges.size(), ranges[0], low, ranges[-1]], arc and absf(low - 2.0) < 0.15)
+	_check("%s: kalasta piirtyi kaari: %d kaikua, %.2f m → %.2f m → %.2f m" % [what, ranges.size(), ranges[0], low, ranges[-1]], arc and low >= 1.98 and low < 2.5) # kala 2 m syvyydessä, uiskentelee keilan poikki
+
+
+## Paikallaan: kala lipuu keilan läpi, joten kaiun etäisyys vaihtelee
+## (suoraan alla 2 m, reunalla kauempana) eikä piirry tasaiseksi viivaksi
+func _check_sway() -> void:
+	var sounder: EchoSounder = main.hud.sounder
+	var ranges := []
+	for c in sounder._columns.slice(-150):
+		for e in c["fish"]:
+			ranges.append(e[0])
+	var ok: bool = ranges.size() > 10 and ranges.min() < 2.2 and ranges.max() > ranges.min() + 0.5
+	_check("vene paikallaan: kala lipuu keilan läpi kaarina (%d kaikua, %.2f–%.2f m)" % [ranges.size(), ranges.min() if ranges.size() > 0 else 0.0, ranges.max() if ranges.size() > 0 else 0.0], ok)
 
 
 func _finish() -> void:

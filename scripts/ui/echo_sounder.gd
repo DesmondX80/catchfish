@@ -2,13 +2,16 @@ class_name EchoSounder
 extends Control
 ## Kaikuluotain kuten oikeissa laitteissa: kuva piirtyy sarakkeittain, uusin
 ## oikealla. Kalan kaiku piirretään vinoetäisyydelle (keilan reunalla kala on
-## kauempana kuin suoraan alla), joten veneen ajaessa kalan yli siitä piirtyy
-## kaari. Pohjan laatu erottuu kaiusta: kova pohja antaa kirkkaan, terävän
+## kauempana kuin suoraan alla), joten kalan kulkiessa keilan läpi siitä
+## piirtyy kaari. Kalakannan sijainnit muuttuvat harvakseltaan, joten luotaimessa
+## kalat uiskentelevat hitaasti edestakaisin (kullakin oma suunta ja tahti):
+## paikallaan olevankin veneen alta kalat lipuvat keilan läpi kaarina. Pohjan laatu erottuu kaiusta: kova pohja antaa kirkkaan, terävän
 ## kaiun ja toisen heijastuksen kaksinkertaisessa syvyydessä, muta pehmeän ja
 ## himmeän kaiun, ja vesikasvillisuus näkyy pohjasta nousevina tupsuina.
 
-const SAMPLES := 160
-const INTERVAL := 0.25
+const SAMPLES := 200
+const INTERVAL := 0.14
+const SWIM_RANGE := 3.0 # m: kalan uiskentelun laajuus
 const TOP := 14.0 # px: syvyysasteikon nolla
 const BOTTOM_NAMES := ["kova", "muta", "kasvillisuus"]
 
@@ -19,6 +22,7 @@ var range_m := 6.0
 var _columns: Array[Dictionary] = []
 var _timer := 0.0
 var _sample := 0
+var _time := 0.0
 
 
 func _ready() -> void:
@@ -30,6 +34,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	if boat == null:
 		return
+	_time += delta
 	_timer -= delta
 	if _timer > 0.0:
 		return
@@ -38,9 +43,16 @@ func _process(delta: float) -> void:
 	var depth := boat.depth_below()
 	var radius := 1.0 + depth * 0.35
 	var echoes := []
-	for f in population.fish_under(boat.pos, depth):
-		var off: float = f[2] / radius # 0 = keilan keskellä, 1 = reunalla
-		var slant := sqrt(f[0] * f[0] + f[2] * f[2])
+	for f in population.fish_under(boat.pos, radius + SWIM_RANGE):
+		# Uiskentelu: kalan oma suunta, tahti ja vaihe indeksistä
+		var k: int = f[3]
+		var heading := _rand(k, 5) * TAU
+		var sway := sin(_time * (0.12 + 0.2 * _rand(k, 6)) + _rand(k, 7) * TAU) * SWIM_RANGE
+		var dist: float = (f[2] + Vector2.from_angle(heading) * sway).length()
+		if dist > radius:
+			continue
+		var off := dist / radius # 0 = keilan keskellä, 1 = reunalla
+		var slant := sqrt(f[0] * f[0] + dist * dist)
 		# Iso kala ja keilan keskellä oleva kala kaikuvat voimakkaimmin
 		var strength := clampf(0.35 + f[1] * 0.35, 0.3, 1.0) * (1.0 - 0.6 * off * off)
 		echoes.append([slant, strength])
