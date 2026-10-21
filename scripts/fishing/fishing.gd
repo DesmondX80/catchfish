@@ -796,7 +796,7 @@ func _retrieve(dt: float) -> void:
 		# Seuraavan hauen aikana muut kalat eivät iske (hauki päättää itse)
 		if _check_timer <= 0.0 and not _following():
 			_check_timer = 0.2
-			var idx := population.check_lure(Vector2(lure_pos.x, lure_pos.z), lure_depth(), lure_speed, _twitch, lure(), sky.hour(), weather.speed(), 0.2, weather.cloud_cover)
+			var idx := population.check_lure(Vector2(lure_pos.x, lure_pos.z), lure_depth(), lure_speed, _twitch, lure(), sky.hour(), weather.speed(), 0.2, weather.cloud_cover, weather.feeding_factor())
 			if idx >= 0:
 				if _may_follow(idx):
 					_start_follow(idx)
@@ -1787,7 +1787,7 @@ func _ice_retrieve(dt: float) -> void:
 	_check_timer -= dt
 	if _check_timer <= 0.0 and depth > 0.2:
 		_check_timer = 0.2
-		var idx := population.check_lure(Vector2(h.x, h.z), depth, lure_speed, _twitch, lure(), sky.hour(), 2.0, 0.2, weather.cloud_cover)
+		var idx := population.check_lure(Vector2(h.x, h.z), depth, lure_speed, _twitch, lure(), sky.hour(), 2.0, 0.2, weather.cloud_cover, weather.feeding_factor())
 		if idx >= 0:
 			_fish_index = idx
 			_fish = population.fish[idx]

@@ -3,7 +3,8 @@ extends Node
 ## Todellinen sää Saloisissa (Raahe, 92160).
 ## Ensisijaisesti Ilmatieteen laitoksen havainnot Raahen Lapaluodon asemalta
 ## (n. 5 km Saloisista): lämpötila, tuuli, puuskat, pilvisyys (oktaa) ja
-## sääkoodi (wawa), josta saadaan sateen laatu ja voimakkuus. Jos haku ei
+## sääkoodi (wawa), josta saadaan sateen laatu ja voimakkuus, sekä ilmanpaine
+## ja sen muutos kolmessa tunnissa (kalojen syönti). Jos haku ei
 ## onnistu, käytetään Open-Meteon säätietoja Saloisten koordinaateille.
 ## Molemmat aineistot: CC BY 4.0.
 ##
@@ -16,7 +17,7 @@ signal failed(message: String)
 
 const LAT := 64.62
 const LON := 24.45
-const FMI_PARAMS := "t2m,ws_10min,wg_10min,wd_10min,n_man,wawa"
+const FMI_PARAMS := "t2m,ws_10min,wg_10min,wd_10min,n_man,wawa,p_sea"
 const FMI_ROOTS := "res://assets/certs/harica_roots.crt"
 
 var last: Dictionary = {}
@@ -34,9 +35,10 @@ func _ready() -> void:
 func fetch() -> void:
 	if _http.get_http_client_status() != HTTPClient.STATUS_DISCONNECTED:
 		return # haku on jo käynnissä
-	var start := Time.get_datetime_string_from_unix_time(int(Time.get_unix_time_from_system()) - 3600) + "Z"
+	# Kolmen tunnin havainnot puolen tunnin välein: ilmanpaineen muutos
+	var start := Time.get_datetime_string_from_unix_time(int(Time.get_unix_time_from_system()) - 3 * 3600 - 600) + "Z"
 	var url := "https://opendata.fmi.fi/wfs?service=WFS&version=2.0.0&request=getFeature" \
-		+ "&storedquery_id=fmi::observations::weather::simple&place=Raahe&maxlocations=1&timestep=10" \
+		+ "&storedquery_id=fmi::observations::weather::simple&place=Raahe&maxlocations=1&timestep=30" \
 		+ "&parameters=" + FMI_PARAMS + "&starttime=" + start
 	_stage = "fmi"
 	var roots := X509Certificate.new()
@@ -50,7 +52,8 @@ func _fetch_open_meteo() -> void:
 	_stage = "open-meteo"
 	_http.set_tls_options(TLSOptions.client()) # järjestelmän tavalliset varmenteet
 	var url := "https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f" % [LAT, LON] \
-		+ "&current=temperature_2m,precipitation,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code" \
+		+ "&current=temperature_2m,precipitation,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,pressure_msl" \
+		+ "&hourly=pressure_msl&past_hours=3&forecast_hours=1" \
 		+ "&wind_speed_unit=ms&timezone=Europe%2FHelsinki"
 	if _http.request(url) != OK:
 		failed.emit("Säätietoja ei saatu haettua")
@@ -78,10 +81,15 @@ static func parse_fmi(xml: String) -> Dictionary:
 	re.compile("<BsWfs:Time>([^<]*)</BsWfs:Time>\\s*<BsWfs:ParameterName>([^<]*)</BsWfs:ParameterName>\\s*<BsWfs:ParameterValue>([^<]*)</BsWfs:ParameterValue>")
 	var latest := {}
 	var times := {}
+	var first := {} # ensimmäinen havainto: ilmanpaineen muutos
+	var first_times := {}
 	for m in re.search_all(xml):
 		var value := m.get_string(3).strip_edges()
 		if value == "NaN" or value == "":
 			continue
+		if not first.has(m.get_string(2)):
+			first[m.get_string(2)] = float(value)
+			first_times[m.get_string(2)] = m.get_string(1)
 		latest[m.get_string(2)] = float(value)
 		times[m.get_string(2)] = m.get_string(1)
 	if not (latest.has("t2m") and latest.has("ws_10min") and latest.has("wd_10min")):
@@ -92,7 +100,7 @@ static func parse_fmi(xml: String) -> Dictionary:
 	var cloud: float = latest["n_man"] / 8.0 if latest.has("n_man") else (0.95 if precip[0] > 0.0 else 0.4)
 	if precip[0] > 0.0:
 		cloud = maxf(cloud, 0.9)
-	return {
+	var result := {
 		"source": "Ilmatieteen laitos, Raahe Lapaluoto",
 		"time": _local_clock(times["t2m"]),
 		"temperature": latest["t2m"],
@@ -103,6 +111,11 @@ static func parse_fmi(xml: String) -> Dictionary:
 		"precipitation": precip[0],
 		"snow": precip[1],
 	}
+	if latest.has("p_sea"):
+		result["pressure"] = latest["p_sea"]
+		var hours := (Time.get_unix_time_from_datetime_string(times["p_sea"].trim_suffix("Z")) - Time.get_unix_time_from_datetime_string(first_times["p_sea"].trim_suffix("Z"))) / 3600.0
+		result["pressure_trend"] = (latest["p_sea"] - first["p_sea"]) / hours * 3.0 if hours >= 1.0 else 0.0
+	return result
 
 
 ## WMO 4680 -sääkoodi (automaattiasema): [sateen voimakkuus 0..1, onko lunta]
@@ -133,7 +146,7 @@ static func parse_open_meteo(text: String) -> Dictionary:
 	var c: Dictionary = json["current"]
 	var mm: float = c.get("precipitation", 0.0)
 	var snow: bool = c.get("snowfall", 0.0) > 0.0
-	return {
+	var result := {
 		"source": "Open-Meteo, Saloinen",
 		"time": String(c.get("time", "")).right(5),
 		"temperature": c.get("temperature_2m", 0.0),
@@ -145,6 +158,12 @@ static func parse_open_meteo(text: String) -> Dictionary:
 		"precipitation": 0.0 if mm <= 0.0 else clampf(0.2 + log(mm / 0.3 + 1.0) * 0.28, 0.2, 1.0),
 		"snow": snow,
 	}
+	if c.has("pressure_msl"):
+		result["pressure"] = c["pressure_msl"]
+		# Tuntiarvoista: nykyinen paine verrattuna kolmen tunnin takaiseen
+		var hourly: Array = json.get("hourly", {}).get("pressure_msl", [])
+		result["pressure_trend"] = c["pressure_msl"] - hourly[0] if hourly.size() >= 4 else 0.0
+	return result
 
 
 ## UTC-aikaleima (2026-10-18T08:50:00Z) paikalliseksi kellonajaksi

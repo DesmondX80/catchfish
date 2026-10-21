@@ -249,6 +249,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/prop_test.gd").new())
 	elif "--seasonfishtest" in args:
 		add_child(load("res://tests/season_fish_test.gd").new())
+	elif "--pressuretest" in args:
+		add_child(load("res://tests/pressure_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

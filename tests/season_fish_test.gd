@@ -4,7 +4,7 @@ extends Node
 ## kaislikkolahdissa ja syö vähän, kudun jälkeen paljon, kesähelteellä kalat
 ## ovat syvemmällä ja syksyllä syönti vilkastuu.
 
-const SAMPLE := 250 # kalaa lajia kohden (kaislikkohaku on hidas)
+const REEDS_SAMPLE := 400 # hauista kaislikkohaku (hidas)
 
 var main: Node
 var _log: Array[String] = []
@@ -44,16 +44,17 @@ func _stats(day: int) -> Dictionary:
 	var lake: LakeData = main.lake
 	var result := {}
 	for sp in ["hauki", "ahven", "lahna"]:
+		# Keskisyvyys koko kannasta (parvet vaihtelevat), kaislikko hauista otoksena
 		var depth := 0.0
 		var reedy := 0
 		var n := 0
 		for f in pop.fish:
-			if f["sp"] != sp or n >= SAMPLE:
+			if f["sp"] != sp:
 				continue
 			n += 1
 			depth += f["depth"]
-			if lake.reeds_near(f["pos"].x, f["pos"].y, 25.0) > 0.04:
+			if n <= REEDS_SAMPLE and lake.reeds_near(f["pos"].x, f["pos"].y, 25.0) > 0.04:
 				reedy += 1
-		result[sp] = [depth / maxi(n, 1), float(reedy) / maxi(n, 1)]
+		result[sp] = [depth / maxi(n, 1), float(reedy) / mini(maxi(n, 1), REEDS_SAMPLE)]
 	pop.free()
 	return result

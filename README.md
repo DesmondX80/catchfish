@@ -60,7 +60,9 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   elävät vuodenaikojen mukaan: hauki kutee heti jäiden lähdettyä matalissa
   kaislikkolahdissa ja syö kudun jälkeen ahnaasti, ahven, särki ja lahna kutevat
   touko–kesäkuussa matalassa, kesähelteellä kalat hakeutuvat syvempään ja
-  syksyllä syönti vilkastuu. Kalat ovat dataa: niitä ei näe,
+  syksyllä syönti vilkastuu. Ilmanpaine vaikuttaa syöntiin: kun paine laskee
+  (sää muuttuu, rintama tulossa), kalat syövät kiivaasti; tasaisessa
+  korkeapaineessa syönti on laiskaa. HUD näyttää paineen ja sen suunnan. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
 - **Kaikuluotain**: kuva piirtyy kuten oikeassa luotaimessa. Veneen ajaessa
   kalan yli siitä piirtyy kaari, ja kaiun väri kertoo voimakkuuden (iso kala

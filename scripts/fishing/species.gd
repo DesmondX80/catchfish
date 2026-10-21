@@ -60,7 +60,7 @@ const DATA := {
 		"season": [1.0, 0.8],
 		"periods": [
 			{"from": 135, "to": 158, "name": "kutu", "depth": [0.4, 1.5], "reeds": 0.8, "activity": 0.7},
-			{"from": 190, "to": 235, "name": "helle", "depth": [1.5, 4.5], "activity": 0.85},
+			{"from": 190, "to": 235, "name": "helle", "depth": [2.0, 5.0], "activity": 0.85},
 			{"from": 245, "to": 305, "name": "syysyönti", "depth": [2.0, 5.0], "activity": 1.3},
 		],
 		"lures": {"lusikka": 0.5, "vaappu": 0.5, "syvavaappu": 0.4, "lippa": 1.0, "jigi": 0.95, "pilkki": 1.0, "tasuri": 0.85, "koho": 0.8, "pohja": 0.6},

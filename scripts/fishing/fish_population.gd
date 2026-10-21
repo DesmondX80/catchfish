@@ -13,6 +13,7 @@ var lake: LakeData
 var winter := false
 ## Vuodenpäivä: lajien kutu, kesähelle ja syysyönti (Species.traits)
 var day := 165
+var _traits := {} # laji -> Species.traits(laji, day, winter), lasketaan kerran
 var fish: Array[Dictionary] = []
 var _grid := {}
 var _rng := RandomNumberGenerator.new()
@@ -23,6 +24,7 @@ var _wander_budget := 0.0
 func setup(lake_data: LakeData) -> void:
 	lake = lake_data
 	_rng.randomize()
+	update_traits()
 	var area_km2 := lake.water.count(1) * lake.cell_size * lake.cell_size / 1e6
 	for sp in Species.DATA:
 		var data: Dictionary = Species.DATA[sp]
@@ -38,6 +40,12 @@ func setup(lake_data: LakeData) -> void:
 				fish.append(_new_fish(sp, p))
 				spawned += 1
 	_rebuild_grid()
+
+
+## Lajien vuodenaikatiedot uudelleen (päivä tai talvi vaihtui)
+func update_traits() -> void:
+	for sp in Species.DATA:
+		_traits[sp] = Species.traits(sp, day, winter)
 
 
 func count_by_species() -> Dictionary:
@@ -65,7 +73,7 @@ func habitat_score(sp: String, p: Vector2) -> float:
 	if not lake.is_water(p.x, p.y):
 		return 0.0
 	var data: Dictionary = Species.DATA[sp]
-	var t := Species.traits(sp, day, winter)
+	var t: Dictionary = _traits[sp]
 	var depth := lake.depth_at(p.x, p.y)
 	var shore := lake.shore_distance(p.x, p.y)
 	var dr: Array = t["depth"]
@@ -106,7 +114,7 @@ func _preferred_depth(sp: String, p: Vector2) -> float:
 	var bottom := lake.depth_at(p.x, p.y)
 	if winter and sp != "hauki":
 		return maxf(0.2, bottom - _rng.randf_range(0.05, 0.7))
-	var dr: Array = Species.traits(sp, day, winter)["depth"]
+	var dr: Array = _traits[sp]["depth"]
 	if data["bottom"]:
 		return maxf(0.2, bottom - _rng.randf_range(0.1, 0.6))
 	return clampf(_rng.randf_range(dr[0], dr[1]), 0.2, maxf(0.2, bottom - 0.1))
@@ -175,7 +183,8 @@ func fish_near(p: Vector2, radius: float) -> Array[int]:
 
 ## Tarkistaa iskeekö jokin kala uistimeen. Palauttaa kalan indeksin tai -1.
 ## lure_speed on uistimen nopeus vedessä (m/s), twitch lyhyt nykäisy (0..1).
-func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: float, lure: Dictionary, hour: float, wind: float, dt: float, cloud := 0.0) -> int:
+## pressure on ilmanpaineen syöntikerroin (Weather.feeding_factor).
+func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: float, lure: Dictionary, hour: float, wind: float, dt: float, cloud := 0.0, pressure := 1.0) -> int:
 	var best := -1
 	for i in fish_near(lure_xz, 10.0):
 		var f: Dictionary = fish[i]
@@ -198,8 +207,8 @@ func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: 
 			activity = lerpf(activity, 1.0, cloud * 0.5)
 		else:
 			activity *= 1.0 + cloud * 0.3
-		activity *= Species.traits(f["sp"], day, winter)["activity"]
-		interest *= activity
+		activity *= _traits[f["sp"]]["activity"]
+		interest *= activity * pressure
 		interest *= f["hunger"]
 		# Pieni tuulen väreily rohkaisee kaloja, kova tuuli samentaa
 		interest *= 1.0 + clampf(wind / 4.0, 0.0, 1.0) * 0.3 - clampf((wind - 7.0) / 4.0, 0.0, 0.4)

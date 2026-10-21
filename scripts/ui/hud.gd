@@ -26,6 +26,7 @@ var _log_panel: PanelContainer
 var _log_label: Label
 var _help_panel: PanelContainer
 var sounder: EchoSounder
+var _pressure_hinted := false
 var _map_panel: PanelContainer
 var _map: LakeMap
 
@@ -385,6 +386,13 @@ func _process(delta: float) -> void:
 	var weather_text := weather.description()
 	if not is_nan(weather.temperature):
 		weather_text = "%s, %s °C" % [weather_text, ("%.1f" % weather.temperature).replace(".", ",")]
+	weather_text += "\nIlmanpaine " + weather.pressure_text()
+	# Vihje, kun paine alkaa laskea nopeasti (sää muuttuu): kalat syövät kiivaasti
+	if weather.pressure_trend < -2.0 and not _pressure_hinted:
+		_pressure_hinted = true
+		show_message("Ilmanpaine laskee nopeasti – sää muuttuu ja kalat syövät kiivaasti!")
+	elif weather.pressure_trend > -0.5:
+		_pressure_hinted = false
 	_status.text = "%s\n%s\nTuuli %.1f m/s %s\n%s   %.1f km/h%s\nSyvyys %.1f m%s" % [
 		clock, weather_text,
 		weather.speed(), weather.from_text(),

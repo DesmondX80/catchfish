@@ -6,6 +6,9 @@ extends Node
 ## Säätila vaihtuu pelin kellon mukaan (selkeä, puolipilvinen, pilvinen, sade,
 ## rankkasade). Pilvisyys kasvaa vähitellen, ja sade alkaa vasta lähes täysin
 ## pilvisellä taivaalla. Sateella tuuli voimistuu.
+## Ilmanpaine seuraa säätilaa: selkeällä korkeapaine, sateella matalapaine.
+## Paineen muutos vaikuttaa kalojen syöntiin (feeding_factor): sään muuttuessa
+## paineen laskiessa kalat syövät kiivaasti, tasaisessa korkeapaineessa laiskasti.
 
 enum Kind { CLEAR, PARTLY, CLOUDY, RAIN, HEAVY_RAIN }
 
@@ -17,6 +20,15 @@ const KINDS := {
 	Kind.RAIN: [0.92, 1.0, 0.2, 0.5],
 	Kind.HEAVY_RAIN: [1.0, 1.0, 0.75, 1.0],
 }
+## Säätilan ilmanpaine (hPa) merenpinnan tasolla
+const KIND_PRESSURE := {
+	Kind.CLEAR: 1025.0,
+	Kind.PARTLY: 1016.0,
+	Kind.CLOUDY: 1008.0,
+	Kind.RAIN: 1000.0,
+	Kind.HEAVY_RAIN: 993.0,
+}
+const PRESSURE_RATE := 1.2 # hPa/h: paineen muutosnopeus kohti säätilan arvoa
 ## Todennäköisyydet seuraavalle säätilalle (yleensä naapuritila)
 const NEXT := {
 	Kind.CLEAR: [[Kind.CLEAR, 0.4], [Kind.PARTLY, 0.6]],
@@ -40,6 +52,10 @@ var real_mode := false
 var real_source := ""
 var real_time := ""
 var _gust_peak := 0.0
+## Ilmanpaine (hPa) ja sen muutos kolmessa tunnissa (hPa/3 h, negatiivinen = laskee)
+var pressure := 1016.0
+var pressure_trend := 0.0
+var _pressure_target := 1016.0
 
 var _rng := RandomNumberGenerator.new()
 var _gust_timer := 0.0
@@ -66,9 +82,14 @@ func set_kind(new_kind: int, instant := false) -> void:
 	_cover_target = _rng.randf_range(k[0], k[1])
 	_rain_target = _rng.randf_range(k[2], k[3])
 	_change_in = _rng.randf_range(30.0, 90.0)
+	if not real_mode:
+		_pressure_target = KIND_PRESSURE[kind] + _rng.randf_range(-3.0, 3.0)
 	if instant:
 		cloud_cover = _cover_target
 		rain = _rain_target
+		if not real_mode:
+			pressure = _pressure_target
+			pressure_trend = 0.0
 
 
 func _process(delta: float) -> void:
@@ -84,6 +105,13 @@ func _process(delta: float) -> void:
 	cloud_cover = move_toward(cloud_cover, _cover_target, game_minutes / 30.0)
 	var rain_goal := _rain_target if cloud_cover > 0.85 or real_mode else 0.0
 	rain = move_toward(rain, rain_goal, game_minutes / 8.0)
+	if not real_mode:
+		# Paine muuttuu kohti säätilan arvoa; muutos kolmessa tunnissa liukuvana
+		var before := pressure
+		pressure = move_toward(pressure, _pressure_target, PRESSURE_RATE * game_minutes / 60.0)
+		if game_minutes > 0.0:
+			var rate := (pressure - before) / game_minutes * 180.0
+			pressure_trend = lerpf(pressure_trend, rate, clampf(game_minutes / 30.0, 0.0, 1.0))
 
 	# Tuuli: hidas satunnaiskävely, sateella voimakkaampi; todellisessa säässä havaittu
 	if real_mode:
@@ -106,6 +134,33 @@ func _process(delta: float) -> void:
 		gust = move_toward(gust, 0.0, delta * 0.3)
 
 
+## Ilmanpaineen vaikutus kalojen syöntiin (kerroin): paineen laskiessa (sää
+## muuttuu, rintama tai ukkonen tulossa) kalat syövät kiivaasti, rintaman jälkeen
+## nousevassa paineessa vähän heikommin ja tasaisessa korkeapaineessa laiskasti
+func feeding_factor() -> float:
+	if pressure_trend < -1.0:
+		return lerpf(1.0, 1.5, clampf((-pressure_trend - 1.0) / 3.0, 0.0, 1.0))
+	if pressure_trend > 1.5:
+		return 0.85
+	if pressure > 1020.0 and absf(pressure_trend) < 0.7:
+		return lerpf(1.0, 0.75, clampf((pressure - 1020.0) / 6.0, 0.0, 1.0))
+	return 1.0
+
+
+## Ilmanpaine sanoin HUDiin, esim. "1012 hPa, laskee"
+func pressure_text() -> String:
+	var trend := "tasainen"
+	if pressure_trend < -2.5:
+		trend = "laskee nopeasti"
+	elif pressure_trend < -0.7:
+		trend = "laskee"
+	elif pressure_trend > 2.5:
+		trend = "nousee nopeasti"
+	elif pressure_trend > 0.7:
+		trend = "nousee"
+	return "%d hPa, %s" % [roundi(pressure), trend]
+
+
 ## Todellinen sää (RealWeather): pilvisyys, sade ja tuuli havainnoista
 func apply_real(data: Dictionary, instant := false) -> void:
 	real_mode = true
@@ -117,6 +172,9 @@ func apply_real(data: Dictionary, instant := false) -> void:
 	_rain_target = data["precipitation"]
 	_wind_target = data["wind_speed"]
 	_gust_peak = data["wind_gust"]
+	if data.has("pressure"):
+		pressure = data["pressure"]
+		pressure_trend = data.get("pressure_trend", 0.0)
 	# Havaittu suunta on se, MISTÄ tuulee; pelissä suunta, JOHON tuulee
 	var to := deg_to_rad(data["wind_from_deg"] + 180.0)
 	wind_direction = to if instant else lerp_angle(wind_direction, to, 1.0)
