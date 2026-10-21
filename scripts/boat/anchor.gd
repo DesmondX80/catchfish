@@ -5,6 +5,7 @@ extends Node3D
 ## on pohjassa. Nostettaessa köyttä kelataan vuorokäsin, ja ankkuri nousee
 ## keulaan ja lasketaan veneen pohjalle. Pohjassa olevan ankkurin köysi roikkuu
 ## löysänä kaarella ja kiristyy suoraksi, kun vene liikkuu ankkurista poispäin.
+## Humusvedessä ankkuri ja köysi eivät näy pinnan alla.
 
 signal reached_bottom(depth: float)
 signal stowed
@@ -14,7 +15,7 @@ enum State { STOWED, LOWERING, DOWN, RAISING }
 const SINK_SPEED := 1.0 # m/s: ankkuri vajoaa
 const RAISE_SPEED := 0.8 # m/s: köyttä kelataan vuorokäsin
 const ROPE_SEGMENTS := 14
-const BOW_CHOCK := Vector3(0.0, 0.5, -2.05) # köyden kulku keulan yli (rungon koordinaateissa)
+const BOW_CHOCK := Vector3(0.0, 0.6, -2.2) # köyden kulku keulapiikin yli (rungon koordinaateissa)
 const HAND_POINT := Vector3(0.0, 0.5, -1.5) # kalastajan kädet köydellä
 const STOW_POINT := Vector3(0.0, -0.1, -1.55) # ankkuri veneen pohjalla keulassa
 
@@ -48,7 +49,7 @@ func setup(boat_node: Boat) -> void:
 		fluke.size = Vector3(0.2, 0.025, 0.07)
 		_part(_anchor, fluke, Transform3D(Basis(Vector3.BACK, -0.75 * s), Vector3(0.07 * s, 0.05, 0)), iron)
 	_rope_material = StandardMaterial3D.new()
-	_rope_material.albedo_color = Color(0.62, 0.52, 0.32)
+	_rope_material.albedo_color = Color(0.36, 0.22, 0.1)
 	_rope_material.roughness = 0.9
 	for i in ROPE_SEGMENTS + 1:
 		var seg := MeshInstance3D.new()
@@ -159,6 +160,7 @@ func _place() -> void:
 		State.STOWED:
 			# Veneen pohjalla kyljellään
 			_anchor.global_transform = boat.hull.global_transform * Transform3D(Basis(Vector3.BACK, PI / 2.0), STOW_POINT)
+			_anchor.visible = true
 			for seg in _rope:
 				seg.visible = false
 			return
@@ -168,7 +170,14 @@ func _place() -> void:
 		_:
 			# Roikkuu köyden varassa pystyssä
 			_anchor.global_transform = Transform3D(Basis.IDENTITY, Vector3(xz.x, height - 0.42, xz.y))
+	_anchor.visible = ring().y > _water_level()
 	_draw_rope()
+
+
+## Vedenpinnan korkeus keulassa (aallokko mukana)
+func _water_level() -> float:
+	var a := bow_chock()
+	return Waves.swell_height(Vector2(a.x, a.z))
 
 
 ## Köysi: keulasta ankkurin renkaaseen; ankkurin ollessa pohjassa löysä köysi
@@ -188,6 +197,7 @@ func _draw_rope() -> void:
 		p.y = maxf(p.y, floor_y)
 		points.append(p)
 	# Kalastajan käsien kautta keulaan, kun köyttä käsitellään
+	var water := _water_level()
 	var hand := boat.hull.global_transform * HAND_POINT
 	for i in ROPE_SEGMENTS + 1:
 		var seg := _rope[i]
@@ -202,6 +212,14 @@ func _draw_rope() -> void:
 			seg.visible = handling()
 			if not seg.visible:
 				continue
+		# Pinnan alla oleva osa ei näy: katkaistaan vedenpintaan
+		if p0.y < water and p1.y < water:
+			seg.visible = false
+			continue
+		if p1.y < water:
+			p1 = p0.lerp(p1, (p0.y - water) / (p0.y - p1.y))
+		elif p0.y < water:
+			p0 = p1.lerp(p0, (p1.y - water) / (p1.y - p0.y))
 		seg.visible = true
 		_segment(seg, p0, p1)
 

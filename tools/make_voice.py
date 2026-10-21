@@ -32,6 +32,7 @@ LINES = {
     "landed": "Siinä se on!",
     "rain": "Alkaa sataa. Pitäisköhän lähteä kotiin?",
     "hole": "Reikä valmis. Nyt pilkille.",
+    "anchor": "Perkele, ankkuri!",
     # Lajin tunnistus veneen lähellä
     "fish_hauki": "Hauki!",
     "fish_ahven": "Ahven!",

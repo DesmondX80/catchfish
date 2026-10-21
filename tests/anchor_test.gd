@@ -97,6 +97,8 @@ func _physics_process(delta: float) -> void:
 				_check("ankkuri laskettiin keulasta (%.1f m keulasta)" % Vector2(anchor.xz.x - bow.x, anchor.xz.y - bow.z).length(), Vector2(anchor.xz.x - bow.x, anchor.xz.y - bow.z).length() < 1.5)
 				_check("kalastaja laski ankkurin etutuhdolla", _saw_anchor_pose)
 				_check("köysi näkyy", anchor._rope[0].visible)
+				_check("ankkuri ei näy veden alla", not anchor._anchor.visible)
+				_check("köysi ei näy veden alla", anchor._rope.all(func(seg): return not seg.visible or seg.global_position.y > anchor._water_level() - 0.05))
 				_check("ilmoitus: ankkuri pohjassa", _messages.any(func(m): return m.begins_with("Ankkuri pohjassa")))
 				_next()
 			elif _t > 15.0:
@@ -120,6 +122,7 @@ func _physics_process(delta: float) -> void:
 				var away := Vector2(bow.x - anchor.xz.x, bow.z - anchor.xz.y).length()
 				_check("köysi kiristyi ja piti veneen (%.1f m ankkurista, köyttä %.1f m)" % [away, boat.anchor_rope], anchor.taut() and away < boat.anchor_rope + 0.5)
 				_check("ilmoitus: köysi kiristyy, nosta ensin ankkuri", _messages.any(func(m): return m.begins_with("Ankkuriköysi kiristyy")))
+				_check("kalastaja huusi: Perkele, ankkuri!", main.voice.last_line == "anchor")
 				_shot("ankkuri-3-kirea")
 				boat.motor_running = false
 				boat.throttle = 0.0

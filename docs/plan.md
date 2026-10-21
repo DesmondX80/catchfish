@@ -266,7 +266,9 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Köysi vetää keulasta, joten tuulessa vene kääntyy keula ankkuria kohti.
   Pohjassa olevan ankkurin köysi roikkuu löysänä kaarella (lepää pohjalla) ja
   kiristyy suoraksi veneen loitotessa; ajettaessa tai soudettaessa ankkuri
-  pohjassa tulee ilmoitus "Ankkuriköysi kiristyy – nosta ensin ankkuri".
+  pohjassa tulee ilmoitus "Ankkuriköysi kiristyy – nosta ensin ankkuri" ja
+  kalastaja huutaa "Perkele, ankkuri!". Köysi kulkee keulapiikin yli, ja
+  humusvedessä ankkuri ja köysi eivät näy pinnan alla.
   Nostettaessa vene irtoaa heti, kalastaja kelaa köyttä vuorokäsin (0,8 m/s), ja
   ankkuri päätyy veneen pohjalle keulaan. Uistimen ollessa vedessä ankkuria ei
   käsitellä. HUD näyttää ankkurin tilan. Testi `--anchortest`.

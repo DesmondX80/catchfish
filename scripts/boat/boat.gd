@@ -7,6 +7,7 @@ extends Node3D
 
 signal message(text: String)
 signal sound_event(sound: String, at: Vector3)
+signal voice(event: String) # kalastajan repliikki (angler_voice.gd)
 
 const LENGTH := 4.4
 const MASS := 260.0 # vene + kalastaja + moottori, kg
@@ -257,6 +258,7 @@ func _physics_process(dt: float) -> void:
 			if not _rope_warned and (absf(drive) > 0.0 and (motor_running or _rowing)):
 				_rope_warned = true
 				message.emit("Ankkuriköysi kiristyy – nosta ensin ankkuri (X)")
+				voice.emit("anchor")
 		elif d.length() < reach - 1.0:
 			_rope_warned = false
 		torque -= yaw_rate * 300.0

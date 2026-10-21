@@ -23,6 +23,7 @@ const LINES := {
 	"landed": "Siinä se on!",
 	"rain": "Alkaa sataa. Pitäisköhän lähteä kotiin?",
 	"hole": "Reikä valmis. Nyt pilkille.",
+	"anchor": "Perkele, ankkuri!",
 	"fish_hauki": "Hauki!",
 	"fish_ahven": "Ahven!",
 	"fish_sarki": "Särki!",
@@ -81,6 +82,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, hud_no
 	boat.angler.add_child(_player)
 	_player.position = Vector3(0, 0.9, 0) # pään korkeudella
 	fishing.voice.connect(func(event): say(event, event.begins_with(URGENT_PREFIX)))
+	boat.voice.connect(func(event): say(event, true)) # lähtö ankkuri pohjassa huudetaan aina
 	_raining = weather.rain > 0.3
 	get_tree().create_timer(2.5).timeout.connect(func(): say("start"))
 
