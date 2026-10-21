@@ -280,18 +280,36 @@ def loon_call():
 # --- Vene --------------------------------------------------------------------
 
 def motor_loop():
-    """Kaksitahtinen perämoottori: sytytystaajuus 100 Hz (pelissä nopeutta säädetään)."""
+    """10 hv:n kaksitahtinen perämoottori (2 sylinteriä): sytytystaajuus 50 Hz eli
+    1500 r/min. Pelissä nopeutta säädetään: tyhjäkäynti noin 35 Hz (pörinä),
+    täysi kaasu noin 140 Hz. Jokainen sytytys on oma pakopamaus, jonka vesi
+    vaimentaa (pakokaasu tulee vedenalaisesta pakoputkesta) bassoiseksi."""
     seconds = 2.0
+    n = int(seconds * SR)
+    cycles = 100  # 50 Hz -> saumaton silmukka
+    period = n // cycles
+    # Sytytyspulssit: voimakkuus vaihtelee hieman (kaksitahti käy epätasaisesti)
+    pulses = np.zeros(n)
+    for k in range(cycles):
+        gain = rng.uniform(0.75, 1.0) * (0.6 if k % 2 else 1.0)  # sylinterit hieman eri voimakkaita
+        pulses[k * period + int(rng.integers(0, 12))] += gain
+    # Yhden pamauksen vaste: pakoputken ja veneen rungon matalat resonanssit,
+    # vähän kohinaa ja metallinen kilahdus (kaksitahdin räminä)
+    m = int(0.06 * SR)
+    pop = (damped_sine(62, 0.06, 0.018) + 0.8 * damped_sine(115, 0.06, 0.012)
+           + 0.8 * damped_sine(230, 0.06, 0.008) + 0.45 * damped_sine(520, 0.06, 0.004)
+           + 0.6 * filtered(rng.standard_normal(m), band(150, 1500)) * envelope(m, 0.001, 0.005)
+           + 0.05 * filtered(rng.standard_normal(m), band(2500, 6000)) * envelope(m, 0.0005, 0.002))
+    ir = np.zeros(n)
+    ir[:m] = pop
+    # Kehämäinen konvoluutio: pulssijono pysyy jaksollisena
+    engine = np.fft.irfft(np.fft.rfft(pulses) * np.fft.rfft(ir), n)
+    # Pohjalle tasainen murina (perustaajuus ja kerrannainen) ja kevyt koneen sihinä
     t = t_axis(seconds)
-    f = 100.0  # 200 jaksoa -> saumaton silmukka
-    phase = 2 * np.pi * f * t
-    tone = np.zeros_like(t)
-    for n in range(1, 18):
-        tone += np.sin(n * phase + rng.uniform(0, 2 * np.pi)) / n ** 0.9
-    # Pakoäänen kohina sykkii sytytysten tahdissa
-    exhaust = shaped_noise(seconds, band(300, 3500)) * (0.5 + 0.5 * np.clip(np.sin(phase), 0, 1) ** 4)
-    rattle = shaped_noise(seconds, band(2000, 6000)) * 0.06
-    return filtered(tone, band(40, 2500, 1.5)) + 0.3 * exhaust + rattle
+    hum = 0.15 * np.sin(2 * np.pi * 50 * t) + 0.08 * np.sin(2 * np.pi * 25 * t)
+    engine = engine / np.max(np.abs(engine)) + hum
+    hiss = shaped_noise(seconds, band(1500, 5000)) * 0.03
+    return filtered(engine, band(20, 2000, 2.0)) + hiss
 
 
 def motor_start():

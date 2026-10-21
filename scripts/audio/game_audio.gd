@@ -157,14 +157,15 @@ func _process(delta: float) -> void:
 	_lap.volume_db = linear_to_db(maxf(lap, 0.0001)) - 6.0
 	_waves.volume_db = linear_to_db(maxf(waves, 0.0001)) - 4.0
 
-	# Moottori: kierrokset kaasun mukaan, käynnistyksen jälkeen pehmeä aloitus
+	# Moottori: kierrokset kaasun mukaan (silmukan sytytystaajuus 50 Hz: tyhjäkäynnillä
+	# noin 35 Hz pörinä, täydellä kaasulla 140 Hz), käynnistyksen jälkeen pehmeä aloitus
 	if boat.motor_running:
 		if not _motor.playing:
 			_motor.volume_db = -30.0
 			_motor.play()
 		var rpm := absf(boat.throttle)
-		_motor.pitch_scale = lerpf(_motor.pitch_scale, 0.8 + rpm * 1.1, minf(1.0, delta * 3.0))
-		_motor.volume_db = move_toward(_motor.volume_db, -16.0 + rpm * 6.0, delta * 40.0)
+		_motor.pitch_scale = lerpf(_motor.pitch_scale, 0.7 + rpm * 2.1, minf(1.0, delta * 3.0))
+		_motor.volume_db = move_toward(_motor.volume_db, -13.0 + rpm * 6.0, delta * 40.0)
 	elif _motor.playing:
 		_motor.stop()
 

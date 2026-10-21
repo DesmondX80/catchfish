@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.24.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.24.1** (release tekemättä; edellinen
+[v0.24.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.24.0)
+### Valmiina (versiot 0.1–0.24.1)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Laji tunnistetaan vasta, kun kala näkyy veneen lähellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
-| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori, kela, jarru, linnut, sade |
+| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori (10 hv:n kaksitahdin matala pörinä), kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
@@ -69,7 +69,6 @@ tunnisteita (CATCHFISH-N).
 | 40 | Lintutornin ulkoasu |
 | 35 | Tuulisella säällä vaahtopäiset aallot |
 | 41 | Koho kelluu aaltojen mukana (backlog) |
-| 33 | Moottorin ääni |
 
 ### Palkitsevuus ja uramoodi (Todo)
 
@@ -166,6 +165,12 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   jolloin kädet hakeutuivat veneen pohjalla olevan varavavan kohdalle.
   Testi `--anglertest`, kuvat `--anglershots`.
   Julkaistu [v0.24.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.0).
+- **#33 Moottorin ääni – tehty (0.24.1).** Moottorin silmukka tehtiin uudelleen
+  10 hv:n kaksisylinterisen kaksitahdin mukaan: yksittäiset sytytykset ovat
+  vedenalaisen pakoputken vaimentamia matalia pamauksia (resonanssit 60–520 Hz),
+  joiden voimakkuus vaihtelee hieman. Sytytystaajuus on tyhjäkäynnillä noin
+  35 Hz ja täydellä kaasulla 140 Hz (ennen 80–190 Hz). Ääni tehdään
+  `tools/make_sounds.py`:llä, ja käynnistys- ja sammutusääni seuraavat samaa.
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).
