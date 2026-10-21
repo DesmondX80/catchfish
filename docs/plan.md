@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Laji tunnistetaan vasta, kun kala näkyy veneen lähellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
-| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), moottori (10 hv:n kaksitahdin matala pörinä), kela, jarru, linnut, sade |
+| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), kela, jarru, linnut, sade; moottori oikeasta nauhoituksesta (Freesound, CC0, tools/make_motor_sound.py) |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
@@ -165,12 +165,14 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   jolloin kädet hakeutuivat veneen pohjalla olevan varavavan kohdalle.
   Testi `--anglertest`, kuvat `--anglershots`.
   Julkaistu [v0.24.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.0).
-- **#33 Moottorin ääni – tehty (0.24.1).** Moottorin silmukka tehtiin uudelleen
-  10 hv:n kaksisylinterisen kaksitahdin mukaan: yksittäiset sytytykset ovat
-  vedenalaisen pakoputken vaimentamia matalia pamauksia (resonanssit 60–520 Hz),
-  joiden voimakkuus vaihtelee hieman. Sytytystaajuus on tyhjäkäynnillä noin
-  35 Hz ja täydellä kaasulla 140 Hz (ennen 80–190 Hz). Ääni tehdään
-  `tools/make_sounds.py`:llä, ja käynnistys- ja sammutusääni seuraavat samaa.
+- **#33 Moottorin ääni – tehty (0.24.1).** Syntetisoidun surinan tilalle oikea
+  perämoottorin nauhoitus veneestä täydellä vauhdilla (kyles, Freesound 637744,
+  CC0; lähde `data/sounds/`). `tools/make_motor_sound.py` leikkaa siitä 8 s
+  saumattoman silmukan (sytytystaajuus noin 49 Hz, matala ja bassoinen) ja
+  tekee käynnistys- ja sammutusäänen. Pelissä täysi kaasu soi nauhoituksen
+  korkeudella, tyhjäkäynti 0,6-kertaisena (noin 30 Hz).
+  Kokeiltiin myös freesfx.co.uk:n ääntä, mutta sen ehdot kieltävät tiedoston
+  jakamisen julkisessa repossa; ehdokkaiksi kelpuutetaan vain CC0-äänet.
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).

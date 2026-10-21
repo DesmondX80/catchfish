@@ -3,7 +3,8 @@
 
 Kaikki äänet tehdään tässä itse, joten niissä ei ole lisenssirajoituksia.
 Toistuvat taustaäänet (*_loop) on tehty taajuustasossa, jolloin ne ovat
-jaksollisia ja toistuvat saumattomasti.
+jaksollisia ja toistuvat saumattomasti. Perämoottorin äänet tehdään oikeasta
+nauhoituksesta työkalulla tools/make_motor_sound.py.
 
 Käyttö: python3 tools/make_sounds.py            (kaikki äänet)
         python3 tools/make_sounds.py NIMI ...   (vain nimetyt, esim. water_waves_loop)
@@ -279,67 +280,6 @@ def loon_call():
 
 # --- Vene --------------------------------------------------------------------
 
-def motor_loop():
-    """10 hv:n kaksitahtinen perämoottori (2 sylinteriä): sytytystaajuus 50 Hz eli
-    1500 r/min. Pelissä nopeutta säädetään: tyhjäkäynti noin 35 Hz (pörinä),
-    täysi kaasu noin 140 Hz. Jokainen sytytys on oma pakopamaus, jonka vesi
-    vaimentaa (pakokaasu tulee vedenalaisesta pakoputkesta) bassoiseksi."""
-    seconds = 2.0
-    n = int(seconds * SR)
-    cycles = 100  # 50 Hz -> saumaton silmukka
-    period = n // cycles
-    # Sytytyspulssit: voimakkuus vaihtelee hieman (kaksitahti käy epätasaisesti)
-    pulses = np.zeros(n)
-    for k in range(cycles):
-        gain = rng.uniform(0.75, 1.0) * (0.6 if k % 2 else 1.0)  # sylinterit hieman eri voimakkaita
-        pulses[k * period + int(rng.integers(0, 12))] += gain
-    # Yhden pamauksen vaste: pakoputken ja veneen rungon matalat resonanssit,
-    # vähän kohinaa ja metallinen kilahdus (kaksitahdin räminä)
-    m = int(0.06 * SR)
-    pop = (damped_sine(62, 0.06, 0.018) + 0.8 * damped_sine(115, 0.06, 0.012)
-           + 0.8 * damped_sine(230, 0.06, 0.008) + 0.45 * damped_sine(520, 0.06, 0.004)
-           + 0.6 * filtered(rng.standard_normal(m), band(150, 1500)) * envelope(m, 0.001, 0.005)
-           + 0.05 * filtered(rng.standard_normal(m), band(2500, 6000)) * envelope(m, 0.0005, 0.002))
-    ir = np.zeros(n)
-    ir[:m] = pop
-    # Kehämäinen konvoluutio: pulssijono pysyy jaksollisena
-    engine = np.fft.irfft(np.fft.rfft(pulses) * np.fft.rfft(ir), n)
-    # Pohjalle tasainen murina (perustaajuus ja kerrannainen) ja kevyt koneen sihinä
-    t = t_axis(seconds)
-    hum = 0.15 * np.sin(2 * np.pi * 50 * t) + 0.08 * np.sin(2 * np.pi * 25 * t)
-    engine = engine / np.max(np.abs(engine)) + hum
-    hiss = shaped_noise(seconds, band(1500, 5000)) * 0.03
-    return filtered(engine, band(20, 2000, 2.0)) + hiss
-
-
-def motor_start():
-    """Narun nykäisy, yskähdys ja käynnistyminen."""
-    out = np.zeros(int(2.2 * SR))
-    for start, length in [(0.0, 0.45), (0.75, 0.5)]:
-        n = int(length * SR)
-        zip_noise = filtered(rng.standard_normal(n), band(600, 4000)) * np.sin(np.linspace(0, np.pi, n)) ** 2
-        place(out, zip_noise, start, 0.35)
-        # Mäntä pyörähtää: muutama puskahdus
-        for k in range(5):
-            place(out, mix(damped_sine(70 + k * 8, 0.12, 0.04), splash_burst(0.1, 200, 1500, decay=0.03) * 0.4), start + 0.05 + k * 0.08, 0.5)
-    # Käynnistyy ja kiihtyy tyhjäkäynnille
-    engine = motor_loop()[: int(0.9 * SR)]
-    n = len(engine)
-    engine = engine * np.minimum(1, np.linspace(0, 3, n)) * np.linspace(1.0, 0.7, n)
-    place(out, engine, 1.3, 0.8)
-    return out
-
-
-def motor_stop():
-    engine = motor_loop()[: int(0.7 * SR)]
-    n = len(engine)
-    # Hidastuva: resamplataan pidemmäksi ja hiljennetään
-    idx = np.cumsum(np.linspace(1.0, 0.35, int(n * 1.6)))
-    idx = idx[idx < n - 1].astype(int)
-    slowed = engine[idx]
-    return slowed * np.linspace(1, 0, len(slowed)) ** 1.5
-
-
 def oar_catch():
     """Lapa veteen: loiskahdus ja airon kolahdus hankaimessa."""
     out = np.zeros(int(0.6 * SR))
@@ -464,11 +404,11 @@ def record_chime():
 
 def main(only=None):
     loops = {
-        'wind_loop': wind_loop, 'water_lap_loop': water_lap_loop, 'motor_loop': motor_loop,
+        'wind_loop': wind_loop, 'water_lap_loop': water_lap_loop,
         'reel_loop': reel_loop, 'drag_loop': drag_loop,
     }
     sounds = {
-        'motor_start': motor_start, 'motor_stop': motor_stop, 'oar_catch': oar_catch,
+        'oar_catch': oar_catch,
         'oar_drip': oar_drip, 'boat_bump': boat_bump, 'anchor_drop': anchor_drop, 'anchor_up': anchor_up,
         'cast_swish': cast_swish, 'lure_splash': lure_splash, 'fish_splash': fish_splash,
         'line_snap': line_snap, 'net_landing': net_landing, 'bite_tick': bite_tick,

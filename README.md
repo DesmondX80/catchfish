@@ -107,6 +107,12 @@ Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 Kalastajahahmo on Quaterniuksen "Adventurer"-malli (CC0, ks.
 `assets/characters/LICENSE.txt`).
 
+Perämoottorin ääni on kylesin nauhoitus "outboard motor boat onboard high
+speed" ([Freesound 637744](https://freesound.org/people/kyles/sounds/637744/),
+CC0). Pelin äänet tehdään siitä komennolla `uv run --no-project --with miniaudio
+--with numpy python tools/make_motor_sound.py`; muut äänet on syntetisoitu
+itse (`tools/make_sounds.py`).
+
 Kalastajan puhe on tehty Piper-puhesynteesillä suomenkielisellä
 fi_FI-harri-äänellä (opetusaineisto CC0). Repliikit voi tehdä uudelleen
 komennolla `python3 tools/make_voice.py` (vaatii uv:n) tai korvata omilla
