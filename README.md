@@ -20,6 +20,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | A / D | ohjaus |
 | Q | perämoottori käyntiin / sammuksiin (sammuksissa soudetaan) |
 | X | ankkuri alas / ylös (lasketaan keulasta pohjaan, köysi kiristyy jos yrität lähteä) |
+| V | mela käteen / pois: melalla pääsee irti laiturista, kun airot eivät mahdu (W/S melonta, A/D melotaan toiselta puolelta) |
 | Hiiri | kameran ja heittosuunnan kääntö, rulla = zoomaus |
 | Vasen hiiri | pidä = heittovoima (tähtäin näyttää osumapisteen), päästä = heitto; tärpätessä vastaisku; lopuksi haavinta |
 | Oikea hiiri | kelaa (Shift = nopeasti) |
@@ -131,9 +132,11 @@ Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 Kalastajahahmo on Quaterniuksen "Adventurer"-malli (CC0, ks.
 `assets/characters/LICENSE.txt`).
 
-Perämoottorin, aaltojen ja tuulen äänet ovat Freesoundin CC0-nauhoituksia:
+Perämoottorin, airojen, melan, aaltojen ja tuulen äänet ovat Freesoundin CC0-nauhoituksia:
 
 - perämoottori: kyles, [637744](https://freesound.org/people/kyles/sounds/637744/)
+- airovedot: SkibkaMusic, [478973](https://freesound.org/people/SkibkaMusic/sounds/478973/)
+- melanvedot: Danjocross, [503208](https://freesound.org/people/Danjocross/sounds/503208/)
 - pienet aallot: mcmikai, [532179](https://freesound.org/people/mcmikai/sounds/532179/)
 - isot aallot: Ali_6868, [384360](https://freesound.org/people/Ali_6868/sounds/384360/)
 - heikko tuuli: kyles, [454360](https://freesound.org/people/kyles/sounds/454360/);

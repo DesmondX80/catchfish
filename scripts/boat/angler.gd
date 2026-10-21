@@ -10,12 +10,13 @@ extends Node3D
 ## Istuessa jalat taivutetaan polvista lattialle. Jäällä kävellessä käytetään
 ## mallin omaa kävelyanimaatiota.
 
-enum Pose { FISHING, ROWING, MOTOR, ICE_STAND, ICE_SIT, ICE_DRILL, ANCHOR }
+enum Pose { FISHING, ROWING, MOTOR, ICE_STAND, ICE_SIT, ICE_DRILL, ANCHOR, PADDLE }
 
 const MODEL := preload("res://assets/characters/adventurer.glb")
 const SEATS := {
 	Pose.FISHING: Vector3(0, 0.225, 0.25), # keskituhto
 	Pose.ROWING: Vector3(0, 0.225, 0.25),
+	Pose.PADDLE: Vector3(0, 0.225, 0.25), # keskituhdolla kasvot keulaan
 	Pose.MOTOR: Vector3(-0.28, 0.225, 1.35), # perätuhto, vasemmalla puolella
 	Pose.ANCHOR: Vector3(0, 0.225, -0.9), # etutuhto: ankkurin lasku ja nosto keulasta
 	# Jäällä (veneen solmu on jään tasolla): seisten lantio 0,85 m, ämpärin päällä 0,32 m
@@ -304,6 +305,8 @@ func _choose_pose() -> int:
 		return Pose.FISHING
 	if boat.motor_running or boat.motor_starting > 0.0:
 		return Pose.MOTOR
+	if boat.paddling:
+		return Pose.PADDLE
 	if _since_rowing < 0.8:
 		return Pose.ROWING
 	return Pose.FISHING
@@ -343,7 +346,7 @@ func _process(delta: float) -> void:
 	var yaw := aim_yaw
 	if pose == Pose.ROWING:
 		yaw = PI # selkä keulaan päin
-	elif pose == Pose.MOTOR or pose == Pose.ANCHOR:
+	elif pose == Pose.MOTOR or pose == Pose.ANCHOR or pose == Pose.PADDLE:
 		yaw = 0.0 # kasvot keulaan
 	rotation.y = lerp_angle(rotation.y, yaw, minf(1.0, delta * 5.0))
 
@@ -360,6 +363,9 @@ func _process(delta: float) -> void:
 		lean = -0.3 # nojaa kairan kahvoihin
 	elif pose == Pose.ANCHOR:
 		lean = -0.35 # kurottaa keulan köyteen
+	elif pose == Pose.PADDLE and boat._paddle_stroking:
+		var f := boat._paddle_phase
+		lean = lerpf(-0.3, 0.1, f / 0.5) if f < 0.5 else lerpf(0.1, -0.3, (f - 0.5) / 0.5) # kurottaa ottoon
 	torso.rotation.x = lerpf(torso.rotation.x, lean, minf(1.0, delta * 8.0))
 
 	if _arms_ik:
@@ -377,6 +383,10 @@ func _hand_targets() -> Array:
 			var r_sh := _shoulder(1.0)
 			right = handles[0] if r_sh.distance_to(handles[0]) < r_sh.distance_to(handles[1]) else handles[1]
 			left = handles[1] if right == handles[0] else handles[0]
+		Pose.PADDLE:
+			var grips: Array = boat.paddle_hands()
+			right = grips[0]
+			left = grips[1]
 		Pose.ANCHOR:
 			var hands: Array = boat.anchor.hand_points()
 			right = hands[0]

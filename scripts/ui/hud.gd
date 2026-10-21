@@ -215,6 +215,7 @@ func help_text(start_hint := true) -> String:
 		"  A / D        ohjaus",
 		"  Q            perämoottori käyntiin / sammuksiin (sammuksissa soudetaan)",
 		"  X            ankkuri alas / ylös",
+		"  V            mela käteen / pois (laiturin vieressä, kun airot eivät mahdu)",
 		"",
 		"KALASTUS",
 		"  Hiiri        kameran ja heittosuunnan kääntö, rulla = zoomaus",
@@ -377,6 +378,8 @@ func _process(delta: float) -> void:
 		motor = "Moottori %d %%" % roundi(boat.throttle * 100.0) if boat.throttle >= 0.0 else "Moottori peruutus"
 	elif boat.motor_starting > 0.0:
 		motor = "Moottori käynnistyy..."
+	elif boat.paddling:
+		motor = "Mela"
 	if boat.prop_broken():
 		motor += " (potkuri rikki)"
 	elif boat.prop_damage > 0.0 and not boat.on_ice:

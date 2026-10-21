@@ -3,17 +3,22 @@ extends Node
 ## Pelin äänet: taustaäänet (tuuli, laineet, linnut), veneen ja kalastuksen
 ## jatkuvat äänet (moottori, kela, jarru) sekä kertaäänet 3D-ääninä oikeassa
 ## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py; moottorin, aaltojen
-## ja tuulen äänet tehdään nauhoituksista (tools/make_recorded_sounds.py).
+## ja tuulen äänet sekä airo- ja melavedot tehdään nauhoituksista
+## (tools/make_recorded_sounds.py).
 
 const DIR := "res://assets/sounds/"
 const LOOPS := ["wind_light_loop", "wind_strong_loop", "wind_light_winter_loop", "wind_strong_winter_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
 const MAX_ONE_SHOTS := 24
+## Kertaäänet, joista on nauhoitettuja muunnelmia (nimi_1.wav, nimi_2.wav, ...)
+const VARIANTS := {"oar_stroke": 5, "paddle_stroke": 4}
 
 ## Kertaäänet: [voimakkuus dB, unit_size (m), sävelkorkeuden satunnaisuus]
 const ONE_SHOTS := {
 	"motor_start": [-7.0, 18.0, 0.03],
 	"motor_stop": [-9.0, 18.0, 0.03],
 	"oar_catch": [-8.0, 6.0, 0.12],
+	"oar_stroke": [-6.0, 6.0, 0.06],
+	"paddle_stroke": [-6.0, 5.0, 0.06],
 	"oar_drip": [-14.0, 4.0, 0.15],
 	"boat_bump": [0.0, 10.0, 0.08],
 	"prop_strike": [-2.0, 10.0, 0.1],
@@ -71,6 +76,9 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 		limiter.ceiling_db = -1.0
 		AudioServer.add_bus_effect(0, limiter)
 	for name in LOOPS + ONE_SHOTS.keys() + ["record_chime"]:
+		if VARIANTS.has(name):
+			_streams[name] = range(1, VARIANTS[name] + 1).map(func(i): return load(DIR + "%s_%d.wav" % [name, i]))
+			continue
 		var stream: AudioStreamWAV = load(DIR + name + ".wav")
 		if name in LOOPS:
 			stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
@@ -131,7 +139,8 @@ func play_at(sound: String, at: Vector3) -> void:
 		return
 	var cfg: Array = ONE_SHOTS.get(sound, [0.0, 10.0, 0.05])
 	var p := AudioStreamPlayer3D.new()
-	p.stream = _streams[sound]
+	var stream = _streams[sound]
+	p.stream = stream[_rng.randi() % stream.size()] if stream is Array else stream
 	p.volume_db = cfg[0]
 	p.unit_size = cfg[1]
 	p.max_distance = cfg[1] * 40.0

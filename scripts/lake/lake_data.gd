@@ -115,6 +115,16 @@ func dock_push(p: Vector2) -> Vector2:
 	return best
 
 
+## Onko piste laiturin kannen alla tai alle margin metrin päässä siitä
+func near_dock(p: Vector2, margin: float) -> bool:
+	for d in docks:
+		var local: Vector2 = p - d["center"]
+		var half: Vector2 = d["half"]
+		if absf(local.dot(d["x_axis"])) < half.x + margin and absf(local.dot(d["z_axis"])) < half.y + margin:
+			return true
+	return false
+
+
 ## Laiturin kannen kulmat (kärjen kulmat osuvat veneen kylkeen ennen kuin
 ## mikään rungon ääriviivan piste on kannen alla)
 func dock_corners(d: Dictionary) -> Array:

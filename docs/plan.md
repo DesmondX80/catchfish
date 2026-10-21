@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.31.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.31.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.32.0** (release tekemättä; edellinen
+[v0.31.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.31.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,11 +10,11 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.31.0)
+### Valmiina (versiot 0.1–0.32.0)
 
 | Alue | Ominaisuudet |
 |---|---|
-| Vene | Oma vesifysiikka, soutu ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
+| Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
 | Maailma | MML-aineistosta tehty järvi ja maasto, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
-| Äänet | Moottori, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
+| Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
@@ -115,6 +115,7 @@ godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohja
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
+godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -273,6 +274,23 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ankkuri päätyy veneen pohjalle keulaan. Uistimen ollessa vedessä ankkuria ei
   käsitellä. HUD näyttää ankkurin tilan. Testi `--anchortest`.
   Julkaistu [v0.31.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.31.0).
+- **#45 Mela peliin ja #44 Airojen äänet luonnolliseksi – tehty (0.32.0).**
+  Airot eivät mene laiturin läpi: airon pyyhkäisemää aluetta (otosta vedon
+  loppuun, hankaimesta lavan kärkeen) verrataan laiturien kansiin 0,25 m:n
+  marginaalilla, ja laituria kohti oleva airo nostetaan hankaimessa veneen
+  kylkeä pitkin (lapa perään). Sillä ei voi soutaa, ja ilmoitus kehottaa
+  ottamaan melan. V ottaa melan käteen (airot veneeseen): kalastaja istuu
+  keskituhdolla kasvot keulaan ja meloo kyljeltä. W/S melotaan eteen/taakse ja
+  kylki vaihtuu joka vedolla, A/D melotaan vain toiselta kyljeltä, jolloin vene
+  kääntyy. Mela on heikompi kuin airot (90 N vedossa). Mela on puinen
+  kanoottimela (1,5 m, levenevä kämmenkahva, lapa levenee kärkeä kohti, mänty
+  syykuviolla). Vedossa varsi kulkee laidan ulkopuolella, ja kylkeä vaihdettaessa
+  mela nostetaan kalastajan edestä veneen yli. Kun mela ei ole käytössä, se on
+  veneen pohjalla vasemmalla kyljellä. Airovedon ääni on
+  leikattu oikeasta nauhoituksesta (SkibkaMusic, Freesound 478973, CC0; 5
+  muunnelmaa) ja melanvedon ääni kajakin melonnasta tyynellä järvellä
+  (Danjocross, Freesound 503208, CC0; 4 muunnelmaa). Peli soittaa
+  satunnaisen muunnelman (`GameAudio.VARIANTS`). Testi `--paddletest`.
 
 
 ## Huomioita ja avoimia kysymyksiä

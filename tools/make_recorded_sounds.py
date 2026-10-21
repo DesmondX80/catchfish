@@ -9,10 +9,13 @@ Lähteet ovat kansiossa data/sounds/ (Freesoundin esikuuntelutiedostot):
   wind_strong_teadrinker_403051.mp3     kova tuuli ruotsalaisessa metsässä
   wind_light_winter_mhcerberus_141143.mp3  talven heikko tuuli, puut narisevat
   wind_strong_winter_jpnien_97397.mp3   kova talvituuli
+  oars_skibkamusic_478973.mp3           airovedot (lapa veteen, hankaimen kolahdus)
+  paddle_danjocross_503208.mp3          kajakin melonta tyynellä järvellä yöllä
 
 Tasaisista kohdista leikataan saumattomat silmukat ja niiden voimakkuus
 asetetaan entisten syntetisoitujen äänten tasolle. Moottorin käynnistykseen
 tulee narun nykäisyt ja silmukan alku, sammutukseen hidastuva silmukka.
+Airo- ja melavedoista leikataan yksittäiset vedot muunnelmiksi (_1, _2, ...).
 
 Käyttö (vaatii uv:n, joka hakee mp3-purkajan):
     uv run --no-project --with miniaudio --with numpy python tools/make_recorded_sounds.py
@@ -42,6 +45,14 @@ LOOPS = {
 }
 CROSSFADE = 1.0  # taustaäänten silmukan saumaan (s)
 
+# Yksittäiset vedot: nimi -> (lähde, [vedon huippu nauhoituksessa s]).
+# Peli soittaa satunnaisen muunnelman (game_audio.gd).
+STROKES = {
+    'oar_stroke': ('oars_skibkamusic_478973.mp3', [0.8, 5.5, 7.65, 10.6, 13.05]),
+    'paddle_stroke': ('paddle_danjocross_503208.mp3', [21.65, 23.85, 30.75, 42.9]),
+}
+STROKE_LENGTH = 1.1  # s
+
 MOTOR_SOURCE = 'outboard_kyles_637744.mp3'
 MOTOR_START, MOTOR_END = 30.0, 38.0  # tasainen kohta nauhoituksessa (s)
 MOTOR_CROSSFADE = 0.4
@@ -67,6 +78,16 @@ def save_rms(name, x, rms):
     x = x * rms / np.sqrt(np.mean(x ** 2))
     x = 0.98 * np.tanh(x / 0.98)
     save(name, x, peak=np.max(np.abs(x)), fades=False)
+
+
+def cut_stroke(x, peak):
+    """Veto alkaa hieman ennen kuin ääni nousee (30 % huipusta) ja häipyy loppua kohti."""
+    a = int(max(0.0, peak - 0.3) * SR)
+    seg = x[a:a + int((STROKE_LENGTH + 0.3) * SR)]
+    env = np.convolve(np.abs(seg), np.ones(int(0.01 * SR)) / int(0.01 * SR), mode='same')
+    onset = int(np.argmax(env > 0.3 * env.max()))
+    seg = seg[max(0, onset - int(0.03 * SR)):][:int(STROKE_LENGTH * SR)].copy()
+    return seg * np.minimum(1.0, np.linspace(1.6, 0.0, len(seg))) ** 1.5  # loppu häipyy
 
 
 def motor_start(loop):
@@ -106,6 +127,10 @@ def main():
         if lowpass:
             x = filtered(x, lambda f, lp=lowpass: 1.0 / (1.0 + (f / lp) ** 4))
         save_rms(name, make_loop(x, start, end, CROSSFADE), rms)
+    for name, (source, peaks) in STROKES.items():
+        x = filtered(load(source), lambda f: 1.0 / (1.0 + (60 / f) ** 4))
+        for i, peak in enumerate(peaks):
+            save(f'{name}_{i + 1}', cut_stroke(x, peak))
 
 
 if __name__ == '__main__':
