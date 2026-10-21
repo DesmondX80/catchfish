@@ -2,11 +2,11 @@ class_name GameAudio
 extends Node
 ## Pelin äänet: taustaäänet (tuuli, laineet, linnut), veneen ja kalastuksen
 ## jatkuvat äänet (moottori, kela, jarru) sekä kertaäänet 3D-ääninä oikeassa
-## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py, moottorin äänet
-## tehdään nauhoituksesta (tools/make_motor_sound.py).
+## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py; moottorin, aaltojen
+## ja tuulen äänet tehdään nauhoituksista (tools/make_recorded_sounds.py).
 
 const DIR := "res://assets/sounds/"
-const LOOPS := ["wind_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
+const LOOPS := ["wind_light_loop", "wind_strong_loop", "wind_light_winter_loop", "wind_strong_winter_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
 const MAX_ONE_SHOTS := 24
 
 ## Kertaäänet: [voimakkuus dB, unit_size (m), sävelkorkeuden satunnaisuus]
@@ -38,7 +38,9 @@ var sky: SkyTime
 var lake: LakeData
 
 var _streams := {}
-var _wind: AudioStreamPlayer
+var _wind_light: AudioStreamPlayer # heikko tuuli
+var _wind_strong: AudioStreamPlayer # kova tuuli
+var _winter := false # talven tuuliäänet käytössä
 var _rain: AudioStreamPlayer
 var _lap: AudioStreamPlayer3D # tyyni liplatus
 var _waves: AudioStreamPlayer3D # tuulinen aallokko
@@ -75,10 +77,14 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 			stream.loop_end = int(stream.get_length() * stream.mix_rate)
 		_streams[name] = stream
 
-	_wind = AudioStreamPlayer.new()
-	_wind.stream = _streams["wind_loop"]
-	add_child(_wind)
-	_wind.play()
+	_wind_light = AudioStreamPlayer.new()
+	_wind_light.stream = _streams["wind_light_loop"]
+	add_child(_wind_light)
+	_wind_light.play()
+	_wind_strong = AudioStreamPlayer.new()
+	_wind_strong.stream = _streams["wind_strong_loop"]
+	add_child(_wind_strong)
+	_wind_strong.play()
 
 	_rain = AudioStreamPlayer.new()
 	_rain.stream = _streams["rain_loop"]
@@ -133,10 +139,22 @@ func play_at(sound: String, at: Vector3) -> void:
 func _process(delta: float) -> void:
 	if boat == null:
 		return
-	# Tuuli: voimakkuus tuulen mukaan, puuskat kuuluvat
+	# Tuuli: tyynellä hiljaista, heikossa tuulessa heikon tuulen ääni, joka
+	# vaihtuu 4–8 m/s tuulessa kovan tuulen ääneksi. Puuskat kuuluvat.
+	# Talvella (järvi jäässä) omat talvituulen äänet.
+	if boat.on_ice != _winter:
+		_winter = boat.on_ice
+		_wind_light.stream = _streams["wind_light_winter_loop" if _winter else "wind_light_loop"]
+		_wind_strong.stream = _streams["wind_strong_winter_loop" if _winter else "wind_strong_loop"]
+		_wind_light.play()
+		_wind_strong.play()
 	var wind := weather.speed()
-	_wind.volume_db = linear_to_db(clampf(0.08 + wind / 10.0, 0.02, 1.0)) - 4.0
-	_wind.pitch_scale = 0.9 + clampf(wind / 30.0, 0.0, 0.3)
+	var level := clampf(0.08 + wind / 10.0, 0.0, 1.1)
+	var strong := smoothstep(4.0, 8.0, wind)
+	var light := level * smoothstep(0.3, 1.5, wind) * (1.0 - strong)
+	_wind_light.volume_db = linear_to_db(maxf(light, 0.0001)) - 4.0
+	_wind_strong.volume_db = linear_to_db(maxf(level * strong, 0.0001)) - 4.0
+	_wind_strong.pitch_scale = 0.95 + clampf((wind - 6.0) / 40.0, 0.0, 0.1)
 
 	# Sade: voimakkuuden mukaan
 	if weather.rain > 0.02:

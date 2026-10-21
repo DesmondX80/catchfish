@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.24.1**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.1)).
+Päivitetty 21.10.2026. Nykyinen versio **0.25.0** (release tekemättä; edellinen
+[v0.24.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.24.1)
+### Valmiina (versiot 0.1–0.25.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Laji tunnistetaan vasta, kun kala näkyy veneen lähellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
-| Äänet | Syntetisoidut äänet (tools/make_sounds.py): tuuli, aallot (tyyni liplatus / tuulinen aallokko), kela, jarru, linnut, sade; moottori oikeasta nauhoituksesta (Freesound, CC0, tools/make_motor_sound.py) |
+| Äänet | Moottori, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
@@ -121,7 +121,7 @@ godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laiturei
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
-godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen äänet
+godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen ja tuulen äänet (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
@@ -167,13 +167,21 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Julkaistu [v0.24.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.0).
 - **#33 Moottorin ääni – tehty (0.24.1).** Syntetisoidun surinan tilalle oikea
   perämoottorin nauhoitus veneestä täydellä vauhdilla (kyles, Freesound 637744,
-  CC0; lähde `data/sounds/`). `tools/make_motor_sound.py` leikkaa siitä 8 s
+  CC0; lähde `data/sounds/`). `tools/make_recorded_sounds.py` leikkaa siitä 8 s
   saumattoman silmukan (sytytystaajuus noin 49 Hz, matala ja bassoinen) ja
   tekee käynnistys- ja sammutusäänen. Pelissä täysi kaasu soi nauhoituksen
   korkeudella, tyhjäkäynti 0,6-kertaisena (noin 30 Hz).
   Kokeiltiin myös freesfx.co.uk:n ääntä, mutta sen ehdot kieltävät tiedoston
   jakamisen julkisessa repossa; ehdokkaiksi kelpuutetaan vain CC0-äänet.
   Julkaistu [v0.24.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.24.1).
+- **#43 Luonnolliset aalto- ja tuuliäänet – tehty (0.25.0).** Syntetisoitujen
+  tuuli- ja aaltoäänten tilalle Freesoundin CC0-nauhoitukset (käyttäjä valitsi
+  ehdokkaista): pienet aallot (kesäjärven aallot), isot aallot (aallonmurtaja),
+  heikko tuuli ja kova tuuli sekä talveksi omat tuuliäänet. Tyynellä tuulta ei
+  kuulu, heikko tuuli voimistuu 0,3–1,5 m/s ja vaihtuu 4–8 m/s kovaksi tuuleksi.
+  Silmukat tehdään työkalulla `tools/make_recorded_sounds.py` (ent.
+  make_motor_sound.py) 20 s pätkistä ristihäivytyksellä, ja niiden voimakkuus
+  on entisten syntetisoitujen tasolla. Testi `--wavesoundtest` tarkistaa myös tuulen.
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).

@@ -107,11 +107,19 @@ Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 Kalastajahahmo on Quaterniuksen "Adventurer"-malli (CC0, ks.
 `assets/characters/LICENSE.txt`).
 
-Perämoottorin ääni on kylesin nauhoitus "outboard motor boat onboard high
-speed" ([Freesound 637744](https://freesound.org/people/kyles/sounds/637744/),
-CC0). Pelin äänet tehdään siitä komennolla `uv run --no-project --with miniaudio
---with numpy python tools/make_motor_sound.py`; muut äänet on syntetisoitu
-itse (`tools/make_sounds.py`).
+Perämoottorin, aaltojen ja tuulen äänet ovat Freesoundin CC0-nauhoituksia:
+
+- perämoottori: kyles, [637744](https://freesound.org/people/kyles/sounds/637744/)
+- pienet aallot: mcmikai, [532179](https://freesound.org/people/mcmikai/sounds/532179/)
+- isot aallot: Ali_6868, [384360](https://freesound.org/people/Ali_6868/sounds/384360/)
+- heikko tuuli: kyles, [454360](https://freesound.org/people/kyles/sounds/454360/);
+  talvella MHCerberus, [141143](https://freesound.org/people/MHCerberus/sounds/141143/)
+- kova tuuli: teadrinker, [403051](https://freesound.org/people/teadrinker/sounds/403051/);
+  talvella jpnien, [97397](https://freesound.org/people/jpnien/sounds/97397/)
+
+Lähteet ovat kansiossa `data/sounds/`, ja pelin äänet tehdään niistä komennolla
+`uv run --no-project --with miniaudio --with numpy python tools/make_recorded_sounds.py`.
+Muut äänet on syntetisoitu itse (`tools/make_sounds.py`).
 
 Kalastajan puhe on tehty Piper-puhesynteesillä suomenkielisellä
 fi_FI-harri-äänellä (opetusaineisto CC0). Repliikit voi tehdä uudelleen
