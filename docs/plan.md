@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.27.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.27.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.28.0** (release tekemättä; edellinen
+[v0.27.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.27.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.27.0)
+### Valmiina (versiot 0.1–0.28.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -47,7 +47,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | # | Tehtävä | Huomio |
 |---|---|---|
-| 31 | Alle metrin syvyydessä potkuri osuu pohjaan | Moottorin pohjakosketus |
 | 34 | Haavinta aivan omaksi animaatiokseen | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
 | 38 | Ankkurianimaatio | |
 | 19 | Kalojen vuodenaikakäytös | Kutu keväällä matalassa, kesähelteellä syvemmälle |
@@ -115,6 +114,7 @@ godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
 godot --headless --fixed-fps 30 -- --day=180 --piketest     # kalat eivät näy, hauki seuraa uistinta
 godot --headless --fixed-fps 30 -- --day=180 --sonartest    # syvyydet, pohjan laatu, kalakaaret
+godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohjaan matalassa
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -221,8 +221,16 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   kasvillisuus: tupsuja pohjasta. Testi `--sonartest`. Uistin- ja onkitestien
   paikat rajattu enintään 4 m syvyisiin (syvänteessä uistin vajoaa liian syvälle).
   Julkaistu [v0.27.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.27.0).
+- **#31 Alle metrin syvyydessä potkuri osuu pohjaan – tehty (0.28.0).**
+  Kun moottori käy ja potkuri pyörii (kaasu ei vapaalla), alle metrin
+  syvyydessä veneen perässä potkuri osuu pohjaan: metallinen kolahdus ja
+  raapiminen (`prop_strike`), vene hidastuu ja potkuri vaurioituu kaasun ja
+  matalikon mukaan (täysi kaasu syvällä matalikossa ~3 s, kevyt hipaisu
+  10–20 s). Vääntynyt potkuri heikentää työntöä (HUD: "potkuri vääntynyt"),
+  rikki mennyt sammuttaa moottorin eikä se käynnisty enää – reissun loppu
+  soudetaan. Alle 1,3 metrin syvyydestä varoitetaan kerran. Uusi reissu alkaa
+  ehjällä potkurilla. Testi `--proptest`.
 
-Seuraavaksi suunnitelman mukaan #31 (potkuri osuu pohjaan alle metrin syvyydessä).
 
 ## Huomioita ja avoimia kysymyksiä
 

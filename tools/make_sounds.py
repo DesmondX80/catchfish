@@ -221,6 +221,20 @@ def boat_bump():
                0.5 * splash_burst(0.2, 100, 1200, decay=0.04))
 
 
+def prop_strike():
+    """Potkuri osuu pohjaan: metallinen kolahdus, kivien ja soran rahina
+    lapojen raapiessa pohjaa ja moottorin hetkellinen töksähdys."""
+    out = np.zeros(int(0.9 * SR))
+    clank = mix(damped_sine(870, 0.4, 0.07), 0.7 * damped_sine(1430, 0.3, 0.05),
+                0.5 * damped_sine(2310, 0.25, 0.035), 0.3 * damped_sine(3650, 0.15, 0.02))
+    place(out, clank, 0.0, 0.8)
+    # Lavat raapivat pohjaa: tiheitä rahinapurskeita
+    for k in range(9):
+        place(out, splash_burst(0.06, 900, 6000, attack=0.002, decay=0.015), 0.02 + k * 0.045 + rng.uniform(0, 0.01), 0.5 * (1.0 - k / 10))
+    place(out, mix(damped_sine(70, 0.35, 0.09), 0.5 * damped_sine(130, 0.3, 0.06)), 0.0, 0.9)
+    return out
+
+
 def anchor_drop():
     out = np.zeros(int(1.2 * SR))
     place(out, splash_burst(0.8, 200, 2500, attack=0.005, decay=0.18), 0.0)
@@ -334,23 +348,26 @@ def main(only=None):
         'record_chime': record_chime, 'bird_chaffinch': chaffinch_song, 'bird_great_tit': great_tit_call,
         'bird_loon': loon_call,
     }
+    # Myöhemmin lisätyt äänet tehdään viimeisinä, jotta aiempien satunnaisuus ei muutu
+    late_loops = {'rain_loop': rain_loop}
+    late = {'ice_drill': ice_drill, 'snow_step': snow_step, 'prop_strike': prop_strike}
     if only:
         # Vain nimetyt äänet: muut tiedostot pysyvät ennallaan
         for name in only:
-            fn = loops.get(name)
+            fn = loops.get(name) or late_loops.get(name)
             if fn:
                 save(name, fn(), fades=False)
             else:
-                save(name, sounds[name]())
+                save(name, (sounds.get(name) or late[name])())
         return
     for name, fn in loops.items():
         save(name, fn(), fades=False)
     for name, fn in sounds.items():
         save(name, fn())
-    # Myöhemmin lisätyt äänet viimeisinä, jotta aiempien satunnaisuus ei muutu
-    save('rain_loop', rain_loop(), fades=False)
-    save('ice_drill', ice_drill())
-    save('snow_step', snow_step())
+    for name, fn in late_loops.items():
+        save(name, fn(), fades=False)
+    for name, fn in late.items():
+        save(name, fn())
 
 
 if __name__ == '__main__':

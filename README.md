@@ -39,6 +39,9 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   ajelehdittaa, ankkuri pitää paikallaan, matalikolla vene osuu pohjaan.
   Laituriin vene kolahtaa ja pysähtyy, viistossa törmäyksessä se liukuu
   laituria pitkin.
+  Perämoottorin potkuri ulottuu lähes metrin syvyyteen: matalassa se osuu
+  pohjaan ja vääntyy, ja liian monesta osumasta se menee rikki, jolloin
+  loppureissu soudetaan. Matalasta varoitetaan, ja vapaalla potkuri ei pyöri.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti

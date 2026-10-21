@@ -16,6 +16,7 @@ const ONE_SHOTS := {
 	"oar_catch": [-8.0, 6.0, 0.12],
 	"oar_drip": [-14.0, 4.0, 0.15],
 	"boat_bump": [0.0, 10.0, 0.08],
+	"prop_strike": [-2.0, 10.0, 0.1],
 	"anchor_drop": [-3.0, 8.0, 0.05],
 	"anchor_up": [-6.0, 6.0, 0.05],
 	"cast_swish": [-6.0, 5.0, 0.1],

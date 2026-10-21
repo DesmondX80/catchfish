@@ -365,6 +365,10 @@ func _process(delta: float) -> void:
 		motor = "Moottori %d %%" % roundi(boat.throttle * 100.0) if boat.throttle >= 0.0 else "Moottori peruutus"
 	elif boat.motor_starting > 0.0:
 		motor = "Moottori käynnistyy..."
+	if boat.prop_broken():
+		motor += " (potkuri rikki)"
+	elif boat.prop_damage > 0.0 and not boat.on_ice:
+		motor += " (potkuri vääntynyt)"
 	var place := lake.nearest_place(boat.pos.x, boat.pos.y)
 	var clock := "Klo %s  (todellinen aika)" % sky.clock_text() if sky.real_time else "Klo %s  (aika x%d)" % [sky.clock_text(), int(sky.time_scale())]
 	if Career.active:

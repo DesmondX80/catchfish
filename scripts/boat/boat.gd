@@ -2,7 +2,8 @@ class_name Boat
 extends Node3D
 ## Soutuvene perämoottorilla. Oma yksinkertainen vesifysiikka: työntövoima,
 ## vastus (pituussuunnassa pieni, sivusuunnassa suuri), tuulen ajelehtiminen,
-## ankkuri ja karilleajo järven syvyysdatan perusteella.
+## ankkuri ja karilleajo järven syvyysdatan perusteella. Perämoottorin potkuri
+## ulottuu lähes metrin syvyyteen: matalassa se osuu pohjaan ja voi mennä rikki.
 
 signal message(text: String)
 signal sound_event(sound: String, at: Vector3)
@@ -16,6 +17,10 @@ const ROW_TURN := 320.0 # Nm, kun soudetaan vain toisella airolla
 const DRAFT := 0.3 # syväys metreinä
 const WINDAGE := 0.85 # 0.5 * ilman tiheys * Cd * A
 const STROKE_TIME := 1.6 # s / airoveto
+## Perämoottorin potkuri: alle metrin syvyydessä pyörivä potkuri osuu pohjaan
+const PROP_DEPTH := 1.0 # m: tätä matalammassa potkuri osuu pohjaan
+const SHALLOW_WARNING := 1.3 # m: varoitus matalasta moottorilla ajettaessa
+const PROP_MIN_THROTTLE := 0.05 # kaasu, jolla potkuri pyörii (vapaalla ei)
 
 var lake: LakeData
 var weather: Weather
@@ -49,6 +54,10 @@ var _rowing := false
 var _oar_activity := [0.0, 0.0] # vasen, oikea: 1 = soutaa eteen, -1 = taakse, 0 = lepää
 var _unstow_timer := 0.0
 var _bump_cooldown := 0.0
+## Potkurin vaurio 0..1: vääntynyt potkuri heikentää työntöä, 1 = rikki
+var prop_damage := 0.0
+var _strike_cooldown := 0.0
+var _shallow_warned := false
 var _time := 0.0
 
 
@@ -94,6 +103,7 @@ func set_on_ice(on: bool) -> void:
 	hull.rotation = Vector3.ZERO
 	anchored = false
 	motor_running = false
+	prop_damage = 0.0 # uusi reissu: potkuri vaihdettu kotona
 	_apply_transform()
 
 
@@ -110,6 +120,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_unstow_timer = 1.5
 			sound_event.emit("motor_stop", _stern_position())
 			message.emit("Moottori sammutettu – airot hankaimiin")
+		elif prop_broken():
+			message.emit("Potkuri on rikki – moottorilla ei pääse, soudetaan")
 		else:
 			motor_starting = 1.6
 			sound_event.emit("motor_start", _stern_position())
@@ -157,6 +169,7 @@ func _physics_process(dt: float) -> void:
 		return
 	_time += dt
 	_bump_cooldown -= dt
+	_strike_cooldown -= dt
 	if motor_starting > 0.0:
 		motor_starting -= dt
 		if motor_starting <= 0.0:
@@ -176,7 +189,7 @@ func _physics_process(dt: float) -> void:
 		throttle = clampf(throttle + drive * 0.6 * dt, -0.4, 1.0)
 		tiller = move_toward(tiller, steer, 2.5 * dt)
 		var angle := tiller * 0.6
-		var thrust := MOTOR_THRUST * throttle
+		var thrust := MOTOR_THRUST * throttle * (1.0 - 0.6 * prop_damage)
 		force += fwd * thrust * cos(angle)
 		torque += thrust * sin(angle) * 2.1 + v_fwd * tiller * 45.0
 		_rowing = false
@@ -238,9 +251,44 @@ func _physics_process(dt: float) -> void:
 
 	_unstow_timer = maxf(0.0, _unstow_timer - dt)
 	var stern := pos - fwd * LENGTH * 0.5
+	if motor_running:
+		_check_propeller(stern)
 	wake.track(stern, side, velocity.length())
 	_animate(dt)
 	_apply_transform()
+
+
+func prop_broken() -> bool:
+	return prop_damage >= 1.0
+
+
+## Potkuri perässä: matalassa pyörivä potkuri osuu pohjaan. Vaurio kasvaa
+## kaasun ja sen mukaan, kuinka syvälle potkuri iskee pohjaan; rikkoutunut
+## potkuri sammuttaa moottorin.
+func _check_propeller(stern: Vector2) -> void:
+	var depth := lake.depth_at(stern.x, stern.y)
+	var spinning := absf(throttle) >= PROP_MIN_THROTTLE
+	if depth < SHALLOW_WARNING and depth >= PROP_DEPTH and spinning and not _shallow_warned:
+		_shallow_warned = true
+		message.emit("Matalaa (%.1f m)! Varo potkuria – alle metrissä se osuu pohjaan" % depth)
+	elif depth >= SHALLOW_WARNING + 0.3:
+		_shallow_warned = false
+	if depth >= PROP_DEPTH or not spinning or _strike_cooldown > 0.0:
+		return
+	_strike_cooldown = 0.6
+	var hit := clampf((PROP_DEPTH - depth) / 0.5, 0.2, 1.0) # kuinka syvälle pohjaan
+	prop_damage = minf(1.0, prop_damage + (0.08 + 0.22 * absf(throttle)) * hit)
+	velocity *= 0.8
+	sound_event.emit("prop_strike", global_position - Vector3(forward().x, 0.0, forward().y) * LENGTH * 0.5)
+	if prop_broken():
+		motor_running = false
+		throttle = 0.0
+		_unstow_timer = 1.5
+		message.emit("Potkuri meni rikki! Moottori sammui – airot hankaimiin")
+	elif prop_damage > 0.5:
+		message.emit("Potkuri osui pohjaan! Potkuri on pahasti vääntynyt (%d %%)" % roundi(prop_damage * 100.0))
+	else:
+		message.emit("Potkuri osui pohjaan (%.1f m)! Nosta kaasua tai aja syvemmälle" % depth)
 
 
 ## Rungon ääriviiva ylhäältä (paikallinen x oikealle, y perään), samat mitat kuin _hull_mesh
