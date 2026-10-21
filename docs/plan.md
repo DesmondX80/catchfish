@@ -182,6 +182,11 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Silmukat tehdään työkalulla `tools/make_recorded_sounds.py` (ent.
   make_motor_sound.py) 20 s pätkistä ristihäivytyksellä, ja niiden voimakkuus
   on entisten syntetisoitujen tasolla. Testi `--wavesoundtest` tarkistaa myös tuulen.
+  Korjauksia kokeilun jälkeen: puuskassa kuului "löylyn kihinää", koska puuska
+  hyppäsi kerralla ~1 m/s ja toi kovan tuulen metsäkahinan esiin. Nyt puuska
+  voimistuu 0,8 m/s sekunnissa, heikon ja kovan tuulen vaihto seuraa tuulen
+  perusvoimakkuutta (puuska vain voimistaa ääntä), kovan tuulen silmukasta on
+  vaimennettu yli 3,5 kHz kahina ja pienistä aalloista mp3-sihinä (yli 2,5 kHz).
 
 Seuraavaksi suunnitelman mukaan: #29 ja #17 yhdessä (kalojen näkyvyys ja hauen
 seuranta), sitten #31 (potkuri osuu pohjaan alle metrin syvyydessä).

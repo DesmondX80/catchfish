@@ -43,6 +43,7 @@ var _gust_peak := 0.0
 
 var _rng := RandomNumberGenerator.new()
 var _gust_timer := 0.0
+var _gust_target := 0.0 # puuskan huippu, jota kohti tuuli voimistuu
 var _wind_target := 3.0
 var _cover_target := 0.2
 var _rain_target := 0.0
@@ -95,8 +96,14 @@ func _process(delta: float) -> void:
 	if _gust_timer <= 0.0:
 		_gust_timer = _rng.randf_range(3.0, 12.0)
 		var peak := maxf(_gust_peak - wind_base, 0.3) if real_mode else wind_base * (0.5 + rain * 0.3)
-		gust = _rng.randf_range(0.0, peak)
-	gust = move_toward(gust, 0.0, delta * 0.3)
+		_gust_target = _rng.randf_range(0.0, peak)
+	# Puuska voimistuu parissa sekunnissa (ei hyppäystä) ja laantuu hitaasti
+	if _gust_target > gust:
+		gust = move_toward(gust, _gust_target, delta * 0.8)
+		if gust >= _gust_target:
+			_gust_target = 0.0
+	else:
+		gust = move_toward(gust, 0.0, delta * 0.3)
 
 
 ## Todellinen sää (RealWeather): pilvisyys, sade ja tuuli havainnoista

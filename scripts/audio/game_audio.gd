@@ -140,7 +140,9 @@ func _process(delta: float) -> void:
 	if boat == null:
 		return
 	# Tuuli: tyynellä hiljaista, heikossa tuulessa heikon tuulen ääni, joka
-	# vaihtuu 4–8 m/s tuulessa kovan tuulen ääneksi. Puuskat kuuluvat.
+	# vaihtuu 4–8 m/s tuulessa kovan tuulen ääneksi. Vaihto seuraa tuulen
+	# perusvoimakkuutta, jottei puuska tuo kovan tuulen kahinaa esiin; puuskat
+	# kuuluvat voimistuvana äänenä.
 	# Talvella (järvi jäässä) omat talvituulen äänet.
 	if boat.on_ice != _winter:
 		_winter = boat.on_ice
@@ -150,7 +152,7 @@ func _process(delta: float) -> void:
 		_wind_strong.play()
 	var wind := weather.speed()
 	var level := clampf(0.08 + wind / 10.0, 0.0, 1.1)
-	var strong := smoothstep(4.0, 8.0, wind)
+	var strong := smoothstep(4.0, 8.0, weather.wind_base)
 	var light := level * smoothstep(0.3, 1.5, wind) * (1.0 - strong)
 	_wind_light.volume_db = linear_to_db(maxf(light, 0.0001)) - 4.0
 	_wind_strong.volume_db = linear_to_db(maxf(level * strong, 0.0001)) - 4.0

@@ -30,12 +30,13 @@ SOURCES = os.path.join(os.path.dirname(__file__), '..', 'data', 'sounds')
 
 # Silmukat: nimi -> (lähde, alku s, loppu s, ylipäästö Hz, alipäästö Hz, tavoite-RMS).
 # Pienten aaltojen nauhoitus on hiljainen ja sitä vahvistetaan paljon, jolloin
-# mp3-pakkauksen sihinä kuuluisi löylyn kihinänä: alipäästö poistaa sen.
+# mp3-pakkauksen sihinä kuuluisi löylyn kihinänä: alipäästö poistaa sen. Kovan
+# tuulen metsäkahinasta vaimennetaan korkein kihinä samasta syystä.
 LOOPS = {
     'water_lap_loop': ('waves_small_mcmikai_532179.mp3', 20.5, 40.5, 60, 2500, 0.077),
     'water_waves_loop': ('waves_big_ali6868_384360.mp3', 38.5, 58.5, 40, None, 0.095),
     'wind_light_loop': ('wind_light_kyles_454360.mp3', 43.0, 63.0, 25, None, 0.155),
-    'wind_strong_loop': ('wind_strong_teadrinker_403051.mp3', 21.5, 41.5, 25, None, 0.155),
+    'wind_strong_loop': ('wind_strong_teadrinker_403051.mp3', 21.5, 41.5, 25, 3500, 0.155),
     'wind_light_winter_loop': ('wind_light_winter_mhcerberus_141143.mp3', 1.0, 15.5, 25, None, 0.155),
     'wind_strong_winter_loop': ('wind_strong_winter_jpnien_97397.mp3', 1.0, 21.0, 40, None, 0.155),
 }
