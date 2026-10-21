@@ -77,12 +77,16 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 			stream.loop_end = int(stream.get_length() * stream.mix_rate)
 		_streams[name] = stream
 
+	# Tuuliäänet alkavat hiljaa: ensimmäinen ruutu järven latauksen jälkeen voi
+	# viipyä, ja täysillä soiva tuuli kuuluisi silloin kohinana
 	_wind_light = AudioStreamPlayer.new()
 	_wind_light.stream = _streams["wind_light_loop"]
+	_wind_light.volume_db = -80.0
 	add_child(_wind_light)
 	_wind_light.play()
 	_wind_strong = AudioStreamPlayer.new()
 	_wind_strong.stream = _streams["wind_strong_loop"]
+	_wind_strong.volume_db = -80.0
 	add_child(_wind_strong)
 	_wind_strong.play()
 
@@ -107,6 +111,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	boat.sound_event.connect(play_at)
 	fishing.sound_event.connect(play_at)
 	fishing.caught.connect(func(_entry, record): if record: _chime.play())
+	_process(0.0) # äänenvoimakkuudet heti säätä vastaaviksi
 
 
 ## Veneen mukana kulkeva silmukka
