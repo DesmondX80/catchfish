@@ -233,8 +233,14 @@ def mml_lake(folder):
     rng = np.random.default_rng(3)
     shore_dist_water = distance_to(~water, cell)
     shore_dist_land = distance_to(water, cell)
-    depth = 0.36 * np.sqrt(shore_dist_water) * (1.0 + 0.25 * fractal_noise(rows, cols, 64, 3, rng))
-    depth = np.clip(depth, 0.3, 4.0)
+    if has_water_theme:
+        # Altaan pohja on vanhaa maastoa: maastotietokannan korkeuskäyrät
+        # jatkuvat veden alla, ja niistä saadaan syvyydet
+        contour_depth = rasterize_contours(vec, rows, cols, gt4, ds.GetProjection(), water_level)
+        depth = bathymetry(water, contour_depth, cell, rng)
+    else:
+        depth = 0.36 * np.sqrt(shore_dist_water) * (1.0 + 0.25 * fractal_noise(rows, cols, 64, 3, rng))
+        depth = np.clip(depth, 0.3, 4.0)
 
     land = dem4 - water_level
     # Rannan maa vähintään hieman vedenpinnan yläpuolelle, ettei vesi "vuoda" maalle
@@ -287,11 +293,130 @@ def mml_lake(folder):
         'name': 'Haapajärven tekoallas, Raahe',
         'source': 'mml',
         'attribution': 'Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m -aineistoa (CC BY 4.0)',
-        'depth_estimated': True,
+        'depth_estimated': not has_water_theme,
         'water_level_n2000': round(water_level, 2),
         'tm35fin_origin': [gt[0], gt[3]],
         'lake_area_km2': round(lake_area / 1e6, 2),
     }
+
+
+MAX_DEPTH = 7.0  # m: altaan syvin kohta (paikallistieto)
+
+
+def rasterize_contours(vec, rows, cols, gt, projection, water_level):
+    """Korkeuskäyrät ruudukoksi: veden syvyys käyrän kohdalla, muualla NaN.
+    Alle metrin syvyiset käyrät jätetään pois (yksittäisiä rantapätkiä)."""
+    mem = gdal.GetDriverByName('MEM').Create('', cols, rows, 1, gdal.GDT_Float32)
+    mem.SetGeoTransform(gt)
+    mem.SetProjection(projection)
+    band = mem.GetRasterBand(1)
+    band.Fill(np.nan)
+    band.SetNoDataValue(np.nan)
+    # korkeusarvo on millimetreinä
+    gdal.Rasterize(mem, vec, SQLStatement=f'SELECT korkeusarvo / 1000.0 AS h, * FROM korkeuskayra WHERE korkeusarvo < {water_level * 1000 - 1000}',
+                   attribute='h', allTouched=True)
+    h = band.ReadAsArray().astype(np.float64)
+    return water_level - h
+
+
+def label_components(mask):
+    """Yhtenäiset alueet (4-naapurusto): tunnisteet 1..n, 0 = ei aluetta."""
+    rows, cols = mask.shape
+    labels = np.zeros(mask.shape, dtype=np.int32)
+    label = 0
+    for r0 in range(rows):
+        for c0 in np.flatnonzero(mask[r0] & (labels[r0] == 0)):
+            if labels[r0, c0]:
+                continue
+            label += 1
+            stack = [(r0, c0)]
+            labels[r0, c0] = label
+            while stack:
+                r, c = stack.pop()
+                for nr, nc in ((r + 1, c), (r - 1, c), (r, c + 1), (r, c - 1)):
+                    if 0 <= nr < rows and 0 <= nc < cols and mask[nr, nc] and not labels[nr, nc]:
+                        labels[nr, nc] = label
+                        stack.append((nr, nc))
+    return labels, label
+
+
+def bathymetry(water, contour_depth, cell, rng):
+    """Syvyydet korkeuskäyristä. Käyrät jakavat altaan alueisiin; alueen
+    syvyys tulee sitä rajaavista käyristä ja rannasta (syvyys 0) etäisyyksien
+    suhteessa. Alue, jota rajaa vain yksi käyrä, on syvänne: sen keskelle
+    kohoaa syvyyttä, ja syvimmän käyrän suurimman syvänteen keskellä syvyys on
+    MAX_DEPTH. Syvänne voi koskettaa rantaa (vanha jokiuoma päättyy padolle),
+    jolloin se madaltuu jyrkästi vasta rannan lähellä."""
+    line = water & ~np.isnan(contour_depth)
+    levels = sorted(set(np.round(contour_depth[line], 2)))
+    free = water & ~line
+    labels, count = label_components(free)
+    d_shore = distance_to(~water, cell) + cell * 0.5
+    d_level = {v: distance_to(line & (np.round(contour_depth, 2) == v), cell) + cell * 0.5 for v in levels}
+
+    # Mitkä rajat kukin alue koskettaa: ranta (0) ja käyrien syvyydet
+    touches = [set() for _ in range(count + 1)]
+    rows, cols = water.shape
+    for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+        src = free[max(0, -dr):rows - max(0, dr), max(0, -dc):cols - max(0, dc)]
+        lab = labels[max(0, -dr):rows - max(0, dr), max(0, -dc):cols - max(0, dc)]
+        nb_water = water[max(0, dr):rows - max(0, -dr), max(0, dc):cols - max(0, -dc)]
+        nb_line = line[max(0, dr):rows - max(0, -dr), max(0, dc):cols - max(0, -dc)]
+        nb_depth = contour_depth[max(0, dr):rows - max(0, -dr), max(0, dc):cols - max(0, -dc)]
+        for k in np.unique(lab[src & ~nb_water]):
+            touches[k].add(0.0)
+        sel = src & nb_line
+        for k, v in set(zip(lab[sel].tolist(), np.round(nb_depth[sel], 2).tolist())):
+            touches[k].add(v)
+
+    depth = np.zeros(water.shape)
+    depth[line] = contour_depth[line]
+    domes = []
+    for k in range(1, count + 1):
+        region = labels == k
+        bounds = touches[k]
+        contours = bounds - {0.0}
+        if len(contours) == 1 and (0.0 not in bounds or next(iter(contours)) != levels[0]):
+            v = next(iter(contours))
+            domes.append((k, v, d_level[v][region].max(), 0.0 in bounds))
+        elif len(bounds) >= 2:
+            # Käyrien välissä: syvyys etäisyyksien käänteisillä painoilla
+            num = np.zeros(region.sum())
+            den = np.zeros(region.sum())
+            for v in bounds:
+                d = (d_shore if v == 0.0 else d_level[v])[region]
+                num += v / d
+                den += 1.0 / d
+            depth[region] = num / den
+        elif bounds == {0.0} or not bounds:
+            # Lahti, jossa ei ole käyriä: matala rannasta kasvava syvyys
+            depth[region] = np.minimum(levels[0] - 0.3 if levels else 3.0, 0.36 * np.sqrt(d_shore[region]))
+    # Syvänteet: syvimmän käyrän suurin syvänne saa MAX_DEPTH:n
+    for k, v, size, at_shore in domes:
+        region = labels == k
+        deeper = [lv for lv in levels if lv > v]
+        if deeper:
+            amp = min(1.5, deeper[0] - v - 0.3)
+        else:
+            biggest = max(s for kk, vv, s, _ in domes if vv == v)
+            amp = (MAX_DEPTH - v) * np.sqrt(size / biggest)
+        depth[region] = v + amp * (d_level[v][region] / size) ** 0.8
+        if at_shore:
+            depth[region] = np.minimum(depth[region], 0.5 * d_shore[region])
+
+    # Pehmennys (käyrien välinen taite) ja pieni vaihtelu pohjaan
+    for _ in range(3):
+        padded = np.pad(np.where(water, depth, 0.0), 1, mode='edge')
+        weight = np.pad(water.astype(float), 1, mode='edge')
+        acc = sum(padded[1 + dr:1 + dr + rows, 1 + dc:1 + dc + cols] for dr in (-1, 0, 1) for dc in (-1, 0, 1))
+        wsum = sum(weight[1 + dr:1 + dr + rows, 1 + dc:1 + dc + cols] for dr in (-1, 0, 1) for dc in (-1, 0, 1))
+        depth = np.where(water, acc / np.maximum(wsum, 1.0), 0.0)
+    # Rantatörmä: altaan rannoilla vesi syvenee heti noin 0,8 metriin (veneet ja
+    # laiturit); laajat matalikot ovat maatuvilla vesialueilla
+    depth = np.maximum(depth, np.minimum(0.8, 0.25 * np.sqrt(d_shore)))
+    depth += 0.12 * fractal_noise(rows, cols, 32, 3, rng) * np.clip(depth / 2.0, 0.0, 1.0)
+    print(f'  syvyyskäyrät {levels} m, {count} aluetta, {len(domes)} suljettua syvännettä')
+    return np.clip(depth, 0.3, MAX_DEPTH)
 
 
 def mml_features(vec, to_world, water_level):
@@ -422,7 +547,7 @@ def water_path(passable, goal, start):
 def map_image(heights, water, ground, cell, vec, gt, projection):
     """Karttakuva: vesi syvyyden mukaan, maastotyypit, tiet ja rakennukset."""
     rows, cols = water.shape
-    depth = np.clip(-heights / 4.0, 0, 1)[..., None]
+    depth = np.clip(-heights / MAX_DEPTH, 0, 1)[..., None]
     shallow = np.array([150, 190, 225], float)
     deep = np.array([40, 95, 170], float)
     land_colors = np.array([

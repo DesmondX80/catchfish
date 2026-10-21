@@ -222,10 +222,10 @@ func remove_and_replace(index: int) -> void:
 	_update_grid(index)
 
 
-## Kaikuluotaimen keila: kalat pisteen alla [syvyys, paino]
+## Kaikuluotaimen keila: kalat pisteen alla [syvyys, paino, vaakaetäisyys keilan keskeltä]
 func fish_under(p: Vector2, depth: float) -> Array:
 	var result := []
 	var radius := 1.0 + depth * 0.35
 	for i in fish_near(p, radius):
-		result.append([fish[i]["depth"], fish[i]["weight"]])
+		result.append([fish[i]["depth"], fish[i]["weight"], fish[i]["pos"].distance_to(p)])
 	return result

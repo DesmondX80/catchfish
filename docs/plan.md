@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.26.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.26.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.27.0** (release tekemättä; edellinen
+[v0.26.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.26.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.26.0)
+### Valmiina (versiot 0.1–0.27.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -52,8 +52,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | 38 | Ankkurianimaatio | |
 | 19 | Kalojen vuodenaikakäytös | Kutu keväällä matalassa, kesähelteellä syvemmälle |
 | 20 | Ilmanpaineen ja sään vaikutus syöntiin | |
-| 18 | Kaikuluotaimen kalakaaret ja pohjan laatu | Liittyy #10:een |
-| 10 | Järven syvyydet | Syvyys on nyt arvioitu etäisyydestä rantaan |
 | 36 | Verkkokalastus | Uusi pyyntitapa |
 | 8 | Lisää välineitä | Onki tehty (#15); syöttikala virvelillä puuttuu |
 
@@ -116,6 +114,7 @@ godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
 godot --headless --fixed-fps 30 -- --day=180 --piketest     # kalat eivät näy, hauki seuraa uistinta
+godot --headless --fixed-fps 30 -- --day=180 --sonartest    # syvyydet, pohjan laatu, kalakaaret
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -202,11 +201,27 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   liian lujaa (yli 1,3 m/s), hauki kääntyy pois, painuu syvälle ja on hetken
   varovainen. Muut kalat eivät iske seurannan aikana. Testi `--piketest`.
   Julkaistu [v0.26.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.26.0).
+- **#10 Järven syvyydet ja #18 Kaikuluotaimen kalakaaret ja pohjan laatu – tehty (0.27.0).**
+  Tekoaltaan pohja on vanhaa maastoa, ja maastotietokannan korkeuskäyrät
+  jatkuvat veden alla: 15 m:n käyrä (3,3 m syvyys, 22,6 km käyrää) ja 12,5 m:n
+  käyrä (5,8 m, vanhan jokiuoman reunat). `tools/build_lake.py` jakaa altaan
+  käyrillä alueisiin ja interpoloi syvyyden rajaavista käyristä ja rannasta;
+  yhden käyrän rajaamat alueet ovat syvänteitä, ja suurin jokiuoman syvänne
+  (pohjoisosa) syvenee 7 metriin, lounaispään syvänne padon lähellä lähes yhtä
+  syväksi. Rannoilla vesi syvenee heti ~0,8 m:iin (laiturit ja aloituspaikat
+  pysyvät ennallaan). Keskisyvyys 2,7 m. Pelin kartan värit skaalattu 7 m:iin.
+  Kaikuluotain piirtää kuvan sarakkeittain: kalan kaiku vinoetäisyydelle, jolloin
+  ylitetystä kalasta piirtyy kaari, väri voimakkuuden mukaan. Pohjan laatu
+  (`LakeData.bottom_at`): kasvillisuus matalassa kaislikon lähellä ja laikkuina,
+  kova pohja matalassa, jyrkissä rinteissä ja kivien lähellä, muuten muta.
+  Kova pohja: kirkas kaiku ja toinen heijastus; muta: himmeä ja pehmeä;
+  kasvillisuus: tupsuja pohjasta. Testi `--sonartest`. Uistin- ja onkitestien
+  paikat rajattu enintään 4 m syvyisiin (syvänteessä uistin vajoaa liian syvälle).
 
 Seuraavaksi suunnitelman mukaan #31 (potkuri osuu pohjaan alle metrin syvyydessä).
 
 ## Huomioita ja avoimia kysymyksiä
 
-- **Järven syvyys on arvioitu** (enintään 4 m), koska tekoaltaasta ei ole avointa syvyysaineistoa (#10).
+- **Järven syvyydet** tulevat veden alle jääneistä maastotietokannan korkeuskäyristä (15 m ja 12,5 m, #10). Syvin kohta (7 m) on paikallistieto; sen tarkkaa paikkaa ei tiedetä, joten se on vanhan jokiuoman syvänteen keskellä pohjoisosassa.
 - **Puhesynteesiääni** `fi_FI-harri`: opetusaineisto CC0, mutta malli on jatkokoulutettu lessac-äänestä, jonka ehdot ovat rajoitetummat. Jos peliä joskus jaetaan kaupallisesti, omat äänitykset ovat varmempi valinta.
 - **Vanhat uratallennukset** voivat sisältää kuhia ja taimenia (poistettu 0.18.0); ne voi yhä myydä.

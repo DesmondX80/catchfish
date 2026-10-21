@@ -2118,7 +2118,7 @@
   "name": "Haapajärven tekoallas, Raahe",
   "source": "mml",
   "attribution": "Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m -aineistoa (CC BY 4.0)",
-  "depth_estimated": true,
+  "depth_estimated": false,
   "water_level_n2000": 18.3,
   "tm35fin_origin": [
     379858.0,
@@ -2130,7 +2130,7 @@
   "rows": 1077,
   "origin_x": -1586.0,
   "origin_z": -2154.0,
-  "max_depth": 4.0,
+  "max_depth": 6.95,
   "start": {
     "dock_yaw_deg": 0.0,
     "x": -1314.0,

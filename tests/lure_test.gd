@@ -54,10 +54,13 @@ func _find_spot() -> void:
 		var p := origin + Vector2(rng.randf_range(-1500, 1500), rng.randf_range(-1500, 1500))
 		var d := Vector2.from_angle(rng.randf() * TAU)
 		var shallowest := 99.0
+		var deepest := 0.0
 		for s in range(-30, 25, 3):
 			var q := p + d * s
 			shallowest = minf(shallowest, lake.depth_at(q.x, q.y) if lake.is_water(q.x, q.y) else 0.0)
-		if shallowest > best:
+			deepest = maxf(deepest, lake.depth_at(q.x, q.y))
+		# Tasainen, enintään 4 m syvä paikka (syvänteissä uistin vajoaa liian syvälle)
+		if shallowest > best and deepest <= 4.0:
 			best = shallowest
 			_spot = p
 			_dir = d

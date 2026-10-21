@@ -4,6 +4,8 @@ extends RefCounted
 ## Maailman koordinaatit: X = itään, Z = etelään, Y = ylös, 0 = vedenpinta.
 
 enum Ground { FOREST, FIELD, BOG, OPEN, ROCK, REEDS }
+## Pohjan laatu kaikuluotaimelle: kova (hiekka, kivikko), muta, kasvillisuus
+enum Bottom { HARD, MUD, WEEDS }
 
 var name := ""
 var attribution := ""
@@ -213,3 +215,40 @@ func reeds_near(x: float, z: float, radius := 20.0) -> float:
 			if ground_at(x + i * radius / steps, z + j * radius / steps) == Ground.REEDS:
 				hits += 1
 	return float(hits) / total
+
+
+## Pohjan laatu: matalassa aallot huuhtovat hiekkaa ja jyrkät rinteet ja kivet
+## ovat kovaa pohjaa; kaislikon lähellä matalassa kasvaa vesikasvillisuutta;
+## syvät ja tasaiset kohdat ovat liejua. Laikut vaihtelevat (kohina 30 m ruudukolla).
+func bottom_at(x: float, z: float) -> int:
+	var depth := depth_at(x, z)
+	var patch := _value_noise(x / 30.0, z / 30.0)
+	if depth < 2.2 and (reeds_near(x, z, 25.0) > 0.04 or (depth > 0.7 and patch > 0.72)):
+		return Bottom.WEEDS
+	var slope := Vector2(depth_at(x + 4.0, z) - depth_at(x - 4.0, z), depth_at(x, z + 4.0) - depth_at(x, z - 4.0)).length() / 8.0
+	if depth < 1.2 or slope > 0.12 or patch < 0.18 or _rock_near(x, z, 12.0):
+		return Bottom.HARD
+	return Bottom.MUD
+
+
+func _rock_near(x: float, z: float, radius: float) -> bool:
+	for rock in rocks:
+		if absf(rock["x"] - x) < radius and absf(rock["z"] - z) < radius:
+			return true
+	return false
+
+
+## Tasainen arvokohina 0..1 (sama kohta antaa aina saman arvon)
+func _value_noise(u: float, v: float) -> float:
+	var i := floorf(u)
+	var j := floorf(v)
+	var fu := u - i
+	var fv := v - j
+	fu = fu * fu * (3.0 - 2.0 * fu)
+	fv = fv * fv * (3.0 - 2.0 * fv)
+	return lerpf(lerpf(_hash(i, j), _hash(i + 1.0, j), fu), lerpf(_hash(i, j + 1.0), _hash(i + 1.0, j + 1.0), fu), fv)
+
+
+func _hash(i: float, j: float) -> float:
+	var h := sin(i * 127.1 + j * 311.7) * 43758.5453
+	return h - floorf(h)

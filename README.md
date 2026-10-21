@@ -55,6 +55,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   kiiski, lahna ja made syövät mieluiten syöttiä, eli niitä saa parhaiten
   talvella pilkillä ja toukalla. Made on talven kala ja syö pimeällä. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
+- **Kaikuluotain**: kuva piirtyy kuten oikeassa luotaimessa. Veneen ajaessa
+  kalan yli siitä piirtyy kaari, ja kaiun väri kertoo voimakkuuden (iso kala
+  keltainen tai punainen). Pohjan laatu erottuu: kova pohja (hiekka, kivikko)
+  antaa kirkkaan kaiun ja toisen heijastuksen kaksinkertaisessa syvyydessä,
+  muta pehmeän ja himmeän kaiun, ja vesikasvillisuus näkyy pohjasta nousevina
+  tupsuina. Luotaimen alareunassa lukee pohjan laatu.
 - **Hauki seuraa uistinta**: hauki voi lähteä seuraamaan heitettyä uistinta
   ja tulla näkyviin pinnan lähellä veneen vieressä. Kelaa tasaisesti, niin se
   iskee usein viime hetkellä; nykäisy veneen lähellä houkuttelee. Jos uistin
@@ -98,8 +104,13 @@ uudelleen MML:n aineistosta:
    ```
 
 Rantaviiva tulee maastotietokannan järvikuviosta ja maasto korkeusmallista.
-Tekoaltaasta ei ole avointa syvyysaineistoa, joten **syvyys on arvioitu**
-etäisyydestä rantaan (enintään 4 m, maatuvilla vesialueilla matalampaa).
+Tekoaltaasta ei ole syvyyskarttaa, mutta altaan pohja on vanhaa maastoa, ja
+maastotietokannan korkeuskäyrät jatkuvat veden alla. **Syvyydet tulevat
+käyristä**: 15 m:n käyrä on 3,3 m:n ja 12,5 m:n käyrä 5,8 m:n syvyydessä
+(vedenpinta 18,3 m), ja niiden välillä syvyys interpoloidaan. Vanhan jokiuoman
+syvänteet (12,5 m:n käyrien sisällä) syvenevät enintään 7 metriin, joka on
+paikallistiedon mukaan altaan syvin kohta. Rannoilla vesi syvenee heti noin
+0,8 metriin, ja maatuvat vesialueet ovat matalia.
 
 Raakadataa ei ole versionhallinnassa (`.gitignore`).
 
