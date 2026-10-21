@@ -34,9 +34,12 @@ var motor_running := false
 var motor_starting := 0.0
 var throttle := 0.0 # -0.4 (peruutus) .. 1
 var tiller := 0.0 # -1 .. 1
+## Ankkurissa: ankkuri on pohjassa (anchor_point), köyttä anchor_rope metriä
 var anchored := false
 var anchor_point := Vector2.ZERO
 var anchor_rope := 0.0
+var anchor: BoatAnchor # ankkurin ja köyden malli ja animaatio
+var _rope_warned := false
 
 var angler: Angler
 ## Talvi: järvi on jäässä, vene piilotetaan ja kalastaja kävelee jäällä
@@ -102,8 +105,10 @@ func set_on_ice(on: bool) -> void:
 	hull.position = Vector3.ZERO
 	hull.rotation = Vector3.ZERO
 	anchored = false
+	if anchor:
+		anchor.stow()
+		anchor.visible = not on # ankkuri on veneen mukana talviteloilla
 	motor_running = false
-	prop_damage = 0.0 # uusi reissu: potkuri vaihdettu kotona
 	_apply_transform()
 
 
@@ -127,17 +132,31 @@ func _unhandled_input(event: InputEvent) -> void:
 			sound_event.emit("motor_start", _stern_position())
 			message.emit("Airot veneeseen ja nykäiset käynnistysnarusta...")
 	elif event.is_action_pressed("anchor_toggle"):
-		if anchored:
-			anchored = false
-			sound_event.emit("anchor_up", global_position + Vector3(0, 0, 0))
-			message.emit("Ankkuri nostettu")
-		else:
-			var depth := depth_below()
-			anchored = true
-			anchor_point = pos
-			anchor_rope = depth * 2.0 + 2.0
-			sound_event.emit("anchor_drop", global_position)
-			message.emit("Ankkuri laskettu (syvyys %.1f m)" % depth)
+		toggle_anchor()
+
+
+## Ankkuri alas tai ylös (X). Ankkuri lasketaan keulasta ja vene on ankkurissa,
+## kun ankkuri on pohjassa; nostettaessa vene irtoaa heti.
+func toggle_anchor() -> void:
+	if angler and angler.fishing and angler.fishing.busy():
+		message.emit("Kelaa ensin uistin ylös – sitten ankkuri")
+		return
+	if anchor.state == BoatAnchor.State.STOWED or anchor.state == BoatAnchor.State.RAISING:
+		anchor.lower()
+		sound_event.emit("anchor_drop", anchor.bow_chock())
+		message.emit("Ankkuri lasketaan keulasta...")
+	else:
+		anchor.raise()
+		anchored = false
+		sound_event.emit("anchor_up", anchor.bow_chock())
+		message.emit("Ankkuria nostetaan...")
+
+
+func _on_anchor_bottom(depth: float) -> void:
+	anchored = true
+	anchor_point = anchor.xz
+	anchor_rope = depth * 2.0 + 2.0 # köyttä noin kaksi kertaa syvyys
+	message.emit("Ankkuri pohjassa (syvyys %.1f m)" % depth)
 
 
 ## Kävely jäällä ja rannalla: W/S eteen ja taakse, A/D kääntyy, Shift juoksee.
@@ -223,11 +242,23 @@ func _physics_process(dt: float) -> void:
 	var rel_wind := weather.vector() - velocity
 	force += rel_wind * rel_wind.length() * WINDAGE
 
-	# Ankkuriköysi
+	# Ankkuriköysi vetää keulasta: vene kääntyy keula ankkuria kohti. Köyden
+	# vaakaulottuma on köyden pituus miinus syvyys (köysi kulkee pohjaan).
 	if anchored:
-		var d := pos - anchor_point
-		if d.length() > anchor_rope:
-			force -= d.normalized() * (d.length() - anchor_rope) * 900.0 + velocity * 250.0
+		var bow_offset := fwd * (LENGTH * 0.47)
+		var d := pos + bow_offset - anchor_point
+		var depth := lake.depth_at(anchor_point.x, anchor_point.y) + 0.5
+		var reach := sqrt(maxf(1.0, anchor_rope * anchor_rope - depth * depth))
+		if d.length() > reach:
+			var pull := -d.normalized() * (d.length() - reach) * 900.0 - velocity * 250.0
+			force += pull
+			torque -= bow_offset.x * pull.y - bow_offset.y * pull.x
+			# Lähtöyritys ankkuri pohjassa: köysi kiristyy
+			if not _rope_warned and (absf(drive) > 0.0 and (motor_running or _rowing)):
+				_rope_warned = true
+				message.emit("Ankkuriköysi kiristyy – nosta ensin ankkuri (X)")
+		elif d.length() < reach - 1.0:
+			_rope_warned = false
 		torque -= yaw_rate * 300.0
 
 	velocity += force / MASS * dt
@@ -256,6 +287,7 @@ func _physics_process(dt: float) -> void:
 	wake.track(stern, side, velocity.length())
 	_animate(dt)
 	_apply_transform()
+	anchor.update(dt) # rungon uuden asennon mukaan
 
 
 func prop_broken() -> bool:
@@ -533,6 +565,12 @@ func _build_visuals() -> void:
 
 	wake = Wake.new()
 	add_child(wake)
+
+	anchor = BoatAnchor.new()
+	add_child(anchor)
+	anchor.setup(self)
+	anchor.reached_bottom.connect(_on_anchor_bottom)
+	anchor.stowed.connect(func(): message.emit("Ankkuri nostettu veneeseen"))
 
 	# Kalastaja keskituhdolla (asento ja kädet: angler.gd)
 	angler = Angler.new()

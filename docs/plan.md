@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.30.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.30.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.31.0** (release tekemättä; edellinen
+[v0.30.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.30.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.30.0)
+### Valmiina (versiot 0.1–0.31.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -48,7 +48,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | # | Tehtävä | Huomio |
 |---|---|---|
 | 34 | Haavinta aivan omaksi animaatiokseen | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
-| 38 | Ankkurianimaatio | |
 | 36 | Verkkokalastus | Uusi pyyntitapa |
 | 8 | Lisää välineitä | Onki tehty (#15); syöttikala virvelillä puuttuu |
 
@@ -115,6 +114,7 @@ godot --headless --fixed-fps 30 -- --day=180 --sonartest    # syvyydet, pohjan l
 godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohjaan matalassa
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
+godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -259,6 +259,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Huom. ikkunassa ajettavassa `--settingstest`issä pelin säähaku voi
   aikakatkaista hitaalla ohjelmistorenderöinnillä (sama mainissa).
   Julkaistu [v0.30.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.30.0).
+- **#38 Ankkurianimaatio – tehty (0.31.0).** Ankkurilla on malli (pieni
+  naaraankoukku) ja köysi (`scripts/boat/anchor.gd`). X laskee ankkurin keulasta:
+  kalastaja siirtyy etutuhdolle ja köysi luistaa käsien läpi, ankkuri vajoaa
+  1 m/s, ja vene on ankkurissa vasta ankkurin osuttua pohjaan (köyttä ~2 × syvyys).
+  Köysi vetää keulasta, joten tuulessa vene kääntyy keula ankkuria kohti.
+  Pohjassa olevan ankkurin köysi roikkuu löysänä kaarella (lepää pohjalla) ja
+  kiristyy suoraksi veneen loitotessa; ajettaessa tai soudettaessa ankkuri
+  pohjassa tulee ilmoitus "Ankkuriköysi kiristyy – nosta ensin ankkuri".
+  Nostettaessa vene irtoaa heti, kalastaja kelaa köyttä vuorokäsin (0,8 m/s), ja
+  ankkuri päätyy veneen pohjalle keulaan. Uistimen ollessa vedessä ankkuria ei
+  käsitellä. HUD näyttää ankkurin tilan. Testi `--anchortest`.
 
 
 ## Huomioita ja avoimia kysymyksiä

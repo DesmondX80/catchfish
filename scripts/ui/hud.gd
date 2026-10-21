@@ -248,6 +248,17 @@ func help_text(start_hint := true) -> String:
 	return "\n".join(lines)
 
 
+func _anchor_text() -> String:
+	if boat.anchored:
+		return "   ANKKURISSA"
+	match boat.anchor.state:
+		BoatAnchor.State.LOWERING:
+			return "   ankkuri laskeutuu"
+		BoatAnchor.State.RAISING:
+			return "   ankkuria nostetaan"
+	return ""
+
+
 ## Kalastajan repliikki tekstityksenä
 func show_speech(text: String) -> void:
 	_speech.text = "”%s”" % text
@@ -396,7 +407,7 @@ func _process(delta: float) -> void:
 	_status.text = "%s\n%s\nTuuli %.1f m/s %s\n%s   %.1f km/h%s\nSyvyys %.1f m%s" % [
 		clock, weather_text,
 		weather.speed(), weather.from_text(),
-		motor, boat.speed_kmh(), "   ANKKURISSA" if boat.anchored else "",
+		motor, boat.speed_kmh(), _anchor_text(),
 		boat.depth_below(), ("\nLähellä: " + place) if place != "" else "",
 	]
 
