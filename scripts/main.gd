@@ -145,6 +145,7 @@ func _start_game(start_index: int, career := false) -> void:
 	population = FishPopulation.new()
 	add_child(population)
 	population.winter = season.frozen()
+	population.day = sky.day_of_year
 	population.setup(lake)
 
 	fishing = Fishing.new()
@@ -176,8 +177,13 @@ func _start_game(start_index: int, career := false) -> void:
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
 	if boat.on_ice:
 		hud.show_message("Järvi on jäässä – pilkille! Kairaa reikä pitämällä vasenta hiirtä pohjassa")
-	elif season.name != "kesä":
-		hud.show_message("Tervetuloa: %s – %s (%s)" % [lake.name, lake.starts[start_index]["name"], season.name])
+	else:
+		var welcome := "Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]]
+		if season.name != "kesä":
+			welcome += " (%s)" % season.name
+		# Vuodenajan vihje: kutu, helle tai syysyönti
+		var hint := Species.season_hint(sky.day_of_year)
+		hud.show_message(welcome + ("\n" + hint if hint != "" else ""))
 
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
@@ -241,6 +247,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/sonar_test.gd").new())
 	elif "--proptest" in args:
 		add_child(load("res://tests/prop_test.gd").new())
+	elif "--seasonfishtest" in args:
+		add_child(load("res://tests/season_fish_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

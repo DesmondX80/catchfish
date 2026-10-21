@@ -56,7 +56,11 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   kaislikon läheisyys), vuorokausirytmi, vuodenaikarytmi, mieluisat
   uistimet ja uistinnopeus. Hauki ja ahven iskevät uistimiin; särki,
   kiiski, lahna ja made syövät mieluiten syöttiä, eli niitä saa parhaiten
-  talvella pilkillä ja toukalla. Made on talven kala ja syö pimeällä. Kalat ovat dataa: niitä ei näe,
+  talvella pilkillä ja toukalla. Made on talven kala ja syö pimeällä. Kalat
+  elävät vuodenaikojen mukaan: hauki kutee heti jäiden lähdettyä matalissa
+  kaislikkolahdissa ja syö kudun jälkeen ahnaasti, ahven, särki ja lahna kutevat
+  touko–kesäkuussa matalassa, kesähelteellä kalat hakeutuvat syvempään ja
+  syksyllä syönti vilkastuu. Kalat ovat dataa: niitä ei näe,
   mutta kaikuluotain näyttää ne.
 - **Kaikuluotain**: kuva piirtyy kuten oikeassa luotaimessa. Veneen ajaessa
   kalan yli siitä piirtyy kaari, ja kaiun väri kertoo voimakkuuden (iso kala

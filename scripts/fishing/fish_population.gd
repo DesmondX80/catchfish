@@ -11,6 +11,8 @@ var lake: LakeData
 ## Talvi: jään alla muut kuin hauki pysyttelevät pohjan lähellä, ja lajien
 ## syöntiaktiivisuus muuttuu (Species "season")
 var winter := false
+## Vuodenpäivä: lajien kutu, kesähelle ja syysyönti (Species.traits)
+var day := 165
 var fish: Array[Dictionary] = []
 var _grid := {}
 var _rng := RandomNumberGenerator.new()
@@ -58,29 +60,30 @@ func _new_fish(sp: String, p: Vector2) -> Dictionary:
 	}
 
 
-## Elinpaikan sopivuus 0..1
+## Elinpaikan sopivuus 0..1 (vuodenajan mukaan)
 func habitat_score(sp: String, p: Vector2) -> float:
 	if not lake.is_water(p.x, p.y):
 		return 0.0
 	var data: Dictionary = Species.DATA[sp]
+	var t := Species.traits(sp, day, winter)
 	var depth := lake.depth_at(p.x, p.y)
 	var shore := lake.shore_distance(p.x, p.y)
-	var dr: Array = data["depth"]
-	var sr: Array = data["shore"]
+	var dr: Array = t["depth"]
+	var sr: Array = t["shore"]
 	var score := 1.0
 	if depth < dr[0]:
 		score *= clampf(depth / dr[0], 0.0, 1.0)
-	elif not data["bottom"] and depth > dr[1] + 1.0:
-		score *= 0.5
+	elif depth > dr[1] + 1.0:
+		score *= 0.1 if t["period"] == "kutu" else 0.5 # kutevat kalat hakeutuvat matalaan
 	elif data["bottom"] and depth < dr[0] + 0.5:
 		score *= 0.4
 	if shore < sr[0]:
 		score *= 0.15 + 0.85 * shore / sr[0]
 	elif shore > sr[1]:
 		score *= clampf(1.0 - (shore - sr[1]) / sr[1], 0.1, 1.0)
-	if data["reeds"] > 0.0:
+	if t["reeds"] > 0.0:
 		var reeds := lake.reeds_near(p.x, p.y, 25.0)
-		score *= lerpf(1.0, 0.25 + 1.5 * minf(reeds * 4.0, 1.0), data["reeds"])
+		score *= lerpf(1.0, 0.25 + 1.5 * minf(reeds * 4.0, 1.0), t["reeds"])
 	return clampf(score, 0.0, 1.0)
 
 
@@ -103,7 +106,7 @@ func _preferred_depth(sp: String, p: Vector2) -> float:
 	var bottom := lake.depth_at(p.x, p.y)
 	if winter and sp != "hauki":
 		return maxf(0.2, bottom - _rng.randf_range(0.05, 0.7))
-	var dr: Array = data["depth"]
+	var dr: Array = Species.traits(sp, day, winter)["depth"]
 	if data["bottom"]:
 		return maxf(0.2, bottom - _rng.randf_range(0.1, 0.6))
 	return clampf(_rng.randf_range(dr[0], dr[1]), 0.2, maxf(0.2, bottom - 0.1))
@@ -195,7 +198,7 @@ func check_lure(lure_xz: Vector2, lure_depth: float, lure_speed: float, twitch: 
 			activity = lerpf(activity, 1.0, cloud * 0.5)
 		else:
 			activity *= 1.0 + cloud * 0.3
-		activity *= data["season"][1 if winter else 0]
+		activity *= Species.traits(f["sp"], day, winter)["activity"]
 		interest *= activity
 		interest *= f["hunger"]
 		# Pieni tuulen väreily rohkaisee kaloja, kova tuuli samentaa

@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.28.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.28.0)).
+Päivitetty 21.10.2026. Nykyinen versio **0.29.0** (release tekemättä; edellinen
+[v0.28.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.28.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.28.0)
+### Valmiina (versiot 0.1–0.29.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -49,7 +49,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 |---|---|---|
 | 34 | Haavinta aivan omaksi animaatiokseen | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
 | 38 | Ankkurianimaatio | |
-| 19 | Kalojen vuodenaikakäytös | Kutu keväällä matalassa, kesähelteellä syvemmälle |
 | 20 | Ilmanpaineen ja sään vaikutus syöntiin | |
 | 36 | Verkkokalastus | Uusi pyyntitapa |
 | 8 | Lisää välineitä | Onki tehty (#15); syöttikala virvelillä puuttuu |
@@ -115,6 +114,7 @@ godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laiturei
 godot --headless --fixed-fps 30 -- --day=180 --piketest     # kalat eivät näy, hauki seuraa uistinta
 godot --headless --fixed-fps 30 -- --day=180 --sonartest    # syvyydet, pohjan laatu, kalakaaret
 godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohjaan matalassa
+godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -231,6 +231,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   soudetaan. Alle 1,3 metrin syvyydestä varoitetaan kerran. Uusi reissu alkaa
   ehjällä potkurilla. Testi `--proptest`.
   Julkaistu [v0.28.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.28.0).
+- **#19 Kalojen vuodenaikakäytös – tehty (0.29.0).** Lajeille avovesikauden
+  jaksot (`Species.DATA[...]["periods"]`, `Species.traits(laji, päivä, talvi)`),
+  jotka korvaavat elinpaikan syvyyden, rantaetäisyyden ja kaislikon merkityksen
+  ja kertovat aktiivisuuden: hauen kutu heti jäiden lähdön jälkeen (päivät
+  115–140) matalissa kaislikkolahdissa, syönti vähäistä, kudun jälkeen kiihkeä
+  syönti (140–165); ahvenen, särjen ja lahnan kudut touko–kesäkuussa matalassa;
+  kesähelle (heinä–elokuu) siirtää kalat syvempään; syysyönti (syys–lokakuu)
+  vilkastuttaa syöntiä. Kalakanta luodaan reissun päivän mukaan
+  (`FishPopulation.day`), ja kutuaikaan liian syvä vesi on huono elinpaikka.
+  Reissun alussa vuodenajan vihje (esim. "Hauet kutevat matalissa
+  kaislikkolahdissa"). Testi `--seasonfishtest`.
 
 
 ## Huomioita ja avoimia kysymyksiä

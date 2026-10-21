@@ -9,6 +9,9 @@ class_name Species
 ## bottom         pysytteleekö pohjan lähellä
 ## activity       syöntiaktiivisuus vuorokauden tunnin mukaan [[tunti, arvo], ...]
 ## season         aktiivisuuden kerroin [avovesikausi, talvi] – made syö kylmässä vedessä
+## periods        avovesikauden jaksot (vuodenpäivät from..to): kutu, kesähelle, syysyönti.
+##                Jakso korvaa elinpaikan arvot (depth, shore, reeds) ja kertoo
+##                aktiivisuuden (activity). Ks. PERIOD_HINTS ja traits().
 ## light_shy      valoa karttava: syö pilvisellä säällä myös päivällä (made)
 ## lures          kiinnostus uistintyyppeihin ja syöttiin (koho, pohja = mato) (0..1)
 ## speed          mieluisin uistimen nopeus (m/s) [paras, sallittu poikkeama]
@@ -30,6 +33,12 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.25], [4, 0.6], [7, 1.0], [12, 0.6], [17, 0.9], [21, 0.8], [24, 0.25]],
 		"season": [1.0, 0.7],
+		"periods": [
+			{"from": 115, "to": 140, "name": "kutu", "depth": [0.3, 1.2], "shore": [0.0, 40.0], "reeds": 1.0, "activity": 0.4},
+			{"from": 140, "to": 165, "name": "kudun jälkeen", "depth": [0.4, 2.0], "activity": 1.4},
+			{"from": 190, "to": 235, "name": "helle", "depth": [1.2, 4.5], "reeds": 0.5, "activity": 0.8},
+			{"from": 245, "to": 310, "name": "syysyönti", "depth": [1.0, 4.0], "activity": 1.4},
+		],
 		"lures": {"lusikka": 1.0, "vaappu": 0.9, "syvavaappu": 0.5, "lippa": 0.45, "jigi": 0.5, "pilkki": 0.3, "tasuri": 0.8, "koho": 0.05, "pohja": 0.08},
 		"speed": [0.9, 0.6],
 		"detect": 10.0,
@@ -49,6 +58,11 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.05], [5, 0.4], [9, 1.0], [15, 1.0], [20, 0.5], [23, 0.05], [24, 0.05]],
 		"season": [1.0, 0.8],
+		"periods": [
+			{"from": 135, "to": 158, "name": "kutu", "depth": [0.4, 1.5], "reeds": 0.8, "activity": 0.7},
+			{"from": 190, "to": 235, "name": "helle", "depth": [1.5, 4.5], "activity": 0.85},
+			{"from": 245, "to": 305, "name": "syysyönti", "depth": [2.0, 5.0], "activity": 1.3},
+		],
 		"lures": {"lusikka": 0.5, "vaappu": 0.5, "syvavaappu": 0.4, "lippa": 1.0, "jigi": 0.95, "pilkki": 1.0, "tasuri": 0.85, "koho": 0.8, "pohja": 0.6},
 		"speed": [0.6, 0.5],
 		"detect": 6.0,
@@ -68,6 +82,11 @@ const DATA := {
 		"bottom": false,
 		"activity": [[0, 0.2], [5, 0.7], [10, 1.0], [16, 0.9], [21, 0.6], [24, 0.2]],
 		"season": [1.0, 0.7],
+		"periods": [
+			{"from": 128, "to": 150, "name": "kutu", "depth": [0.3, 1.2], "reeds": 1.0, "activity": 0.5},
+			{"from": 190, "to": 235, "name": "helle", "depth": [1.0, 3.5], "activity": 0.85},
+			{"from": 245, "to": 305, "name": "syysyönti", "activity": 1.2},
+		],
 		"lures": {"lusikka": 0.04, "vaappu": 0.03, "syvavaappu": 0.02, "lippa": 0.2, "jigi": 0.15, "pilkki": 1.0, "tasuri": 0.12, "koho": 1.0, "pohja": 0.8},
 		"speed": [0.25, 0.35],
 		"detect": 4.0,
@@ -87,6 +106,9 @@ const DATA := {
 		"bottom": true,
 		"activity": [[0, 0.6], [5, 0.8], [10, 0.6], [16, 0.6], [21, 0.9], [24, 0.6]],
 		"season": [1.0, 1.1],
+		"periods": [
+			{"from": 190, "to": 235, "name": "helle", "depth": [2.5, 7.0], "activity": 0.9},
+		],
 		"lures": {"lusikka": 0.04, "vaappu": 0.02, "syvavaappu": 0.05, "lippa": 0.15, "jigi": 0.55, "pilkki": 1.0, "tasuri": 0.3, "koho": 0.7, "pohja": 1.0},
 		"speed": [0.15, 0.35],
 		"detect": 3.0,
@@ -106,6 +128,11 @@ const DATA := {
 		"bottom": true,
 		"activity": [[0, 0.7], [4, 1.0], [8, 0.5], [16, 0.4], [20, 0.9], [24, 0.7]],
 		"season": [1.0, 0.35],
+		"periods": [
+			{"from": 155, "to": 178, "name": "kutu", "depth": [0.4, 1.5], "shore": [0.0, 60.0], "reeds": 0.9, "activity": 0.5},
+			{"from": 190, "to": 235, "name": "helle", "depth": [2.5, 6.0], "activity": 0.9},
+			{"from": 245, "to": 305, "name": "syysyönti", "activity": 1.2},
+		],
 		"lures": {"lusikka": 0.02, "vaappu": 0.01, "syvavaappu": 0.02, "lippa": 0.04, "jigi": 0.08, "pilkki": 0.7, "tasuri": 0.04, "koho": 0.9, "pohja": 1.0},
 		"speed": [0.1, 0.3],
 		"detect": 4.0,
@@ -126,6 +153,9 @@ const DATA := {
 		"activity": [[0, 1.0], [5, 0.6], [8, 0.15], [16, 0.15], [20, 0.7], [24, 1.0]],
 		"season": [0.25, 1.6],
 		"light_shy": true,
+		"periods": [
+			{"from": 160, "to": 245, "name": "helle", "depth": [3.0, 7.0], "activity": 0.8},
+		],
 		"lures": {"lusikka": 0.05, "vaappu": 0.03, "syvavaappu": 0.08, "lippa": 0.05, "jigi": 0.3, "pilkki": 1.0, "tasuri": 0.5, "koho": 0.3, "pohja": 1.0},
 		"speed": [0.1, 0.3],
 		"detect": 5.0,
@@ -137,6 +167,40 @@ const DATA := {
 		"school": 1,
 	},
 }
+
+
+## Vuodenajan vihjeet reissun alkuun (jakson nimi -> teksti), aikajärjestyksessä
+const PERIOD_HINTS := [
+	[115, 140, "Hauet kutevat matalissa kaislikkolahdissa eivätkä juuri syö"],
+	[140, 165, "Hauet ovat kudun jälkeen nälkäisiä – kokeile matalia lahtia"],
+	[165, 190, "Kesäkuu: kalat syövät aamuin illoin matalassa ja keskisyvässä"],
+	[190, 235, "Helle: kalat ovat hakeutuneet syvempään, viileämpään veteen"],
+	[245, 310, "Syksy: syönti vilkastuu, ahvenet parveilevat syvänteiden reunoilla"],
+]
+
+
+## Lajin elinpaikka ja aktiivisuuskerroin vuodenpäivänä: talvella "season"[1],
+## avovesikaudella "season"[0] ja voimassa olevan jakson arvot (periods)
+static func traits(species_id: String, day: int, winter: bool) -> Dictionary:
+	var data: Dictionary = DATA[species_id]
+	var t := {"depth": data["depth"], "shore": data["shore"], "reeds": data["reeds"], "activity": data["season"][1 if winter else 0], "period": ""}
+	if winter:
+		return t
+	for p in data.get("periods", []):
+		if day >= p["from"] and day < p["to"]:
+			for key in ["depth", "shore", "reeds"]:
+				if p.has(key):
+					t[key] = p[key]
+			t["activity"] *= p["activity"]
+			t["period"] = p["name"]
+	return t
+
+
+static func season_hint(day: int) -> String:
+	for h in PERIOD_HINTS:
+		if day >= h[0] and day < h[1]:
+			return h[2]
+	return ""
 
 
 static func activity(species_id: String, hour: float) -> float:
