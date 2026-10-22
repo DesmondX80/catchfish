@@ -25,7 +25,8 @@ const PROP_DEPTH := 1.0 # m: tätä matalammassa potkuri osuu pohjaan
 const SHALLOW_WARNING := 1.3 # m: varoitus matalasta moottorilla ajettaessa
 const PROP_MIN_THROTTLE := 0.05 # kaasu, jolla potkuri pyörii (vapaalla ei)
 ## Mela: yksi lapa kerrallaan veneen kyljellä, heikompi kuin airot
-const PADDLE_FORCE := 90.0 # N vedon aikana
+const PADDLE_FORCE := 120.0 # N vedon huippu paikallaan; veto heikkenee vauhdin kasvaessa
+const PADDLE_BLADE_SPEED := 3.0 # m/s: lavan nopeus vedossa, tätä kovempaa ei melalla pääse
 const PADDLE_TURN := 170.0 # Nm
 const PADDLE_STROKE := 1.3 # s / melanveto
 const OAR_DOCK_MARGIN := 0.25 # m: airon ja laiturin väli, jota lähempänä airoa ei voi käyttää
@@ -83,6 +84,7 @@ var prop_damage := 0.0
 var _strike_cooldown := 0.0
 var _shallow_warned := false
 var _time := 0.0
+var _dock_contact := Vector2.ZERO # viimeisimmän laiturikosketuksen kohta (_dock_push)
 
 
 func setup(lake_data: LakeData, weather_node: Weather) -> void:
@@ -407,6 +409,7 @@ func _dock_push(p: Vector2, heading: float) -> Vector2:
 		var push := lake.dock_push(v)
 		if push.length() > best.length():
 			best = push
+			_dock_contact = v
 	for d in lake.docks:
 		var half: Vector2 = d["half"]
 		if p.distance_to(d["center"]) > half.length() + LENGTH:
@@ -422,6 +425,7 @@ func _dock_push(p: Vector2, heading: float) -> Vector2:
 					nearest = corner - edge
 			if nearest.length() > best.length():
 				best = nearest
+				_dock_contact = corner
 	return best
 
 
@@ -440,8 +444,12 @@ func _dock_collision(new_pos: Vector2) -> Vector2:
 			if v_in < -1.0:
 				message.emit("Kolahdus! Vene törmäsi laituriin")
 			_bump_cooldown = 3.0
-		velocity -= n * v_in * 1.2
-		yaw_rate *= 0.6
+		var impulse := -n * v_in * 1.2 * MASS
+		velocity += impulse / MASS
+		# Kosketuskohdan isku kääntää venettä: keula kääntyy irti laiturin
+		# kulmasta eikä jää siihen kiinni
+		var r := _dock_contact - new_pos
+		yaw_rate = yaw_rate * 0.6 - (r.x * impulse.y - r.y * impulse.x) / YAW_INERTIA
 	return push
 func _min_depth(p: Vector2, heading: float) -> float:
 	var f := Vector2(-sin(heading), -cos(heading)) * LENGTH * 0.45
@@ -536,6 +544,8 @@ func _animate_oars(dt: float) -> void:
 			target = Transform3D(basis, Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z))
 		var pivot: Node3D = oar["pivot"]
 		var rate := 3.5 if stowed or oar_blocked[i] or _unstow_timer > 0.0 else 18.0
+		if stowed and oar_blocked[i]:
+			rate = 60.0 # laiturin puolelta airo nostetaan suoraan veneeseen, ei kääntäen laiturin läpi
 		pivot.transform = pivot.transform.interpolate_with(target, minf(1.0, dt * rate))
 		# Lavan malli on pystyssä; feather 0 = vaakatasossa, PI/2 = pystyssä
 		var blade: Node3D = oar["blade"]
@@ -602,7 +612,10 @@ func _paddle_stroke(dt: float, drive: float, steer: float) -> Vector2:
 	if _paddle_phase >= 0.5:
 		return Vector2.ZERO
 	var power := sin(PI * _paddle_phase / 0.5)
-	return Vector2(_paddle_dir * PADDLE_FORCE * power, _paddle_side * _paddle_dir * PADDLE_TURN * power)
+	# Lapa ottaa vedestä sitä paremmin kiinni, mitä hitaammin vene liikkuu:
+	# vastatuuleen pääsee etenemään, mutta tyynellä matkavauhti pysyy maltillisena
+	var grip := clampf(1.0 - _paddle_dir * velocity.dot(forward()) / PADDLE_BLADE_SPEED, 0.0, 1.5)
+	return Vector2(_paddle_dir * PADDLE_FORCE * grip * power, _paddle_side * _paddle_dir * PADDLE_TURN * power)
 
 
 ## Melan kahva ja lavan keskikohta rungon koordinaateissa asennon mukaan
