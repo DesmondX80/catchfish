@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.40.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.40.1**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.40.0)
+### Valmiina (versiot 0.1–0.40.1)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -266,7 +266,8 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 - **#38 Ankkurianimaatio – tehty (0.31.0).** Ankkurilla on malli (pieni
   naaraankoukku) ja köysi (`scripts/boat/anchor.gd`). X laskee ankkurin keulasta:
   kalastaja siirtyy etutuhdolle ja köysi luistaa käsien läpi, ankkuri vajoaa
-  1 m/s, ja vene on ankkurissa vasta ankkurin osuttua pohjaan (köyttä ~2 × syvyys).
+  1 m/s, ja vene on ankkurissa vasta ankkurin osuttua pohjaan (köyttä ~2 × syvyys;
+  0.40.1:stä alkaen syvyys + 0,5 m, ks. #57).
   Köysi vetää keulasta, joten tuulessa vene kääntyy keula ankkuria kohti.
   Pohjassa olevan ankkurin köysi roikkuu löysänä kaarella (lepää pohjalla) ja
   kiristyy suoraksi veneen loitotessa; ajettaessa tai soudettaessa ankkuri
@@ -388,6 +389,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vavan päässä ja vedessä siimaan päin (ennen pallo). Testi `--tackletest`
   (kuva `--tackleshots=KANSIO`).
   Julkaistu [v0.40.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.0).
+- **#57 Bug: ankkuri – korjattu (0.40.1).** Köyttä tuli lisää, kun vene
+  liikkui: laskiessa ankkuri jäi paikalleen ja köysi juoksi veneen perässä, ja
+  pohjassa köysi oli jousi, jota moottori venytti. Nyt ankkuri vajoaa keulan
+  alla veneen mukana 1 m/s, köyttä on pohjaan osuttaessa syvyys + 0,5 m, ja
+  köysi pitää keulan kovana rajana (`Boat.anchor_reach`, vähintään 1 m);
+  ankkurista poispäin suuntautuva nopeus pysähtyy. Kireä köysi kääntää keulaa
+  ankkuria kohti. Nosto etenee myös 1 m/s. `--anchortest` tarkistaa köyden
+  pituuden, laskun ja noston nopeuden, ajoyrityksen ja liikkuvasta veneestä
+  laskun.
 
 
 ## Huomioita ja avoimia kysymyksiä

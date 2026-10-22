@@ -4,6 +4,8 @@ extends Node
 ## ankkurissa), köysi on löysä veneen ollessa lähellä ja kiristyy, kun veneellä
 ## yritetään lähteä, tuulessa vene kääntyy keula ankkuria kohti, ja nostettu
 ## ankkuri päätyy veneeseen. Kalastaja käsittelee köyttä etutuhdolla.
+## Köyttä on syvyys + 0,5 m eikä sitä tule lisää ajettaessa, lasku ja nosto
+## etenevät 1 m/s, ja liikkuvasta veneestä laskettu ankkuri kulkee keulan alla.
 
 var main: Node
 var _log: Array[String] = []
@@ -100,6 +102,8 @@ func _physics_process(delta: float) -> void:
 				_check("ankkuri ei näy veden alla", not anchor._anchor.visible)
 				_check("köysi ei näy veden alla", anchor._rope.all(func(seg): return not seg.visible or seg.global_position.y > anchor._water_level() - 0.05))
 				_check("ilmoitus: ankkuri pohjassa", _messages.any(func(m): return m.begins_with("Ankkuri pohjassa")))
+				_check("lasku 1 m/s (%.1f s, syvyys %.1f m)" % [_t, bottom], _t > bottom and _t < bottom + 1.5)
+				_check("köyttä syvyys + 0,5 m (%.2f m)" % boat.anchor_rope, absf(boat.anchor_rope - (bottom + 0.5)) < 0.1)
 				_next()
 			elif _t > 15.0:
 				_check("ankkuri vajosi pohjaan", false)
@@ -121,6 +125,7 @@ func _physics_process(delta: float) -> void:
 				var bow := anchor.bow_chock()
 				var away := Vector2(bow.x - anchor.xz.x, bow.z - anchor.xz.y).length()
 				_check("köysi kiristyi ja piti veneen (%.1f m ankkurista, köyttä %.1f m)" % [away, boat.anchor_rope], anchor.taut() and away < boat.anchor_rope + 0.5)
+				_check("ajaessa köyttä ei tullut lisää (keula %.2f m ankkurista, ulottuma %.2f m)" % [away, boat.anchor_reach()], away <= boat.anchor_reach() + 0.2 and absf(boat.anchor_rope - (_depth_at_anchor() + 0.5)) < 0.1)
 				_check("ilmoitus: köysi kiristyy, nosta ensin ankkuri", _messages.any(func(m): return m.begins_with("Ankkuriköysi kiristyy")))
 				_check("kalastaja huusi: Perkele, ankkuri!", main.voice.last_line == "anchor")
 				_shot("ankkuri-3-kirea")
@@ -150,6 +155,7 @@ func _physics_process(delta: float) -> void:
 				_shot("ankkuri-4-nostaa")
 			if anchor.state == BoatAnchor.State.STOWED:
 				_check("ankkuri nostettiin veneeseen (%.1f s)" % _t, _messages.any(func(m): return m.begins_with("Ankkuri nostettu")))
+				_check("nosto noin 1 m/s (%.1f s, syvyys %.1f m)" % [_t, _depth_at_anchor()], _t > _depth_at_anchor() * 0.8 and _t < _depth_at_anchor() + 3.0)
 				_check("köysi ei näy nostetulla ankkurilla", not anchor._rope[0].visible)
 				_next()
 			elif _t > 30.0:
@@ -158,7 +164,23 @@ func _physics_process(delta: float) -> void:
 		6:
 			if _t > 1.0:
 				_check("kalastaja palasi kalastamaan", boat.angler.pose == Angler.Pose.FISHING)
+				_calm()
+				boat.toggle_anchor()
+				_next()
+		7:
+			# Ankkuri lasketaan liikkuvasta veneestä: se kulkee keulan alla
+			_calm()
+			boat.velocity = boat.forward() * 1.5
+			if _t > 1.2:
+				var bow := anchor.bow_chock()
+				var off := Vector2(anchor.xz.x - bow.x, anchor.xz.y - bow.z).length()
+				_check("liikkuvasta veneestä laskettu ankkuri keulan alla (%.2f m)" % off, anchor.state != BoatAnchor.State.STOWED and off < 0.5)
 				_finish()
+
+
+func _depth_at_anchor() -> float:
+	var anchor: BoatAnchor = main.boat.anchor
+	return main.lake.depth_at(anchor.xz.x, anchor.xz.y)
 
 
 func _finish() -> void:

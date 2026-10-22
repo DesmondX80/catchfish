@@ -197,10 +197,23 @@ func toggle_anchor() -> void:
 		message.emit("Ankkuria nostetaan...")
 
 
+## Ankkuriköyden kulkukohta keulassa veneen keskeltä (BoatAnchor.BOW_CHOCK)
+const BOW_ROPE := 2.2
+## Kireän ankkuriköyden kääntövoima (keula ankkuria kohti)
+const ANCHOR_TURN := 1500.0
+
+
+## Kuinka kauas (vaakasuunnassa) keula pääsee ankkurista: köysi kulkee keulasta
+## pohjaan, joten vaakaulottuma on köyden pituudesta jäljelle jäävä osa, vähintään 1 m
+func anchor_reach() -> float:
+	var depth := lake.depth_at(anchor_point.x, anchor_point.y) + 0.5
+	return sqrt(maxf(1.0, anchor_rope * anchor_rope - depth * depth))
+
+
 func _on_anchor_bottom(depth: float) -> void:
 	anchored = true
 	anchor_point = anchor.xz
-	anchor_rope = depth * 2.0 + 2.0 # köyttä noin kaksi kertaa syvyys
+	anchor_rope = depth + 0.5 # köyttä syvyys + puoli metriä
 	message.emit("Ankkuri pohjassa (syvyys %.1f m)" % depth)
 
 
@@ -302,10 +315,13 @@ func _physics_process(dt: float) -> void:
 	# Ankkuriköysi vetää keulasta: vene kääntyy keula ankkuria kohti. Köyden
 	# vaakaulottuma on köyden pituus miinus syvyys (köysi kulkee pohjaan).
 	if anchored:
-		var bow_offset := fwd * (LENGTH * 0.47)
+		var bow_offset := fwd * BOW_ROPE
 		var d := pos + bow_offset - anchor_point
-		var depth := lake.depth_at(anchor_point.x, anchor_point.y) + 0.5
-		var reach := sqrt(maxf(1.0, anchor_rope * anchor_rope - depth * depth))
+		var reach := anchor_reach()
+		if d.length() > reach - 0.05:
+			# Köysi kireällä: vene kääntyy keula ankkuria kohti (tuuli painaa perää)
+			var to_anchor := -d.normalized()
+			torque -= (fwd.x * to_anchor.y - fwd.y * to_anchor.x) * ANCHOR_TURN
 		if d.length() > reach:
 			var pull := -d.normalized() * (d.length() - reach) * 900.0 - velocity * 250.0
 			force += pull
@@ -324,6 +340,15 @@ func _physics_process(dt: float) -> void:
 	yaw = wrapf(yaw + yaw_rate * dt, -PI, PI)
 
 	var new_pos := pos + velocity * dt
+	if anchored:
+		# Köysi ei veny: keula pysyy köyden ulottumalla ankkurista, eikä vene
+		# jatka liikettään ankkurista poispäin
+		var bow := new_pos + fwd * BOW_ROPE - anchor_point
+		var reach := anchor_reach()
+		if bow.length() > reach:
+			var out := bow.normalized()
+			new_pos -= out * (bow.length() - reach)
+			velocity -= out * maxf(0.0, velocity.dot(out))
 	new_pos += _dock_collision(new_pos)
 	var old_clearance := _min_depth(pos, yaw)
 	var new_clearance := _min_depth(new_pos, yaw)

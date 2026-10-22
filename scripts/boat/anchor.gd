@@ -1,8 +1,9 @@
 class_name BoatAnchor
 extends Node3D
 ## Veneen ankkuri ja ankkuriköysi. Ankkuri lasketaan keulasta: se vajoaa
-## pohjaan köyden juostessa perässä, ja vene on ankkurissa vasta, kun ankkuri
-## on pohjassa. Nostettaessa köyttä kelataan vuorokäsin, ja ankkuri nousee
+## suoraan keulan alla (liikkuu veneen mukana) 1 m/s, ja vene on ankkurissa
+## vasta, kun ankkuri on pohjassa. Köyttä on silloin syvyys + 0,5 m, eikä sitä
+## tule lisää, vaikka veneellä yritettäisiin ajaa pois. Nostettaessa köyttä kelataan vuorokäsin, ja ankkuri nousee
 ## keulaan ja lasketaan veneen pohjalle. Pohjassa olevan ankkurin köysi roikkuu
 ## löysänä kaarella ja kiristyy suoraksi, kun vene liikkuu ankkurista poispäin.
 ## Humusvedessä ankkuri ja köysi eivät näy pinnan alla.
@@ -12,8 +13,8 @@ signal stowed
 
 enum State { STOWED, LOWERING, DOWN, RAISING }
 
-const SINK_SPEED := 1.0 # m/s: ankkuri vajoaa
-const RAISE_SPEED := 0.8 # m/s: köyttä kelataan vuorokäsin
+const SINK_SPEED := 1.0 # m/s: ankkuri lasketaan (köysi luistaa käsien läpi)
+const RAISE_SPEED := 1.0 # m/s: köyttä kelataan vuorokäsin
 const ROPE_SEGMENTS := 14
 const BOW_CHOCK := Vector3(0.0, 0.6, -2.2) # köyden kulku keulapiikin yli (rungon koordinaateissa)
 const HAND_POINT := Vector3(0.0, 0.5, -1.5) # kalastajan kädet köydellä
@@ -128,9 +129,12 @@ func update(dt: float) -> void:
 	var lake := boat.lake
 	match state:
 		State.LOWERING:
-			# Ilmassa nopeasti veteen, sitten vajoaa; köysi antaa perään
+			# Köysi pystysuorassa keulan alla: ankkuri kulkee veneen mukana,
+			# eikä köyttä juokse lisää veneen liikkuessa
+			var chock := bow_chock()
+			xz = Vector2(chock.x, chock.z) + boat.forward() * 0.25
 			var bottom := -lake.depth_at(xz.x, xz.y)
-			height -= (3.0 if height > 0.0 else SINK_SPEED) * dt
+			height -= SINK_SPEED * dt
 			if height <= bottom + 0.05:
 				height = bottom
 				state = State.DOWN
@@ -236,6 +240,7 @@ func _segment(seg: MeshInstance3D, p0: Vector3, p1: Vector3) -> void:
 	seg.global_transform = Transform3D(Basis(x, y * length, z), (p0 + p1) * 0.5)
 
 
-## Onko köysi kireällä (ankkuri pohjassa, köysi täysin auki)
+## Onko köysi kireällä (ankkuri pohjassa, vene köyden ulottuman päässä)
 func taut() -> bool:
-	return state == State.DOWN and bow_chock().distance_to(ring()) >= boat.anchor_rope - 0.05
+	var bow := bow_chock()
+	return state == State.DOWN and Vector2(bow.x - xz.x, bow.z - xz.y).length() >= boat.anchor_reach() - 0.05
