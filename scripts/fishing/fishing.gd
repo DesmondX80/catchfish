@@ -103,6 +103,7 @@ var _landing_species := ""
 var _landing_weight := 0.0
 var _holes_node: Node3D
 var lure_index := 0
+var _lure_shown := "" # vedessä näkyvän uistinmallin tunniste
 var drag_kg := 3.0
 var power := 0.0
 var line_out := 0.0
@@ -211,7 +212,6 @@ func set_on_ice(on: bool) -> void:
 	on_ice = on
 	rod_length = 0.65 if on else ROD_LENGTH
 	lure_index = 0
-	_lure_node.mesh.material.albedo_color = lure()["color"]
 
 
 ## Kalastus käynnissä: kalastaja istuu paikallaan (ei kävellä)
@@ -419,7 +419,6 @@ func _take_rod(i: int, text: String) -> void:
 	if in_holder:
 		in_holder = false
 		_bend_vel -= 2.0
-	_lure_node.mesh.material.albedo_color = lure()["color"]
 	if state == State.BITE:
 		text += " – TÄRPPI! Vastaisku – vasen hiiri!"
 	elif state == State.FIGHT:
@@ -443,6 +442,22 @@ func _lure_free(l: Dictionary) -> bool:
 	return int(inventory.get(l["id"], 0)) > in_use
 
 
+## Kalapakista valittu uistin tai syöttiväline. Palauttaa tyhjän, jos valinta
+## onnistui, muuten syyn (ei varastossa, jo toisessa vavassa, ei nyt).
+func select_lure(id: String) -> String:
+	if state != State.READY:
+		return "Uistimen voi vaihtaa vain, kun siima on kelattu sisään"
+	var all: Array = Lures.ICE if on_ice else Lures.LIST
+	var l: Dictionary = all.filter(func(x): return x["id"] == id)[0]
+	if limited and int(inventory.get(id, 0)) <= 0:
+		return "%s: ei varastossa – osta kalastustarvikeliikkeestä" % l["name"]
+	if not on_ice and not _lure_free(l):
+		return "%s on jo toisessa vavassa" % l["name"]
+	lure_index = lures().find(l)
+	message.emit("Uistin: " + l["name"] + (" (%d kpl)" % lure_count() if limited else ""))
+	return ""
+
+
 ## Valitsee vapaan uistimen, jos nykyinen on jo toisessa vavassa
 func _pick_free_lure() -> bool:
 	var list := lures()
@@ -451,7 +466,6 @@ func _pick_free_lure() -> bool:
 		if _lure_free(list[idx]):
 			if idx != lure_index % list.size():
 				lure_index = idx
-				_lure_node.mesh.material.albedo_color = lure()["color"]
 				message.emit("Uistin: " + lure()["name"])
 			return true
 	return false
@@ -495,17 +509,6 @@ func _unhandled_input(event: InputEvent) -> void:
 				state = State.READY
 	elif event.is_action_released("cast") and state == State.CHARGING:
 		_cast()
-	elif event.is_action_pressed("lure_next") and state == State.READY:
-		if not has_lure():
-			message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
-			return
-		lure_index = (lure_index + 1) % lures().size()
-		for k in lures().size(): # ohitetaan toisessa vavassa olevat
-			if _lure_free(lure()):
-				break
-			lure_index = (lure_index + 1) % lures().size()
-		_lure_node.mesh.material.albedo_color = lure()["color"]
-		message.emit("Uistin: " + lure()["name"] + (" (%d kpl)" % lure_count() if limited else ""))
 	elif event.is_action_pressed("twitch") and state == State.RETRIEVING and not lure_on_land:
 		line_out = maxf(0.0, line_out - 0.5)
 		_twitch = 1.0
@@ -1324,7 +1327,6 @@ func _lose_lure(text: String) -> void:
 		if inventory[id] == 0:
 			lure_index = 0
 			text += " – %s loppui" % Lures.name_of(id) if has_lure() else " – uistimet loppuivat"
-			_lure_node.mesh.material.albedo_color = lure()["color"]
 	snagged = false
 	state = State.READY
 	voice.emit("snap")
@@ -1408,16 +1410,8 @@ func _build_rod_visuals() -> void:
 	_rod_pivot.add_child(line)
 
 	_lure_node = MeshInstance3D.new()
-	var lure_mesh := SphereMesh.new()
-	lure_mesh.radius = 0.04
-	lure_mesh.height = 0.12
-	var lure_mat := StandardMaterial3D.new()
-	lure_mat.albedo_color = lure()["color"]
-	lure_mat.metallic = 0.6
-	lure_mat.roughness = 0.3
-	lure_mesh.material = lure_mat
-	_lure_node.mesh = lure_mesh
 	_lure_node.top_level = true
+	_lure_node.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	add_child(_lure_node)
 	_build_bobber()
 	_worm_node = MeshInstance3D.new()
@@ -1434,7 +1428,18 @@ func _build_rod_visuals() -> void:
 
 
 func _update_visuals() -> void:
-	_lure_node.global_position = lure_pos
+	# Uistimen malli (LureModels) vaihtuu valitun mukaan; kärki osoittaa siimaa kohti
+	var id: String = lure()["id"]
+	if id != _lure_shown:
+		_lure_shown = id
+		_lure_node.mesh = LureModels.mesh(id)
+	var to_tip := rod_tip() - lure_pos
+	if id == "tasuri":
+		to_tip.y = 0.0 # tasapainopilkki roikkuu vaakasuorassa
+	if to_tip.length() < 0.01:
+		to_tip = Vector3(-sin(boat.yaw), 0, -cos(boat.yaw))
+	var up := Vector3.UP if absf(to_tip.normalized().y) < 0.95 else Vector3(-sin(boat.yaw), 0, -cos(boat.yaw))
+	_lure_node.global_transform = Transform3D(Basis.looking_at(to_tip, up), lure_pos)
 	# Ongen syötti (mato) ei näy veden alla; vavan kärjessä se roikkuu koukussa
 	var shown := not (bait() and lure_pos.y < -0.02 and state in [State.RETRIEVING, State.BITE, State.FIGHT]) and not _rods_hidden_on_ice()
 	_lure_node.visible = shown and not bait()

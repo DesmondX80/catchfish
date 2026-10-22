@@ -76,6 +76,7 @@ var trip_catch: Array = []
 var tub: CatchTub
 var voice: AnglerVoice
 var birds: Birds
+var tackle_box: TackleBox
 
 
 func _start_game(start_index: int, career := false) -> void:
@@ -159,6 +160,11 @@ func _start_game(start_index: int, career := false) -> void:
 	add_child(tub)
 	tub.setup(boat, fishing, trip_catch)
 	camera_rig.tub = tub
+	tackle_box = TackleBox.new()
+	add_child(tackle_box)
+	tackle_box.setup(boat, fishing)
+	camera_rig.box = tackle_box
+	tackle_box.opened.connect(func(): hud.set_paused_view(false))
 
 	fish_visuals = FishVisuals.new()
 	add_child(fish_visuals)
@@ -194,7 +200,6 @@ func _start_game(start_index: int, career := false) -> void:
 		fishing.limited = true
 		fishing.inventory = Career.lures # sama sanakirja: menetetyt uistimet vähenevät urasta
 		fishing.lure_index = 0
-		fishing._lure_node.mesh.material.albedo_color = fishing.lure()["color"]
 		pause_menu.going_home.connect(func():
 			Career.end_trip(trip_catch, sky.minutes - Career.trip_start)
 			Main.return_to_career = true)
@@ -261,6 +266,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/anchor_test.gd").new())
 	elif "--paddletest" in args:
 		add_child(load("res://tests/paddle_test.gd").new())
+	elif "--tackletest" in args:
+		add_child(load("res://tests/tackle_test.gd").new())
 	elif "--birdtest" in args:
 		add_child(load("res://tests/bird_test.gd").new())
 	elif "--booktest" in args:
@@ -280,6 +287,8 @@ func _start_game(start_index: int, career := false) -> void:
 func _input(event: InputEvent) -> void:
 	if not running:
 		return # valikossa hiiri on vapaana
+	if tackle_box.is_open:
+		return # kalapakki käsittelee hiiren ja näppäimet itse
 	# Ensimmäinen klikkaus vain kaappaa hiiren, ei heitä
 	if event is InputEventMouseButton and event.pressed and not GameInput.active():
 		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED

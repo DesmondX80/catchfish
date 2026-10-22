@@ -10,6 +10,9 @@ var yaw := 0.0
 var pitch := 0.32
 var distance := 8.0
 var tub: CatchTub
+## Avattu kalapakki: kamera katsoo pakkia ylhäältä
+var box: TackleBox
+var _box_blend := 0.0
 const BOBBER_DISTANCE := 2.2 # m kohosta veneen suuntaan
 const BOBBER_HEIGHT := 0.9 # m vedenpinnan yläpuolella
 ## Tab: kamera katsoo kalasaavia ylhäältä
@@ -83,6 +86,9 @@ func _process(delta: float) -> void:
 		var center := tub.view_point()
 		var above := Transform3D(Basis.looking_at(Vector3.DOWN, bow), center + Vector3(0, 0.65, 0) + right * 0.25)
 		camera.global_transform = camera.global_transform.interpolate_with(above, smoothstep(0.0, 1.0, _tub_blend))
+	_box_blend = move_toward(_box_blend, 1.0 if box != null and box.is_open else 0.0, delta * 3.0)
+	if _box_blend > 0.0 and box != null:
+		camera.global_transform = camera.global_transform.interpolate_with(box.view_transform(), smoothstep(0.0, 1.0, _box_blend))
 	_shot_blend = move_toward(_shot_blend, 1.0 if shot_view else 0.0, delta * 2.5)
 	if _shot_blend > 0.0:
 		camera.global_transform = camera.global_transform.interpolate_with(shot, smoothstep(0.0, 1.0, _shot_blend))

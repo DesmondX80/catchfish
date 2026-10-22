@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.39.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.39.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.40.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,13 +10,13 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.39.0)
+### Valmiina (versiot 0.1–0.40.0)
 
 | Alue | Ominaisuudet |
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
 | Maailma | MML-aineistosta tehty järvi ja maasto, metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
-| Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
+| Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi) omina 3D-malleinaan, valinta kalapakista (L; talvella pilkkirasia), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
 | Onki | Koho-onki (syvyys F/G ennen heittoa) ja pohjaonki (mato 0,5 m pohjasta), tärpissä koho nykii ja uppoaa, kamera zoomaa kohoon |
@@ -87,6 +87,7 @@ Peruttu: #21 Tuulikellunta ja uistinankkuri.
 | `scripts/fishing/fishing.gd` | Kalastuksen tilakone (heitto, uinti, tärppi, väsytys), kaksi vapaa (`ROD_VARS` vaihdetaan käsiteltävän vavan mukaan), tähtäin, koho ja mato |
 | `scripts/fishing/landing_net.gd` | Haavinta-animaatio ja sen kamerakuva |
 | `scripts/fishing/lures.gd` | Uistimet ja syöttivälineet (kind: sink, dive, bobber, bottom) |
+| `scripts/fishing/lure_models.gd`, `scripts/boat/tackle_box.gd` | Uistinten 3D-mallit ja kalapakki (L) / pilkkirasia |
 | `scripts/fishing/species.gd` | Lajien ominaisuudet |
 | `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
 | `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
@@ -115,6 +116,7 @@ godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, hell
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
+godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
@@ -374,6 +376,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Merikotka!".
   Testi `--birdtest` (lähikuvat `--birdshots=KANSIO`).
   Julkaistu [v0.39.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.39.0).
+- **#50 Uistimen valinta kalapakista – tehty (0.40.0).** L avaa muovisen
+  kääntölokeropakin veneen pohjalla kalastajan edessä: kansi nousee,
+  lokerotasot kääntyvät sivuille ja kamera katsoo pakkia ylhäältä. Vasemmalla
+  tasolla lusikka, lippa ja jigi, oikealla pitkä kelluva vaappu ja lyhyt
+  syvävaappu, pohjalla koho- ja pohjaonki. Lokero korostuu hiiren alla, ja
+  klikkaus valitsee uistimen ja sulkee pakin (L, Esc tai oikea hiiri sulkee
+  muuten). Uramoodissa näkyy kappalemäärä, eikä puuttuvaa uistinta voi valita.
+  Talvella jäällä on pieni pilkkirasia (pilkki + toukka, tasapainopilkki).
+  Uistimet ovat koodissa tehtyjä 3D-malleja (`LureModels`), jotka näkyvät myös
+  vavan päässä ja vedessä siimaan päin (ennen pallo). Testi `--tackletest`
+  (kuva `--tackleshots=KANSIO`).
 
 
 ## Huomioita ja avoimia kysymyksiä

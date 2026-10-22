@@ -36,7 +36,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | Oikea hiiri | kelaa (Shift = nopeasti) |
 | Välilyönti | nykäisy |
 | E / C | jarru kireämmälle / löysemmälle |
-| L | vaihda uistin tai syöttiväline (koho-onki, pohjaonki) |
+| L | kalapakki auki: kamera katsoo pakkia, ja uistin, koho-onki tai pohjaonki valitaan klikkaamalla sen lokeroa (L, Esc tai oikea hiiri sulkee). Talvella pieni pilkkirasia |
 | F / G | kohon syvyys matalammalle / syvemmälle (ennen heittoa) |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
 | T | ajan nopeus (x1 / x10 / x60) |
