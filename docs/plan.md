@@ -311,6 +311,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   varassa: välitasanne, kaksi porrassyöksyä käsijohteineen, vinotuet ja
   pystyrimakaiteet. Torni käännetään niin, että portaat laskeutuvat
   korkeimmalle maalle. Katoille tulee talvella lunta.
+  Julkaistu [v0.33.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.33.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
