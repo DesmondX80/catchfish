@@ -1,7 +1,8 @@
 class_name StartMenu
 extends CanvasLayer
 ## Aloitusvalikko: "Mene kalalle" avaa järven kartan, josta valitaan
-## aloituspaikka; "Asetukset" (todellinen aika ja sää); "Lopeta peli" sulkee pelin.
+## aloituspaikka; "Kalakirja" (saadut lajit); "Asetukset" (todellinen aika ja sää);
+## "Lopeta peli" sulkee pelin.
 
 signal start_selected(index: int)
 
@@ -17,6 +18,7 @@ var _map_real: CheckButton
 var _time_section: Array[Control] = []
 var _map_title: Label
 var _career: CareerView
+var _book: FishBookView
 ## Uramoodin kalareissu (aloituspaikka valitaan uran kotinäkymästä)
 var career_mode := false
 var _season_pick: OptionButton
@@ -89,6 +91,9 @@ func _build() -> void:
 	var career := _button("Uramoodi")
 	career.pressed.connect(open_career)
 	box.add_child(career)
+	var book := _button("Kalakirja")
+	book.pressed.connect(_show_book)
+	box.add_child(book)
 	var settings := _button("Asetukset")
 	settings.pressed.connect(_show_settings)
 	box.add_child(settings)
@@ -174,6 +179,11 @@ func _build() -> void:
 	add_child(_career)
 	_career.go_fishing.connect(func(): career_mode = true; _show_map())
 	_career.back.connect(_show_main)
+
+	_book = FishBookView.new()
+	_book.visible = false
+	add_child(_book)
+	_book.closed.connect(_show_main)
 
 	_build_settings()
 
@@ -285,6 +295,11 @@ func _show_settings() -> void:
 	_update_weather_preview()
 
 
+func _show_book() -> void:
+	_main.visible = false
+	_book.open()
+
+
 func _show_map() -> void:
 	_main.visible = false
 	_career.visible = false
@@ -314,6 +329,7 @@ func _show_main() -> void:
 	_map_bg.visible = false
 	_settings.visible = false
 	_career.visible = false
+	_book.visible = false
 	career_mode = false
 	_main.visible = true
 

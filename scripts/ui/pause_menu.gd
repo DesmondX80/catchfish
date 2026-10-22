@@ -1,6 +1,6 @@
 class_name PauseMenu
 extends CanvasLayer
-## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Mene kotiin (alkuvalikkoon).
+## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Kalakirja, Mene kotiin (alkuvalikkoon).
 ## Peli on pysähdyksissä valikon ollessa auki; tämä solmu toimii tauollakin.
 
 signal resumed
@@ -8,6 +8,7 @@ signal going_home
 
 var _box: Control
 var _help: Control
+var _book: FishBookView
 var _buttons: Array[Button] = []
 
 
@@ -56,7 +57,7 @@ func _build(help_text: String) -> void:
 	title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Mene kotiin", _go_home]]:
+	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Kalakirja", _show_book], ["Mene kotiin", _go_home]]:
 		var b := _button(item[0])
 		b.pressed.connect(item[1])
 		col.add_child(b)
@@ -85,6 +86,11 @@ func _build(help_text: String) -> void:
 	_buttons.append(back)
 	_help.visible = false
 
+	_book = FishBookView.new()
+	_book.visible = false
+	add_child(_book)
+	_book.closed.connect(_show_menu)
+
 
 ## Avaa valikon ja pysäyttää pelin
 func open() -> void:
@@ -103,6 +109,7 @@ func resume() -> void:
 
 func _show_menu() -> void:
 	_help.visible = false
+	_book.visible = false
 	_box.visible = true
 	_buttons[0].grab_focus()
 
@@ -111,6 +118,11 @@ func _show_help() -> void:
 	_box.visible = false
 	_help.visible = true
 	_buttons[-1].grab_focus()
+
+
+func _show_book() -> void:
+	_box.visible = false
+	_book.open()
 
 
 ## Takaisin alkuvalikkoon: peli ladataan alusta (pää-scene käynnistyy valikosta).

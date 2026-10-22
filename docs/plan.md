@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.37.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.37.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.38.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.38.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.36.0)
+### Valmiina (versiot 0.1–0.38.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -23,7 +23,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Heitto | Tähtäin näyttää osumapisteen (sama lentofysiikka kuin heitossa) ja varoittaa rantaan menevästä heitosta |
 | Talvi | Pilkkiminen avannosta: kairaus, pilkki ja tasapainopilkki, kävely jäällä |
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
-| Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa |
+| Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa, kalakirja (lajin sivu avautuu ensimmäisestä saaliista) |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
@@ -63,7 +63,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | # | Tehtävä |
 |---|---|
-| 23 | Kalakirja (keskitaso) |
 | 22 | Trofeekuva saaliista |
 | 24 | Uramoodi: kalastonhoitomaksu ja kalan vapautus |
 | 25 | Uramoodi: tilauskalat |
@@ -94,7 +93,8 @@ Peruttu: #21 Tuulikellunta ja uistinankkuri.
 | `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
 | `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja (malli `assets/characters/`, luut ohjataan `AnglerPoser`-muokkaimella animaation jälkeen), kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
-| `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta |
+| `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta, kalakirja (`fish_book_view.gd`) |
+| `scripts/catch_log.gd`, `scripts/fish_book.gd` | Ennätyslista (kertakalastus) ja kalakirja (kaikki saaliit lajeittain) |
 | `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
 
 ## Testaus
@@ -112,6 +112,7 @@ godot --headless --fixed-fps 30 -- --day=180 --sonartest    # syvyydet, pohjan l
 godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohjaan matalassa
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
+godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
@@ -348,6 +349,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   uppoaminen ja väsytys lasketaan aaltopinnasta. `--baittest` tarkistaa korkeuden
   aaltopinnasta, nousun ja laskun sekä kallistelun.
   Julkaistu [v0.37.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.37.0).
+- **#23 Kalakirja – tehty (0.38.0).** Alkuvalikossa ja Esc-valikossa on
+  Kalakirja: lajit vasemmalla, valitun lajin sivulla tieteellinen nimi, 3D-kuva,
+  kuvaus, saaliiden määrä, oma ennätys (paino, pituus, viehe, paikka, päiväys),
+  ensimmäinen saalis ja vinkki (viihtymissyvyys ja kolme mieluisinta viehettä
+  `species.gd`:stä). Saamaton laji näkyy listassa "? ? ?" ja sivulla
+  varjokuvana. Kirjaan tulevat kaikki saaliit, myös uramoodin (`FishBook`,
+  `user://kalakirja.json`); ensimmäisellä kerralla kirja täytetään saaliskirjan
+  vanhoista saaliista. Uudesta lajista saalisikkunassa "UUSI LAJI KALAKIRJAAN!".
+  Testi `--booktest` (kuvat `--bookshots=KANSIO`).
 
 
 ## Huomioita ja avoimia kysymyksiä

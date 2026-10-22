@@ -280,6 +280,8 @@ func _on_caught(entry: Dictionary, record: bool) -> void:
 		text += "\nPaikka: lähellä %s" % entry["place"]
 	if record:
 		text = "UUSI ENNÄTYS!\n" + text
+	if FishBook.count(entry["species"]) == 1:
+		text = "UUSI LAJI KALAKIRJAAN!\n" + text
 	text += "\n\nVasen hiiri: jatka kalastusta"
 	_catch_label.text = text
 	_catch_picture.show_species(entry["species"])
@@ -345,12 +347,12 @@ func _log_text() -> String:
 	return "\n".join(lines)
 
 
-func _fi(v: float) -> String:
+static func _fi(v: float) -> String:
 	return ("%.2f" % v).replace(".", ",")
 
 
 ## Koneen päiväys "2026-10-18 20:15:33" -> "18.10.2026 klo 20.15"
-func _real_date(s: String) -> String:
+static func _real_date(s: String) -> String:
 	var parts := s.split(" ")
 	if parts.size() < 2:
 		return s

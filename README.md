@@ -42,7 +42,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
 | F1 | ohje |
-| Esc | tauko |
+| Esc | tauko (myös ohjeet ja kalakirja) |
 
 ## Simulaatio lyhyesti
 
@@ -105,6 +105,11 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   jarru katkaisee siiman ja löysä siima päästää kalan irti. Kalan lajin
   näkee vasta, kun kala tulee tummassa humusvedessä näkyviin veneen
   lähelle tai rimpuilee pinnassa.
+- **Kalakirja** (alkuvalikko tai Esc-valikko): jokaisella lajilla on oma sivu,
+  jossa on kuvaus, kuva, saaliiden määrä, oma ennätys ja ensimmäinen saalis.
+  Laji avautuu kirjaan, kun saat sen ensimmäisen kerran (siihen asti sivulla
+  on vain varjokuva). Kirjaan tulevat sekä kertakalastuksen että uramoodin
+  saaliit.
 - Lajien arvot ovat tiedostossa `scripts/fishing/species.gd` ja uistinten
   `scripts/fishing/lures.gd`.
 

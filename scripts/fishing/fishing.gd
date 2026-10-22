@@ -1277,6 +1277,7 @@ func _try_land() -> void:
 		}
 		# Kertakalastuksen saaliit ennätyslistalle; uramoodin saalis menee saaviin
 		_landing_record = false if Career.active else CatchLog.add(entry)
+		FishBook.add(entry) # kalakirjaan kaikki saaliit, myös uramoodin
 		_landing_entry = entry
 		_landing_species = sp
 		_landing_weight = weight
