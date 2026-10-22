@@ -18,7 +18,8 @@ const MOTOR_THRUST := 420.0 # N täydellä kaasulla (~5 hv, huippunopeus ~20 km/
 const ROW_FORCE := 150.0 # N vedon aikana
 const ROW_TURN := 320.0 # Nm, kun soudetaan vain toisella airolla
 const DRAFT := 0.3 # syväys metreinä
-const WINDAGE := 0.85 # 0.5 * ilman tiheys * Cd * A
+const WINDAGE := 0.85 # 0.5 * ilman tiheys * Cd * A kylki tuuleen
+const WINDAGE_BOW := 0.3 # osuus kylkituulesta, kun keula tai perä on tuuleen
 const STROKE_TIME := 1.6 # s / airoveto
 ## Perämoottorin potkuri: alle metrin syvyydessä pyörivä potkuri osuu pohjaan
 const PROP_DEPTH := 1.0 # m: tätä matalammassa potkuri osuu pohjaan
@@ -262,6 +263,10 @@ func _physics_process(dt: float) -> void:
 	var v_side := velocity.dot(side)
 	var force := Vector2.ZERO
 	var torque := 0.0
+	# Vastatuuleen kalastaja vetää airoilla ja melalla kovempaa (3 m/s alkaen,
+	# kovalla tuulella yli kaksinkertaisesti), jotta kovallakin tuulella pääsee etenemään
+	var headwind := maxf(0.0, -weather.vector().dot(fwd))
+	var effort := 1.0 + clampf((headwind - 3.0) / 7.0, 0.0, 1.2)
 
 	if motor_running:
 		throttle = clampf(throttle + drive * 0.6 * dt, -0.4, 1.0)
@@ -279,7 +284,7 @@ func _physics_process(dt: float) -> void:
 		if paddling:
 			_oar_activity = [0.0, 0.0]
 			var push := _paddle_stroke(dt, drive, steer)
-			force += fwd * push.x
+			force += fwd * push.x * (effort if push.x > 0.0 else 1.0)
 			torque += push.y
 		for i in 2:
 			if oar_blocked[i] and _oar_activity[i] != 0.0:
@@ -295,7 +300,7 @@ func _physics_process(dt: float) -> void:
 			var power := sin(PI * f / 0.45) if f < 0.45 else 0.0
 			var left: float = _oar_activity[0]
 			var right_oar: float = _oar_activity[1]
-			force += fwd * (left + right_oar) * 0.5 * ROW_FORCE * power
+			force += fwd * (left + right_oar) * 0.5 * ROW_FORCE * power * (effort if left + right_oar > 0.0 else 1.0)
 			torque += (right_oar - left) * 0.5 * ROW_TURN * power
 			if before < 0.45 and f >= 0.45:
 				_leave_swirls()
@@ -309,9 +314,10 @@ func _physics_process(dt: float) -> void:
 	force -= side * (v_side * absf(v_side) * 180.0 + v_side * 60.0)
 	torque -= yaw_rate * (500.0 + absf(v_fwd) * 300.0)
 
-	# Tuuli
+	# Tuuli: keula tuuleen vene ottaa paljon vähemmän tuulta kuin kylki
 	var rel_wind := weather.vector() - velocity
-	force += rel_wind * rel_wind.length() * WINDAGE
+	var broadside := absf(rel_wind.normalized().dot(side))
+	force += rel_wind * rel_wind.length() * WINDAGE * lerpf(WINDAGE_BOW, 1.0, broadside)
 
 	# Ankkuriköysi vetää keulasta: vene kääntyy keula ankkuria kohti. Köyden
 	# vaakaulottuma on köyden pituus miinus syvyys (köysi kulkee pohjaan).

@@ -118,6 +118,7 @@ godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
 godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
+godot --headless --fixed-fps 30 -- --day=180 --headwindtest  # soutu ja melonta vastatuuleen
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
@@ -446,6 +447,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   tasaiseksi vaalennukseksi (ei välkettä). `--foamshots=<kansio>` ottaa
   kuvat eri tuulilla selällä ja rannassa ja tarkistaa vaalean vaahdon osuuden.
   Julkaistu [v0.44.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.44.0).
+- **Vastatuuleen soutu ja melonta – korjattu (0.44.1, ei Planessa).** Tuuli
+  painoi venettä samalla voimalla suunnasta riippumatta, joten yli 8 m/s
+  vastatuuleen ei päässyt soutaen eikä meloen (12 m/s:ssa vene ajautui 2 m/s
+  taaksepäin). Nyt keula tai perä tuuleen vene ottaa 30 % kylkituulen
+  voimasta (`WINDAGE_BOW`), ja vastatuuleen kalastaja vetää airoilla ja
+  melalla kovempaa: 3 m/s vastatuulesta alkaen, enimmillään 2,2-kertaisesti
+  (`effort`). Tyynen sään nopeudet eivät muuttuneet. `--headwindtest`
+  soutaa ja meloo 12 m/s tuuleen, jonka puuskat nousevat 18 m/s:iin, ja
+  tarkistaa myös tyynen sään huippunopeudet.
 
 
 ## Huomioita ja avoimia kysymyksiä

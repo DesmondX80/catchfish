@@ -57,7 +57,9 @@ painuu, hauki hyppää).
 - **Vene**: valkoinen lasikuituinen soutuvene (limisaumaa jäljittelevät kyljet,
   kermanvärinen sisäpuoli) ja perässä pieni musta nelitahtinen perämoottori,
   jonka potkuri pyörii ajettaessa. Oma vesifysiikka (työntövoima, vastus, sivuttaisvastus), tuuli
-  ajelehdittaa, ankkuri pitää paikallaan, matalikolla vene osuu pohjaan.
+  ajelehdittaa (kylki tuuleen paljon enemmän kuin keula), ankkuri pitää
+  paikallaan, matalikolla vene osuu pohjaan. Vastatuuleen pääsee kovallakin
+  tuulella soutaen ja meloen: keula tuuleen kalastaja vetää kovempaa.
   Laituriin vene kolahtaa ja pysähtyy, viistossa törmäyksessä se liukuu
   laituria pitkin.
   Perämoottorin potkuri ulottuu lähes metrin syvyyteen: matalassa se osuu
