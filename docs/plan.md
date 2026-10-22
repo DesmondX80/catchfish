@@ -292,6 +292,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (Danjocross, Freesound 503208, CC0; 4 muunnelmaa). Peli soittaa
   satunnaisen muunnelman (`GameAudio.VARIANTS`). Testi `--paddletest`.
   Julkaistu [v0.32.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.32.0).
+- **#49 Julkaisu GitHub Pagesiin – tehty.** Selainversio:
+  <https://desmondx80.github.io/catchfish/>. Web-vienti on yksisäikeinen
+  (`variant/thread_support=false`), joten se toimii GitHub Pagesissa ilman
+  COOP/COEP-otsakkeita. `.github/workflows/pages.yml` lataa Godot 4.7.2:n ja
+  web-vientipohjan (välimuistiin), vie pelin ja julkaisee sen jokaisesta
+  GitHub-julkaisusta, tai käsin Actions-välilehdeltä. Selaimessa "Lopeta peli"
+  piilotetaan, ja säähaku kulkee selaimen kautta (FMI ja Open-Meteo sallivat
+  CORSin). Tallennukset (ura, saaliskirja, asetukset) ovat selaimen
+  IndexedDB:ssä. wasm 40 Mt, pck 11 Mt.
 
 
 ## Huomioita ja avoimia kysymyksiä
