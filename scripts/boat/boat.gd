@@ -487,6 +487,19 @@ func _animate(dt: float) -> void:
 
 const OAR_LENGTH := 2.2
 const BLADE_OUT := 1.85 # lavan keskikohdan etäisyys hankaimesta
+const OAR_HANDLE_IN := 0.45 # kahvan pään etäisyys hankaimesta veneen sisään
+
+## Puinen soutuairo (2,55 m): kahvan päässä nuppi ja ohuempi kädensija, pyöreä
+## varsi ja pitkä, vähitellen levenevä lapa, jonka kärki on pyöristetty.
+## Kahvan pää origossa, lapa -Y:n suuntaan (sama muoto kuin PADDLE_PROFILE).
+const OAR_PROFILE := [
+	# y, puolileveys, puolipaksuus
+	[0.0, 0.012, 0.012], [-0.006, 0.019, 0.019], [-0.03, 0.019, 0.019],
+	[-0.04, 0.015, 0.015], [-0.15, 0.016, 0.016], [-0.18, 0.022, 0.022],
+	[-1.3, 0.022, 0.022], [-1.62, 0.024, 0.018], [-1.8, 0.042, 0.014],
+	[-2.0, 0.062, 0.01], [-2.2, 0.072, 0.008], [-2.46, 0.075, 0.007],
+	[-2.52, 0.068, 0.006], [-2.54, 0.052, 0.005], [-2.55, 0.026, 0.004],
+]
 const OARLOCK := Vector3(0.68, 0.45, 0.65) # soutajan (keskituhto) perän puolella
 
 
@@ -548,8 +561,8 @@ func _animate_oars(dt: float) -> void:
 			rate = 60.0 # laiturin puolelta airo nostetaan suoraan veneeseen, ei kääntäen laiturin läpi
 		pivot.transform = pivot.transform.interpolate_with(target, minf(1.0, dt * rate))
 		# Lavan malli on pystyssä; feather 0 = vaakatasossa, PI/2 = pystyssä
-		var blade: Node3D = oar["blade"]
-		blade.rotation.x = lerp_angle(blade.rotation.x, PI / 2.0 - feather, minf(1.0, dt * rate))
+		var roll: Node3D = oar["roll"]
+		roll.rotation.x = lerp_angle(roll.rotation.x, PI / 2.0 - feather, minf(1.0, dt * rate))
 
 
 ## Osuisiko airo laituriin: airon pyyhkäisemä alue (otosta vedon loppuun,
@@ -758,20 +771,43 @@ func _build_visuals() -> void:
 
 	# Airot hankaimissa: vasen (-X) ja oikea (+X). Airon varsi alkaa hieman
 	# hankaimen sisäpuolelta (kahva) ja lapa on varren ulkopäässä.
+	var oar_shape := _lathe_mesh(OAR_PROFILE)
+	var pine := _pine_material()
+	var sleeve_shape := CylinderMesh.new() # musta kumiholkki hankaimen kohdalla
+	sleeve_shape.top_radius = 0.027
+	sleeve_shape.bottom_radius = 0.027
+	sleeve_shape.height = 0.2
+	sleeve_shape.radial_segments = 12
+	sleeve_shape.rings = 1
+	sleeve_shape.material = _material(Color(0.06, 0.06, 0.06))
 	for s in [-1.0, 1.0]:
 		var pivot := Node3D.new()
 		pivot.position = Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z)
 		hull.add_child(pivot)
-		var shaft := _box(pivot, Vector3(OAR_LENGTH, 0.045, 0.045), Vector3((OAR_LENGTH / 2.0 - 0.45) * s, 0, 0), wood)
-		var blade := _box(pivot, Vector3(0.5, 0.14, 0.02), Vector3(BLADE_OUT * s, 0, 0), wood)
-		shaft.name = "Shaft"
-		_oars.append({"side": s, "pivot": pivot, "blade": blade})
+		# Airo kiertyy varren ympäri (lavan kääntö): koko malli on roll-solmun lapsi
+		var roll := Node3D.new()
+		pivot.add_child(roll)
+		var oar_mesh := MeshInstance3D.new()
+		oar_mesh.name = "Shaft"
+		oar_mesh.mesh = oar_shape
+		oar_mesh.material_override = pine
+		# Profiili kulkee -Y:hen; Z-kierto kääntää sen airon suuntaan ja lavan pystyyn
+		oar_mesh.transform = Transform3D(Basis(Vector3.BACK, s * PI / 2.0), Vector3(-OAR_HANDLE_IN * s, 0, 0))
+		roll.add_child(oar_mesh)
+		var sleeve := MeshInstance3D.new()
+		sleeve.mesh = sleeve_shape
+		sleeve.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(0.08 * s, 0, 0))
+		roll.add_child(sleeve)
+		var blade := Node3D.new() # lavan keskikohta: äänet, vana ja laiturin tarkistus
+		blade.position = Vector3(BLADE_OUT * s, 0, 0)
+		roll.add_child(blade)
+		_oars.append({"side": s, "pivot": pivot, "roll": roll, "blade": blade})
 
 	# Mela: kahva paikallisessa origossa, varsi ja lapa -Y:n suuntaan
 	_paddle = Node3D.new()
 	hull.add_child(_paddle)
 	var paddle_mesh := MeshInstance3D.new()
-	paddle_mesh.mesh = _paddle_mesh()
+	paddle_mesh.mesh = _lathe_mesh(PADDLE_PROFILE)
 	paddle_mesh.material_override = _pine_material()
 	_paddle.add_child(paddle_mesh)
 	var rest := _paddle_pose()
@@ -822,18 +858,19 @@ const PADDLE_PROFILE := [
 ]
 
 
-func _paddle_mesh() -> Mesh:
+## Pyörähdysmäinen puuesine profiilista [y, puolileveys, puolipaksuus], -Y:n suuntaan
+func _lathe_mesh(profile: Array) -> Mesh:
 	var sides := 12
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var rings := []
-	for p in PADDLE_PROFILE:
+	for p in profile:
 		var ring := []
 		for k in sides:
 			var a := TAU * k / sides
 			ring.append(Vector3(p[1] * cos(a), p[0], p[2] * sin(a)))
 		rings.append(ring)
-	var length: float = -PADDLE_PROFILE[-1][0]
+	var length: float = -profile[-1][0]
 	for i in rings.size() - 1:
 		for k in sides:
 			var k2 := (k + 1) % sides

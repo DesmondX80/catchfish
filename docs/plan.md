@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.34.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.34.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.35.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.35.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.34.0)
+### Valmiina (versiot 0.1–0.35.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -329,6 +329,11 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   kosketuskohdan mukaan, joten keula ei enää jää kiinni laiturin kulmaan.
   Laiturin puoleinen airo nostetaan veneeseen kääntämättä sitä laiturin läpi.
   Julkaistu [v0.34.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.34.0).
+- **#51 Airojen ulkoasu – tehty (0.35.0).** Airot on mallinnettu käyttäjän
+  mallikuvista (`Boat.OAR_PROFILE`, sama `_lathe_mesh` kuin melassa): 2,55 m
+  vaaleaa mäntyä, kahvan päässä nuppi ja ohuempi kädensija, pyöreä varsi ja
+  pitkä vähitellen levenevä lapa pyöristetyin kärjin. Hankaimen kohdalla on
+  musta kumiholkki. Lavan kääntö kiertää koko airoa varren ympäri.
 
 
 ## Huomioita ja avoimia kysymyksiä
