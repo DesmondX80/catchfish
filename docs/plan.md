@@ -347,6 +347,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   pienissä laineissa tuulen voimakkuuden mukaan (noin 2°–15°). Nykiminen,
   uppoaminen ja väsytys lasketaan aaltopinnasta. `--baittest` tarkistaa korkeuden
   aaltopinnasta, nousun ja laskun sekä kallistelun.
+  Julkaistu [v0.37.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.37.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
