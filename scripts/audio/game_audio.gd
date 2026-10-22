@@ -3,14 +3,14 @@ extends Node
 ## Pelin äänet: taustaäänet (tuuli, laineet, linnut), veneen ja kalastuksen
 ## jatkuvat äänet (moottori, kela, jarru) sekä kertaäänet 3D-ääninä oikeassa
 ## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py; moottorin, aaltojen
-## ja tuulen äänet sekä airo- ja melavedot tehdään nauhoituksista
-## (tools/make_recorded_sounds.py).
+## ja tuulen äänet, airo- ja melavedot sekä taivaan lintujen huudot tehdään
+## nauhoituksista (tools/make_recorded_sounds.py).
 
 const DIR := "res://assets/sounds/"
 const LOOPS := ["wind_light_loop", "wind_strong_loop", "wind_light_winter_loop", "wind_strong_winter_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
 const MAX_ONE_SHOTS := 24
 ## Kertaäänet, joista on nauhoitettuja muunnelmia (nimi_1.wav, nimi_2.wav, ...)
-const VARIANTS := {"oar_stroke": 5, "paddle_stroke": 4}
+const VARIANTS := {"oar_stroke": 5, "paddle_stroke": 4, "bird_varis": 3, "bird_korppi": 3, "bird_sorsa": 2, "bird_hanhi": 2, "bird_lokki": 3, "bird_kotka": 1}
 
 ## Kertaäänet: [voimakkuus dB, unit_size (m), sävelkorkeuden satunnaisuus]
 const ONE_SHOTS := {
@@ -35,6 +35,13 @@ const ONE_SHOTS := {
 	"bird_chaffinch": [-6.0, 30.0, 0.06],
 	"bird_great_tit": [-6.0, 30.0, 0.06],
 	"bird_loon": [-2.0, 160.0, 0.04],
+	# Taivaalla lentävät linnut (Birds): kuuluvat kauas
+	"bird_varis": [-3.0, 60.0, 0.05],
+	"bird_korppi": [-3.0, 70.0, 0.05],
+	"bird_sorsa": [-4.0, 50.0, 0.05],
+	"bird_hanhi": [-3.0, 90.0, 0.05],
+	"bird_lokki": [-3.0, 70.0, 0.05],
+	"bird_kotka": [-2.0, 100.0, 0.03],
 }
 
 var boat: Boat

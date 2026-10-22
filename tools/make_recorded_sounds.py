@@ -11,14 +11,22 @@ Lähteet ovat kansiossa data/sounds/ (Freesoundin esikuuntelutiedostot):
   wind_strong_winter_jpnien_97397.mp3   kova talvituuli
   oars_skibkamusic_478973.mp3           airovedot (lapa veteen, hankaimen kolahdus)
   paddle_danjocross_503208.mp3          kajakin melonta tyynellä järvellä yöllä
+  bird_crow_straget_404687.mp3          harmaavaris (Ruotsi)
+  bird_raven_inspire153_849152.mp3      korppi (Viro)
+  bird_mallard_wavjunction_456770.mp3   sinisorsa lähtee lentoon
+  bird_geese_epicwizard_425488.mp3      hanhiparvi lentää yli (Ruotsi)
+  bird_gull_canardo55_538016.mp3        harmaalokki
+  bird_eagle_inspire153_833715.mp3      merikotka (Viro)
 
 Tasaisista kohdista leikataan saumattomat silmukat ja niiden voimakkuus
 asetetaan entisten syntetisoitujen äänten tasolle. Moottorin käynnistykseen
 tulee narun nykäisyt ja silmukan alku, sammutukseen hidastuva silmukka.
-Airo- ja melavedoista leikataan yksittäiset vedot muunnelmiksi (_1, _2, ...).
+Airo- ja melavedoista leikataan yksittäiset vedot muunnelmiksi (_1, _2, ...),
+samoin taivaan lintujen huudoista (bird_varis_1, ...).
 
 Käyttö (vaatii uv:n, joka hakee mp3-purkajan):
     uv run --no-project --with miniaudio --with numpy python tools/make_recorded_sounds.py
+Pelkät lintujen huudot: lisää loppuun --birds
 """
 import os
 import sys
@@ -52,6 +60,18 @@ STROKES = {
     'paddle_stroke': ('paddle_danjocross_503208.mp3', [21.65, 23.85, 30.75, 42.9]),
 }
 STROKE_LENGTH = 1.1  # s
+
+# Lintujen huudot: nimi -> (lähde, [(alku s, loppu s), ...], ylipäästö Hz).
+# Jokainen pätkä on oma muunnelmansa; peli soittaa satunnaisen (game_audio.gd).
+CALLS = {
+    'bird_varis': ('bird_crow_straget_404687.mp3', [(4.05, 7.1), (15.05, 17.3), (26.75, 29.8)], 300),
+    'bird_korppi': ('bird_raven_inspire153_849152.mp3', [(1.25, 2.1), (3.65, 4.5), (7.75, 8.5)], 250),
+    'bird_sorsa': ('bird_mallard_wavjunction_456770.mp3', [(7.25, 9.1), (9.75, 11.85)], 250),
+    'bird_hanhi': ('bird_geese_epicwizard_425488.mp3', [(0.0, 3.1), (5.7, 9.6)], 200),
+    'bird_lokki': ('bird_gull_canardo55_538016.mp3', [(8.3, 11.1), (14.45, 16.0), (16.55, 19.3)], 300),
+    'bird_kotka': ('bird_eagle_inspire153_833715.mp3', [(5.05, 8.45)], 400),
+}
+CALL_FADE = (0.03, 0.15)  # s alussa ja lopussa
 
 MOTOR_SOURCE = 'outboard_kyles_637744.mp3'
 MOTOR_START, MOTOR_END = 30.0, 38.0  # tasainen kohta nauhoituksessa (s)
@@ -117,6 +137,17 @@ def motor_stop(loop):
     return slowed * np.linspace(1, 0, len(slowed)) ** 1.5
 
 
+def calls():
+    for name, (source, parts, highpass) in CALLS.items():
+        x = filtered(load(source), lambda f, hp=highpass: 1.0 / (1.0 + (hp / f) ** 4))
+        for i, (start, end) in enumerate(parts):
+            seg = x[int(start * SR):int(end * SR)].copy()
+            a, b = int(CALL_FADE[0] * SR), int(CALL_FADE[1] * SR)
+            seg[:a] *= np.linspace(0, 1, a)
+            seg[-b:] *= np.linspace(1, 0, b)
+            save(f'{name}_{i + 1}', seg, peak=0.8, fades=False)
+
+
 def main():
     loop = make_loop(load(MOTOR_SOURCE), MOTOR_START, MOTOR_END, MOTOR_CROSSFADE)
     save('motor_loop', loop, fades=False)
@@ -131,7 +162,11 @@ def main():
         x = filtered(load(source), lambda f: 1.0 / (1.0 + (60 / f) ** 4))
         for i, peak in enumerate(peaks):
             save(f'{name}_{i + 1}', cut_stroke(x, peak))
+    calls()
 
 
 if __name__ == '__main__':
-    main()
+    if '--birds' in sys.argv:
+        calls()
+    else:
+        main()

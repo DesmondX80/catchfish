@@ -24,6 +24,7 @@ const LINES := {
 	"rain": "Alkaa sataa. Pitäisköhän lähteä kotiin?",
 	"hole": "Reikä valmis. Nyt pilkille.",
 	"anchor": "Perkele, ankkuri!",
+	"eagle": "Oho! Merikotka!",
 	"fish_hauki": "Hauki!",
 	"fish_ahven": "Ahven!",
 	"fish_sarki": "Särki!",

@@ -110,6 +110,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   Laji avautuu kirjaan, kun saat sen ensimmäisen kerran (siihen asti sivulla
   on vain varjokuva). Kirjaan tulevat sekä kertakalastuksen että uramoodin
   saaliit.
+- **Linnut**: taivaalla lentää variksia, korppeja, sorsia, hanhiparvia
+  (V-muodostelmassa), lokkeja ja harvinaisempana merikotka. Ne lentävät
+  järven yli tai kaartelevat hetken veneen lähistöllä ja ääntelevät
+  lähellä. Talvella sorsat, hanhet ja lokit ovat muuttaneet pois, ja
+  hanhia näkee eniten muuttoaikaan keväällä ja syksyllä. Kun kalastaja
+  näkee merikotkan, hän huudahtaa "Oho! Merikotka!".
 - Lajien arvot ovat tiedostossa `scripts/fishing/species.gd` ja uistinten
   `scripts/fishing/lures.gd`.
 
@@ -148,7 +154,7 @@ Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
 Kalastajahahmo on Quaterniuksen "Adventurer"-malli (CC0, ks.
 `assets/characters/LICENSE.txt`).
 
-Perämoottorin, airojen, melan, aaltojen ja tuulen äänet ovat Freesoundin CC0-nauhoituksia:
+Perämoottorin, airojen, melan, aaltojen, tuulen ja taivaan lintujen äänet ovat Freesoundin CC0-nauhoituksia:
 
 - perämoottori: kyles, [637744](https://freesound.org/people/kyles/sounds/637744/)
 - airovedot: SkibkaMusic, [478973](https://freesound.org/people/SkibkaMusic/sounds/478973/)
@@ -159,6 +165,12 @@ Perämoottorin, airojen, melan, aaltojen ja tuulen äänet ovat Freesoundin CC0-
   talvella MHCerberus, [141143](https://freesound.org/people/MHCerberus/sounds/141143/)
 - kova tuuli: teadrinker, [403051](https://freesound.org/people/teadrinker/sounds/403051/);
   talvella jpnien, [97397](https://freesound.org/people/jpnien/sounds/97397/)
+- varis: straget, [404687](https://freesound.org/people/straget/sounds/404687/)
+- korppi ja merikotka: inspire153, [849152](https://freesound.org/people/inspire153/sounds/849152/),
+  [833715](https://freesound.org/people/inspire153/sounds/833715/)
+- sorsa: WavJunction.com, [456770](https://freesound.org/people/WavJunction.com/sounds/456770/)
+- hanhet: EpicWizard, [425488](https://freesound.org/people/EpicWizard/sounds/425488/)
+- lokki: Canardo55, [538016](https://freesound.org/people/Canardo55/sounds/538016/)
 
 Lähteet ovat kansiossa `data/sounds/`, ja pelin äänet tehdään niistä komennolla
 `uv run --no-project --with miniaudio --with numpy python tools/make_recorded_sounds.py`.

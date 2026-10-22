@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.38.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.38.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.39.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.39.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,12 +10,12 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.38.0)
+### Valmiina (versiot 0.1–0.39.0)
 
 | Alue | Ominaisuudet |
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
-| Maailma | MML-aineistosta tehty järvi ja maasto, metsässä mäntyjä, kuusia ja koivuja, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
+| Maailma | MML-aineistosta tehty järvi ja maasto, metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa, kalakirja (lajin sivu avautuu ensimmäisestä saaliista) |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
-| Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot) ja tuuli (heikko / kova, talvella omat) oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
+| Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot), tuuli (heikko / kova, talvella omat) ja taivaan lintujen huudot oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
@@ -93,6 +93,7 @@ Peruttu: #21 Tuulikellunta ja uistinankkuri.
 | `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
 | `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja (malli `assets/characters/`, luut ohjataan `AnglerPoser`-muokkaimella animaation jälkeen), kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
+| `scripts/world/birds.gd` | Taivaan linnut: mallit koodissa, lentotavat, ääntely, kotkan huudahdus |
 | `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta, kalakirja (`fish_book_view.gd`) |
 | `scripts/catch_log.gd`, `scripts/fish_book.gd` | Ennätyslista (kertakalastus) ja kalakirja (kaikki saaliit lajeittain) |
 | `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
@@ -113,6 +114,7 @@ godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohja
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
+godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
@@ -359,6 +361,18 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vanhoista saaliista. Uudesta lajista saalisikkunassa "UUSI LAJI KALAKIRJAAN!".
   Testi `--booktest` (kuvat `--bookshots=KANSIO`).
   Julkaistu [v0.38.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.38.0).
+- **#55 Lintuja taivaalle – tehty (0.39.0).** `Birds` lennättää parvia: varis,
+  korppi, sorsa (jonossa), hanhi (V-muodostelma), lokki ja harvinainen
+  merikotka. Mallit tehdään koodissa (ruumis putkena, litteät siivet, joita
+  `bird.gdshader` taivuttaa tyvestä ja kyynärtaipeesta); lajeilla oma koko,
+  väritys, räpyttelytaajuus ja liito (kotka ja lokki liitävät, sorsa räpyttelee
+  koko ajan). Parvi lentää järven yli tai kaartelee veneen lähellä ja katoaa
+  kauas. Yöllä ei lennetä, sateella ja kovalla tuulella harvemmin; talvella
+  muuttolinnut ovat poissa, ja hanhia on eniten muuttoaikaan. Huudot ovat
+  Freesoundin CC0-nauhoituksia (`make_recorded_sounds.py --birds`). Kun
+  merikotka näkyy kamerassa alle 260 m päässä, kalastaja huudahtaa "Oho!
+  Merikotka!".
+  Testi `--birdtest` (lähikuvat `--birdshots=KANSIO`).
 
 
 ## Huomioita ja avoimia kysymyksiä

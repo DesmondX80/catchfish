@@ -75,6 +75,7 @@ func _on_start_selected(index: int) -> void:
 var trip_catch: Array = []
 var tub: CatchTub
 var voice: AnglerVoice
+var birds: Birds
 
 
 func _start_game(start_index: int, career := false) -> void:
@@ -204,6 +205,11 @@ func _start_game(start_index: int, career := false) -> void:
 	voice = AnglerVoice.new()
 	add_child(voice)
 	voice.setup(boat, fishing, weather, hud)
+	birds = Birds.new()
+	add_child(birds)
+	birds.setup(boat, camera_rig.camera, sky, weather, lake, season.frozen())
+	birds.sound_event.connect(audio.play_at)
+	birds.eagle_seen.connect(func(): voice.say("eagle", true))
 
 	load_ms = Time.get_ticks_msec() - t0
 	running = true
@@ -255,6 +261,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/anchor_test.gd").new())
 	elif "--paddletest" in args:
 		add_child(load("res://tests/paddle_test.gd").new())
+	elif "--birdtest" in args:
+		add_child(load("res://tests/bird_test.gd").new())
 	elif "--booktest" in args:
 		add_child(load("res://tests/book_test.gd").new())
 	else:

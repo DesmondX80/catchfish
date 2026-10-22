@@ -6,11 +6,13 @@ Puhe tehdään Piper-puhesynteesillä ja suomenkielisellä fi_FI-harri-äänell�
 scripts/audio/angler_voice.gd – samat tunnisteet molemmissa.
 
 Käyttö (vaatii uv:n, lataa äänimallin ~60 Mt ensimmäisellä kerralla):
-    python3 tools/make_voice.py
+    python3 tools/make_voice.py            (kaikki repliikit)
+    python3 tools/make_voice.py eagle      (vain annetut tunnisteet)
 Tiedostot voi korvata omilla äänityksillä (22 050 Hz mono WAV, sama nimi).
 """
 import os
 import subprocess
+import sys
 import urllib.request
 import wave
 
@@ -33,6 +35,7 @@ LINES = {
     "rain": "Alkaa sataa. Pitäisköhän lähteä kotiin?",
     "hole": "Reikä valmis. Nyt pilkille.",
     "anchor": "Perkele, ankkuri!",
+    "eagle": "Oho! Merikotka!",
     # Lajin tunnistus veneen lähellä
     "fish_hauki": "Hauki!",
     "fish_ahven": "Ahven!",
@@ -41,6 +44,10 @@ LINES = {
     "fish_lahna": "Lahna!",
     "fish_made": "Made!",
 }
+
+# Puhesynteesille eri kirjoitusasu kuin tekstitykseen: Piper venyttää
+# huudahdusmerkkiin päättyvää "Oho!":ta, joten huudahdus sanotaan yhtenä lauseena
+SPOKEN = {"eagle": "Oho merikotka!"}
 
 ROOT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..")
 OUT = os.path.join(ROOT, "assets", "sounds", "voice")
@@ -88,9 +95,11 @@ def tidy(path: str) -> None:
 def main() -> None:
     model = download_model()
     os.makedirs(OUT, exist_ok=True)
-    for key, text in LINES.items():
+    keys = sys.argv[1:] or list(LINES)
+    for key in keys:
+        text = LINES[key]
         path = os.path.join(OUT, key + ".wav")
-        synthesize(model, text, path)
+        synthesize(model, SPOKEN.get(key, text), path)
         tidy(path)
         print(f"{key}.wav  {text}")
 
