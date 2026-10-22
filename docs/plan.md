@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.36.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.36.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.37.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.37.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -341,6 +341,12 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   moottori). `CatchTub.view_point()` lasketaan nyt rungon tämänhetkisestä
   asennosta; `--tubtest` tarkistaa joka kuvassa kameran paikan ajelehtivassa veneessä.
   Julkaistu [v0.36.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.36.0).
+- **#41 Koho kelluu aaltojen mukana – tehty (0.37.0).** Koho seuraa samaa
+  aaltomallia (`Waves.swell_height`) kuin vesipinta ja vene: se nousee ja laskee
+  aallokon mukana ja kallistuu aallon rinteen suuntaisesti. Lisäksi se keinuu
+  pienissä laineissa tuulen voimakkuuden mukaan (noin 2°–15°). Nykiminen,
+  uppoaminen ja väsytys lasketaan aaltopinnasta. `--baittest` tarkistaa korkeuden
+  aaltopinnasta, nousun ja laskun sekä kallistelun.
 
 
 ## Huomioita ja avoimia kysymyksiä

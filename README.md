@@ -92,7 +92,8 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
   kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
   tärppäävän vavan käteen väsytettäväksi.
 - **Onki ja syötit**: koho-ongella mato roikkuu kohon alla syvyydessä, jonka
-  säädät ennen heittoa (F/G). Pohjaongella paino on pohjassa ja mato noin
+  säädät ennen heittoa (F/G). Koho kelluu aallokon mukana ja kallistelee
+  tuulen voimakkuuden mukaan. Pohjaongella paino on pohjassa ja mato noin
   puolen metrin korkeudella pohjasta. Tärpissä kala maistelee ensin: koho
   nykii tai vavan kärki värähtelee, ja vastaisku tehdään vasta, kun koho
   painuu pinnan alle tai siima kiristyy. Särki, lahna, kiiski, ahven ja made

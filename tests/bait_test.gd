@@ -4,6 +4,7 @@ extends Node
 ## vain ennen heittoa),
 ## pohjaongen mato noin 0,5 m pohjan yläpuolella. Tärpissä koho nykii ensin:
 ## liian aikainen vastaisku pelästyttää kalan, kohon uppoamisen jälkeen kala tarttuu.
+## Koho kelluu aallokon mukana ja kallistelee.
 
 const LINE := 15.0
 
@@ -16,6 +17,9 @@ var _spot := Vector2.ZERO
 var _dir := Vector2.ZERO
 var _tries := 0
 var _shots := ""
+var _bob_min := INF
+var _bob_max := -INF
+var _bob_tilt := 0.0
 
 
 func _ready() -> void:
@@ -41,6 +45,12 @@ func _tap(action: String) -> void:
 		ev.action = action
 		ev.pressed = pressed
 		Input.parse_input_event(ev)
+
+
+## Kohon korkeus aaltopinnasta (0 = kelluu pinnalla)
+func _float_y(f: Fishing) -> float:
+	var p := f._bobber_node.global_position
+	return p.y - Waves.swell_height(Vector2(p.x, p.z))
 
 
 func _next() -> void:
@@ -151,9 +161,20 @@ func _process(delta: float) -> void:
 				_step = 10
 				_t = 0.0
 		10:
+			if f._bobber_node.visible and _t > 0.5:
+				var y: float = f._bobber_node.global_position.y
+				_bob_min = minf(_bob_min, y)
+				_bob_max = maxf(_bob_max, y)
+				_bob_tilt = maxf(_bob_tilt, f._bobber_node.global_basis.y.normalized().angle_to(Vector3.UP))
 			if _t > 4.0:
 				_check("koho-ongen mato kohon alla %.2f m syvyydessä (asetus 1,5 m)" % f.lure_depth(), absf(f.lure_depth() - 1.5) < 0.1)
-				_check("koho näkyy pinnalla", f._bobber_node.visible and absf(f._bobber_node.global_position.y) < 0.05)
+				_check("koho näkyy aaltopinnalla", f._bobber_node.visible and absf(_float_y(f)) < 0.01)
+				_check("koho nousee ja laskee aallokon mukana (%.2f m)" % (_bob_max - _bob_min), _bob_max - _bob_min > 0.03)
+				_check("koho kallistelee (%.0f°)" % rad_to_deg(_bob_tilt), _bob_tilt > deg_to_rad(2.0) and _bob_tilt < deg_to_rad(25.0))
+				_check("koho on oikean kokoinen", absf(f._bobber_node.global_basis.y.length() - Fishing.BOBBER_SCALE) < 0.01)
+				_bob_min = INF
+				_bob_max = -INF
+				_bob_tilt = 0.0
 				var cam: Camera3D = main.camera_rig.camera
 				var to_bobber := cam.global_position.distance_to(f._bobber_node.global_position)
 				_check("kamera zoomaa kohon lähelle (%.1f m)" % to_bobber, main.camera_rig.bobber_view and to_bobber < 3.5)
@@ -174,9 +195,9 @@ func _process(delta: float) -> void:
 				_next()
 		3:
 			if _t > 0.3:
-				var nibbling := f._bobber_node.global_position.y > -0.05
+				var nibbling := _float_y(f) > -0.05
 				_tap("cast") # liian aikaisin
-				_check("koho nykii vielä pinnalla, kun kala maistelee (%.2f m)" % f._bobber_node.global_position.y, nibbling)
+				_check("koho nykii vielä pinnalla, kun kala maistelee (%.2f m)" % _float_y(f), nibbling)
 				_step = 30 # odotetaan, että painallus käsitellään
 				_t = 0.0
 		30:
@@ -189,7 +210,7 @@ func _process(delta: float) -> void:
 				_t = 0.0
 		4:
 			if f._bite_timer < Fishing.BAIT_SINK_TIME - 0.2:
-				_check("koho upposi pinnan alle (%.2f m)" % f._bobber_node.global_position.y, f._bobber_node.global_position.y < -0.1 and _messages.any(func(m): return m.contains("KOHO UPPOSI")))
+				_check("koho upposi pinnan alle (%.2f m)" % _float_y(f), _float_y(f) < -0.1 and _messages.any(func(m): return m.contains("KOHO UPPOSI")))
 				_tap("cast")
 				_next()
 		5:

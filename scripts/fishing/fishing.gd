@@ -152,6 +152,7 @@ static var _worm_mesh: ArrayMesh
 var float_depth := 1.0
 const FLOAT_DEPTH_MIN := 0.3
 const FLOAT_DEPTH_MAX := 4.0
+const BOBBER_SCALE := 2.2 # koho hieman oikeaa isompi, jotta sen näkee kaukaa
 ## Syöttitärppi: kala nykii syöttiä ensin, ja koho painuu pinnan alle vasta
 ## tämän verran ennen kuin kala päästää irti – vastaisku vasta silloin
 const BAIT_SINK_TIME := 1.0
@@ -1442,7 +1443,7 @@ func _update_visuals() -> void:
 		_worm_node.global_transform = Transform3D(Basis(Vector3.UP, t * 0.8) * Basis(Vector3.RIGHT, sin(t * 2.3) * 0.25), lure_pos)
 	_bobber_node.visible = lure()["kind"] == "bobber" and not on_ice and not lure_on_land and state in [State.RETRIEVING, State.BITE, State.FIGHT]
 	if _bobber_node.visible:
-		_bobber_node.global_position = _bobber_pos()
+		_bobber_node.global_transform = Transform3D(_bobber_tilt().scaled(Vector3.ONE * BOBBER_SCALE), _bobber_pos())
 	_draw_rod()
 	_draw_line()
 
@@ -1562,18 +1563,35 @@ func _draw_rod() -> void:
 	_rod_mesh.surface_end()
 
 
-## Koho pinnalla syötin yläpuolella. Tärpissä koho nykii ja lopuksi painuu
+## Koho pinnalla syötin yläpuolella. Se kelluu aallokon mukana samassa
+## aaltomallissa kuin vesipinta ja vene. Tärpissä koho nykii ja lopuksi painuu
 ## pinnan alle; väsytyksessä kala vetää sen pinnan alle.
 func _bobber_pos() -> Vector3:
-	var y := 0.0
+	var y := Waves.swell_height(Vector2(lure_pos.x, lure_pos.z))
 	if state == State.BITE:
 		if _bite_timer > BAIT_SINK_TIME:
-			y = -absf(sin(_bite_timer * 17.0)) * 0.03 # nykii
+			y -= absf(sin(_bite_timer * 17.0)) * 0.03 # nykii
 		else:
-			y = -0.18 # upposi
+			y -= 0.18 # upposi
 	elif state == State.FIGHT:
-		y = -0.25
+		y -= 0.25
 	return Vector3(lure_pos.x, y, lure_pos.z)
+
+
+## Kohon kallistus: pinnan suuntainen aallon rinteessä, ja lisäksi se
+## keinuu pienissä laineissa sitä enemmän, mitä kovempi tuuli on
+func _bobber_tilt() -> Basis:
+	var p := Vector2(lure_pos.x, lure_pos.z)
+	var e := 0.2
+	var normal := Vector3(
+		Waves.swell_height(p - Vector2(e, 0)) - Waves.swell_height(p + Vector2(e, 0)),
+		2.0 * e,
+		Waves.swell_height(p - Vector2(0, e)) - Waves.swell_height(p + Vector2(0, e))).normalized()
+	var t := Waves.time
+	var rock := 0.04 + Waves.strength * 0.22 # rad
+	var axis_x := sin(t * 2.9 + p.x * 0.7) * 0.7 + sin(t * 4.3 + p.y) * 0.3
+	var axis_z := sin(t * 2.3 + p.y * 0.7) * 0.7 + sin(t * 3.7 + p.x) * 0.3
+	return Basis(Vector3.RIGHT, axis_x * rock) * Basis(Vector3.BACK, axis_z * rock) * Basis(Quaternion(Vector3.UP, normal))
 
 
 ## Mato koukussa: kaareva, kapeneva putki, jossa tummempi vyö. Roikkuu
@@ -1634,7 +1652,7 @@ static func _worm() -> ArrayMesh:
 ## oikeaa isompi, jotta sen näkee pelikamerasta heittomatkan päästä.
 func _build_bobber() -> void:
 	_bobber_node = Node3D.new()
-	_bobber_node.scale = Vector3.ONE * 2.2
+	_bobber_node.scale = Vector3.ONE * BOBBER_SCALE
 	_bobber_node.top_level = true
 	_bobber_node.visible = false
 	add_child(_bobber_node)
