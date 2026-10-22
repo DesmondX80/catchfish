@@ -16,9 +16,9 @@ enum State { STOWED, LOWERING, DOWN, RAISING }
 const SINK_SPEED := 1.0 # m/s: ankkuri lasketaan (köysi luistaa käsien läpi)
 const RAISE_SPEED := 1.0 # m/s: köyttä kelataan vuorokäsin
 const ROPE_SEGMENTS := 14
-const BOW_CHOCK := Vector3(0.0, 0.6, -2.2) # köyden kulku keulapiikin yli (rungon koordinaateissa)
+const BOW_CHOCK := Vector3(0.0, 0.64, -2.2) # köyden kulku keulapiikin yli (rungon koordinaateissa)
 const HAND_POINT := Vector3(0.0, 0.5, -1.5) # kalastajan kädet köydellä
-const STOW_POINT := Vector3(0.0, -0.1, -1.55) # ankkuri veneen pohjalla keulassa
+const STOW_POINT := Vector3(0.0, Boat.FOOT_STEP + 0.04, -1.62) # ankkuri keulan jalkatasolla, rengas perään päin
 
 var boat: Boat
 var state := State.STOWED
@@ -162,8 +162,8 @@ func _place() -> void:
 		return
 	match state:
 		State.STOWED:
-			# Veneen pohjalla kyljellään
-			_anchor.global_transform = boat.hull.global_transform * Transform3D(Basis(Vector3.BACK, PI / 2.0), STOW_POINT)
+			# Keulan jalkatasolla pitkittäin, lavat vaakatasossa
+			_anchor.global_transform = boat.hull.global_transform * Transform3D(Basis(Vector3.RIGHT, PI / 2.0), STOW_POINT)
 			_anchor.visible = true
 			for seg in _rope:
 				seg.visible = false

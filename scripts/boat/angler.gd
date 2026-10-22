@@ -17,7 +17,7 @@ const SEATS := {
 	Pose.FISHING: Vector3(0, 0.225, 0.25), # keskituhto
 	Pose.ROWING: Vector3(0, 0.225, 0.25),
 	Pose.PADDLE: Vector3(0, 0.225, 0.25), # keskituhdolla kasvot keulaan
-	Pose.MOTOR: Vector3(-0.28, 0.225, 1.35), # perätuhto, vasemmalla puolella
+	Pose.MOTOR: Vector3(-0.12, 0.225, 1.35), # perätuhto, hieman vasemmalla
 	Pose.ANCHOR: Vector3(0, 0.225, -0.9), # etutuhto: ankkurin lasku ja nosto keulasta
 	# Jäällä (veneen solmu on jään tasolla): seisten lantio 0,85 m, ämpärin päällä 0,32 m
 	Pose.ICE_STAND: Vector3(0, 0.85, 0),
@@ -26,9 +26,11 @@ const SEATS := {
 }
 const SIT_HIP := 0.1 # lantion luu istuimen yläpuolella
 const STAND_FEET := -0.85 # jalkapohjat solmun alapuolella seistessä
-## Jalkapohjien taso istuessa: veneen pohjalaudat / jää ämpärin edessä
-const SIT_FLOOR := {Pose.ICE_SIT: -0.32}
+## Jalkapohjien taso istuessa: veneen pohja / keulan jalkataso / jää ämpärin edessä
+const SIT_FLOOR := {Pose.ICE_SIT: -0.32, Pose.ANCHOR: Boat.FOOT_STEP - 0.225}
 const BOAT_FLOOR := -0.36
+## Polvien nosto istuessa: keulan kapeassa kärjessä jalat pidetään lähellä tuhtoa
+const KNEE_LIFT := {Pose.ANCHOR: 0.14}
 ## Vaatteiden värit materiaalin nimen mukaan: kesällä mallin omat, talvella pilkkihaalari
 const WINTER_COLORS := {
 	"Green": Color(0.55, 0.07, 0.05), # haalarin yläosa punainen
@@ -496,7 +498,8 @@ func _sit_legs(b: Basis) -> void:
 		var thigh := hip.distance_to(_bone_pos(lower))
 		var shin := _bone_pos(lower).distance_to(_bone_pos(foot))
 		var hip_local := to_local(hip)
-		var knee_local := hip_local + Vector3(s * 0.04, -0.05, -thigh)
+		var lift: float = KNEE_LIFT.get(pose, 0.0)
+		var knee_local := hip_local + Vector3(s * (0.04 - lift * 0.2), -0.05 + lift, -sqrt(thigh * thigh - lift * lift))
 		var drop := clampf(knee_local.y - floor_y, 0.0, shin)
 		var foot_local := knee_local + Vector3(s * 0.02, -drop, -sqrt(shin * shin - drop * drop))
 		var knee := to_global(knee_local)

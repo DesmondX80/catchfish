@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.42.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.42.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.43.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.43.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -421,6 +421,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   leikkauksissa. `--tvtest=<kansio>` tarkistaa TV:n näkyvyyden ja tallentaa
   kuvat ohjelmasta.
   Julkaistu [v0.42.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.42.0).
+- **#37 Veneen malli – tehty (0.43.0).** Runko on Ideal 470 -tyyppinen
+  lasikuituinen soutuvene (`Boat.HULL_STATIONS`): korkea viisto keula, kyljissä
+  limisaumaa jäljittelevät askelmat, tummansininen reunalista, kermanvärinen
+  valettu pohja, tuhdot ja keulan jalkataso, kromiset hankaimet. Perämoottori on
+  pieni musta nelitahtinen ohjausaisamalli ilman merkkinimiä: pyöristetty kopa
+  punaisella raidalla, kiinnike peräpeilissä (ei käänny), varsi, kavitaatiolevy,
+  vaihteistokotelo ja kolmilapainen potkuri, joka pyörii kaasulla. Samalla
+  korjattiin vanhat läpimenot: saavi siirtyi keskemmälle, ankkuri makaa keulan
+  jalkatasolla, etutuhdolla kalastaja istuu polvet koholla ja perätuhdolla
+  keskempänä. `--boattest` tarkistaa esineiden ja jalkojen paikat rungon
+  sisällä ja potkurin pyörimisen; `--boatshots=<kansio>` ottaa kuvat veneestä.
 
 
 ## Huomioita ja avoimia kysymyksiä

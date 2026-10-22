@@ -54,7 +54,9 @@ painuu, hauki hyppää).
 
 ## Simulaatio lyhyesti
 
-- **Vene**: oma vesifysiikka (työntövoima, vastus, sivuttaisvastus), tuuli
+- **Vene**: valkoinen lasikuituinen soutuvene (limisaumaa jäljittelevät kyljet,
+  kermanvärinen sisäpuoli) ja perässä pieni musta nelitahtinen perämoottori,
+  jonka potkuri pyörii ajettaessa. Oma vesifysiikka (työntövoima, vastus, sivuttaisvastus), tuuli
   ajelehdittaa, ankkuri pitää paikallaan, matalikolla vene osuu pohjaan.
   Laituriin vene kolahtaa ja pysähtyy, viistossa törmäyksessä se liukuu
   laituria pitkin.
