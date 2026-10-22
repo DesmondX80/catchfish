@@ -334,6 +334,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vaaleaa mäntyä, kahvan päässä nuppi ja ohuempi kädensija, pyöreä varsi ja
   pitkä vähitellen levenevä lapa pyöristetyin kärjin. Hankaimen kohdalla on
   musta kumiholkki. Lavan kääntö kiertää koko airoa varren ympäri.
+  Julkaistu [v0.35.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.35.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
