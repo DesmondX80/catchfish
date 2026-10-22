@@ -124,6 +124,7 @@ func _build_water() -> void:
 		for c0 in range(0, lake.cols, CHUNK):
 			var verts := PackedVector3Array()
 			var normals := PackedVector3Array()
+			var colors := PackedColorArray()
 			var indices := PackedInt32Array()
 			var vertex_index := {}
 			for r in range(r0, mini(r0 + CHUNK, lake.rows)):
@@ -137,10 +138,13 @@ func _build_water() -> void:
 							vertex_index[corner] = verts.size()
 							verts.append(Vector3(lake.origin_x + corner.x * cs, 0.0, lake.origin_z + corner.y * cs))
 							normals.append(Vector3.UP)
+							# Etäisyys rantaan (r = metrit / 500): vaahtopäät vasta selällä
+							var shore := lake.cell_shore_distance(corner.x, corner.y) if lake.cell_is_water(corner.x, corner.y) else 0.0
+							colors.append(Color(clampf(shore / 500.0, 0.0, 1.0), 0.0, 0.0))
 						ids.append(vertex_index[corner])
 					indices.append_array([ids[0], ids[1], ids[2], ids[1], ids[3], ids[2]])
 			if indices.size() > 0:
-				var mi := _add_mesh(verts, normals, PackedColorArray(), indices, water_material)
+				var mi := _add_mesh(verts, normals, colors, indices, water_material)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 

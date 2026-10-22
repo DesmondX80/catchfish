@@ -15,7 +15,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Alue | Ominaisuudet |
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
-| Maailma | MML-aineistosta tehty järvi ja maasto, metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
+| Maailma | MML-aineistosta tehty järvi ja maasto, tuulella vaahtopäiset aallot, metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi) omina 3D-malleinaan, valinta kalapakista (L; talvella pilkkirasia), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
@@ -57,7 +57,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | # | Tehtävä |
 |---|---|
 | 37 | Veneen malli |
-| 35 | Tuulisella säällä vaahtopäiset aallot |
 | 41 | Koho kelluu aaltojen mukana (backlog) |
 
 ### Palkitsevuus ja uramoodi (Todo)
@@ -128,6 +127,7 @@ godot --headless -- --day=180 --speciestest                 # kalakanta ja saali
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
+godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
 ```
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
@@ -433,6 +433,18 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   keskempänä. `--boattest` tarkistaa esineiden ja jalkojen paikat rungon
   sisällä ja potkurin pyörimisen; `--boatshots=<kansio>` ottaa kuvat veneestä.
   Julkaistu [v0.43.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.43.0).
+- **#35 Vaahtopäät tuulisella säällä – tehty (0.44.0).** Vesivarjostin
+  (`whitecaps` `water.gdshader`:ssa) piirtää vaahtopäät, kun aallokko ylittää
+  0,45 (n. 3,6 m/s tuulta), ja niitä on sitä enemmän, mitä kovempi tuuli.
+  Rannan lähellä aallot eivät murru: vaahtopäät alkavat n. 200 m rannasta
+  (etäisyys rantaan kulkee vesiverkon verteksiväreissä `shore.bin`:stä).
+  Tuulen mukana ajelehtivissa 6 m ruuduissa syntyy satunnaisesti harjan
+  suuntainen, keskeltä edellä kaartuva murtuma: kirkas harja leimahtaa,
+  taakse jää läpikuultava, pitsimäiseksi harveneva vaahto, ja 5–9 s kierron
+  jälkeen vaahtopää syntyy uuteen paikkaan. Yli 0,85:n aallokossa (n. 7 m/s)
+  pintaan tulee tuulen suuntaisia vaahtojuovia. Kaukana vaahto sulautuu
+  tasaiseksi vaalennukseksi (ei välkettä). `--foamshots=<kansio>` ottaa
+  kuvat eri tuulilla selällä ja rannassa ja tarkistaa vaalean vaahdon osuuden.
 
 
 ## Huomioita ja avoimia kysymyksiä

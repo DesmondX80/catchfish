@@ -13,8 +13,10 @@ uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
 
 uniform float rain = 0.0; // sateen voimakkuus: pisararenkaat pinnassa
 uniform float ice = 0.0; // talvi: järvi jäässä, lumen peittämä jää
+uniform vec3 foam_color : source_color = vec3(0.9, 0.92, 0.92);
 
 varying vec3 world_pos;
+varying float shore_dist; // metreinä rantaan (verteksiväristä)
 
 float rhash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -43,8 +45,84 @@ vec2 rain_ripples(vec2 p) {
 	return slope;
 }
 
+float vnoise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	return mix(mix(rhash(i), rhash(i + vec2(1.0, 0.0)), f.x),
+		mix(rhash(i + vec2(0.0, 1.0)), rhash(i + vec2(1.0, 1.0)), f.x), f.y);
+}
+
+// Vaahtopäät: tuulen voimistuessa (n. 4 m/s alkaen) aallonharjat murtuvat
+// valkoisiksi. Jokaisessa tuulen mukana kulkevassa 7 m ruudussa voi syntyä
+// vaahtopää, joka leimahtaa kirkkaaksi harjan suuntaiseksi viiruksi, jää
+// jälkeensä leviäväksi ja harvenevaksi vaahdoksi ja katoaa. Kovalla tuulella
+// pintaan jää lisäksi tuulen suuntaisia vaahtojuovia. Rannan lähellä aallot
+// ovat vielä liian pieniä murtumaan: vaahtopäitä on vasta n. 200 m rannasta.
+// Palauttaa peittävyyden 0–1.
+float whitecaps(vec2 p, float footprint) {
+	float offshore = smoothstep(140.0, 220.0, shore_dist);
+	float amount = clamp((wave_strength - 0.45) / 0.55, 0.0, 1.0) * offshore;
+	if (amount <= 0.0) {
+		return 0.0;
+	}
+	vec2 dir = wave_dir(0);
+	vec2 q = vec2(dot(p, vec2(-dir.y, dir.x)), dot(p, dir)); // x poikki tuulen, y tuulen mukaan
+	// Vaahtopäät ajelehtivat tuulen mukana
+	vec2 m = q - vec2(0.0, 1.2 * wave_time);
+	const float CELL = 6.0;
+	vec2 base_cell = floor(m / CELL);
+	// Pitsimäinen rakenne, venynyt tuulen suuntaan
+	float lace = vnoise(m * vec2(2.5, 1.2)) * 0.55 + vnoise(m * vec2(9.0, 5.0)) * 0.3 + vnoise(m * 23.0) * 0.15;
+	float foam = 0.0;
+	// Vaahtopää voi ulottua naapuriruutuun, joten katsotaan ympäröivät ruudut
+	for (int i = -1; i <= 1; i++) {
+		for (int j = -1; j <= 1; j++) {
+			vec2 cell = base_cell + vec2(float(i), float(j));
+			float period = 5.0 + rhash(cell + 3.3) * 4.0;
+			float t = wave_time / period + rhash(cell + 7.7);
+			float life = fract(t);
+			vec2 seed = cell + floor(t) * 13.1; // joka kierroksella uusi paikka ja koko
+			if (rhash(seed + 1.9) > amount * 0.75 + 0.05) {
+				continue;
+			}
+			vec2 center = (cell + vec2(rhash(seed), rhash(seed + 4.1))) * CELL;
+			vec2 d = m - center;
+			float half_len = (0.6 + rhash(seed + 2.6) * 1.2) * (0.7 + amount * 0.5);
+			float grow = smoothstep(0.0, 0.12, life);
+			// Harjan suuntainen viiru: terävä etureuna, vaahto jää taakse leviämään
+			float across = d.x / (half_len * (0.4 + 0.6 * grow) * (1.0 + life * 0.3));
+			if (abs(across) > 1.0 || d.y > 0.3 || d.y < -4.0) {
+				continue;
+			}
+			float back = 0.2 + life * 1.6;
+			// Harjan kaartuma: reunat jäävät keskeltä jälkeen ja ohenevat
+			float bend = d.y + across * across * 0.35;
+			float along = bend > 0.0 ? exp(-bend * bend * 60.0) : exp(bend / back);
+			float shape = along * (1.0 - smoothstep(0.55, 1.0, abs(across)));
+			// Murtuva harja on kirkas, jälkeen jäävä vaahto läpikuultavaa ja harvenevaa
+			float edge = 0.38 + life * 0.4;
+			float f = smoothstep(edge, edge + 0.12, shape * (0.35 + lace) * 1.15);
+			float core = bend > 0.0 ? 1.0 : exp(bend / 0.3);
+			foam = max(foam, f * mix(0.45, 0.95, core) * (1.0 - life * 0.4) * grow);
+		}
+	}
+	// Tuulen suuntaiset vaahtojuovat kovalla tuulella
+	float streak_amount = clamp((wave_strength - 0.85) / 0.15, 0.0, 1.0) * offshore;
+	if (streak_amount > 0.0) {
+		vec2 s = q - vec2(0.0, 0.6 * wave_time);
+		float lane = vnoise(vec2(s.x * 0.9, s.y * 0.04));
+		float bits = vnoise(s * vec2(5.0, 0.7)) * 0.7 + vnoise(s * 14.0) * 0.3;
+		foam = max(foam, smoothstep(0.78, 0.95, lane) * smoothstep(0.45, 0.85, bits) * 0.22 * streak_amount);
+	}
+	// Kaukana yksityiskohdat sulautuvat keskimääräiseksi vaalennukseksi
+	float far = smoothstep(0.08, 0.5, footprint);
+	return mix(foam, amount * 0.05 + streak_amount * 0.02, far);
+}
+
 void vertex() {
 	world_pos = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
+	shore_dist = COLOR.r * 500.0;
 	VERTEX.y += swell_height(world_pos.xz) * (1.0 - ice);
 }
 
@@ -84,6 +162,13 @@ void fragment() {
 	SPECULAR = 0.4;
 	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa
 	ALPHA = mix(0.55, 0.97, fresnel);
+	if (ice < 0.5) {
+		float foam = whitecaps(p, footprint);
+		ALBEDO = mix(ALBEDO, foam_color, foam);
+		ALPHA = mix(ALPHA, 1.0, foam);
+		ROUGHNESS = mix(ROUGHNESS, 0.85, foam);
+		SPECULAR = mix(SPECULAR, 0.2, foam);
+	}
 	if (ice > 0.5) {
 		// Jää: lumipeite, jonka seassa tuulen paljastamia sinertäviä jäälaikkuja
 		vec2 q = world_pos.xz;

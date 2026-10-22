@@ -64,7 +64,10 @@ painuu, hauki hyppää).
   pohjaan ja vääntyy, ja liian monesta osumasta se menee rikki, jolloin
   loppureissu soudetaan. Matalasta varoitetaan, ja vapaalla potkuri ei pyöri.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
-  tuuli vaihtelee ja puuskittelee.
+  tuuli vaihtelee ja puuskittelee. Aallokko voimistuu tuulen mukana, ja
+  noin 4 m/s tuulesta alkaen aallonharjat murtuvat selällä (yli 200 m
+  rannasta) vaahtopäiksi, jotka ajelehtivat tuulen mukana ja hajoavat;
+  kovalla tuulella pintaan jää myös tuulen suuntaisia vaahtojuovia.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti
   pohjaan. Lusikka ui kelatessa ja uistellessa 1,5 metrin syvyydessä
   ja nopeasti kelatessa 1 metrissä (syvältä se nousee sinne hiljalleen).

@@ -284,6 +284,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/angler_shots.gd").new())
 			elif arg.begins_with("--boatshots="):
 				add_child(load("res://tests/boat_shots.gd").new())
+			elif arg.begins_with("--foamshots="):
+				add_child(load("res://tests/foam_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):
 				add_child(load("res://tests/audio_preview.gd").new())
 
