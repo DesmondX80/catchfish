@@ -358,6 +358,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   `user://kalakirja.json`); ensimmäisellä kerralla kirja täytetään saaliskirjan
   vanhoista saaliista. Uudesta lajista saalisikkunassa "UUSI LAJI KALAKIRJAAN!".
   Testi `--booktest` (kuvat `--bookshots=KANSIO`).
+  Julkaistu [v0.38.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.38.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
