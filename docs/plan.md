@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 21.10.2026. Nykyinen versio **0.32.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.32.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.33.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.33.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.32.0)
+### Valmiina (versiot 0.1–0.33.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -56,8 +56,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | # | Tehtävä |
 |---|---|
 | 37 | Veneen malli |
-| 39 | Kodan ulkoasu kodannäköiseksi |
-| 40 | Lintutornin ulkoasu |
 | 35 | Tuulisella säällä vaahtopäiset aallot |
 | 41 | Koho kelluu aaltojen mukana (backlog) |
 
@@ -301,6 +299,18 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   piilotetaan, ja säähaku kulkee selaimen kautta (FMI ja Open-Meteo sallivat
   CORSin). Tallennukset (ura, saaliskirja, asetukset) ovat selaimen
   IndexedDB:ssä. wasm 40 Mt, pck 11 Mt.
+- **#39 Kodan ulkoasu ja #40 Lintutornin ulkoasu – tehty (0.33.0).** Kodan ja
+  lintutornin aloituspaikan rakennukset on mallinnettu käyttäjän valokuvista
+  (`LakeWorld._kota`, `_woodshed`, `_build_towers`). Tornia lähin
+  maastotietokannan rakennus on kota, muut alle 25 m:n päässä olevat puuvajoja.
+  Kota on kahdeksankulmainen grillikota: harmaansininen lautaseinä valkoisin
+  pielin, ikkunat, ovi laiturin puolella, jyrkkä tumma paanukatto harjoineen
+  ja peltipiippu. Puuvaja on harmaantuneista hirsistä ylittyvin nurkin
+  hirsijalasten päällä: harjakatto, harmaansininen ovi päädyssä ja
+  ilmoitustaulu kyljessä. Lintutorni on katoton näköalatasanne neljän tolpan
+  varassa: välitasanne, kaksi porrassyöksyä käsijohteineen, vinotuet ja
+  pystyrimakaiteet. Torni käännetään niin, että portaat laskeutuvat
+  korkeimmalle maalle. Katoille tulee talvella lunta.
 
 
 ## Huomioita ja avoimia kysymyksiä

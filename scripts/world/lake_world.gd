@@ -322,7 +322,9 @@ func _build_buildings() -> void:
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var wall := Color(0.55, 0.2, 0.15) # punamulta
 	var roof := Color(0.22, 0.22, 0.24)
-	for b in lake.buildings:
+	var site := _tower_site_buildings()
+	for i_b in lake.buildings.size():
+		var b: Dictionary = lake.buildings[i_b]
 		var pts := PackedVector2Array()
 		for p in b["points"]:
 			pts.append(Vector2(p[0], p[1]))
@@ -332,6 +334,12 @@ func _build_buildings() -> void:
 		center /= pts.size()
 		if _on_ramp_area(center, pts):
 			continue # luiska ja kääntöpaikka tarvitsevat tilan
+		if site.get(i_b) == "kota":
+			_kota(st, center, pts)
+			continue
+		if site.get(i_b) == "vaja":
+			_woodshed(st, center, pts)
+			continue
 		var base := lake.height_at(center.x, center.y) - 0.3
 		var top: float = base + 0.3 + b["height"]
 		for i in pts.size():
@@ -355,29 +363,302 @@ func _build_buildings() -> void:
 	add_child(mi)
 
 
-func _build_towers() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = Color(0.4, 0.32, 0.22)
+## Kota on lintutornin vieressä: kunkin tornin lähin rakennus
+## Lintutornin vieressä on kota (tornia lähin rakennus) ja hirsinen puuvaja
+## (muut lähellä olevat): {rakennuksen indeksi: "kota" tai "vaja"}
+func _tower_site_buildings() -> Dictionary:
+	var result := {}
 	for t in lake.towers:
-		var y := lake.height_at(t["x"], t["z"])
-		var tower := Node3D.new()
-		tower.position = Vector3(t["x"], y, t["z"])
-		add_child(tower)
-		for corner in [Vector2(-1.5, -1.5), Vector2(1.5, -1.5), Vector2(-1.5, 1.5), Vector2(1.5, 1.5)]:
-			var leg := MeshInstance3D.new()
-			var box := BoxMesh.new()
-			box.size = Vector3(0.25, 12.0, 0.25)
-			box.material = mat
-			leg.mesh = box
-			leg.position = Vector3(corner.x, 6.0, corner.y)
-			tower.add_child(leg)
-		var deck := MeshInstance3D.new()
-		var deck_box := BoxMesh.new()
-		deck_box.size = Vector3(4.0, 1.2, 4.0)
-		deck_box.material = mat
-		deck.mesh = deck_box
-		deck.position = Vector3(0, 12.4, 0)
-		tower.add_child(deck)
+		var near := []
+		for i in lake.buildings.size():
+			var c := Vector2.ZERO
+			for p in lake.buildings[i]["points"]:
+				c += Vector2(p[0], p[1])
+			c /= lake.buildings[i]["points"].size()
+			var d := c.distance_to(Vector2(t["x"], t["z"]))
+			if d < 25.0:
+				near.append([d, i])
+		near.sort()
+		for k in near.size():
+			result[near[k][1]] = "kota" if k == 0 else "vaja"
+	return result
+
+
+## Suunta rakennuksesta lähimmälle aloituspaikalle (ovi laiturin puolelle)
+func _toward_start(center: Vector2) -> Vector2:
+	var dir := Vector2.RIGHT
+	var best_d := INF
+	for s in lake.starts:
+		var d := center.distance_to(Vector2(s["x"], s["z"]))
+		if d < best_d:
+			best_d = d
+			dir = (Vector2(s["x"], s["z"]) - center).normalized()
+	return dir
+
+
+## Grillikota: kahdeksankulmainen harmaaksi maalattu lautaseinä, valkoiset
+## pielet ja räystäslaudat, jyrkkä tumma paanukatto harjoineen ja peltipiippu
+func _kota(st: SurfaceTool, center: Vector2, pts: PackedVector2Array) -> void:
+	var area := 0.0
+	for i in pts.size():
+		area += pts[i].cross(pts[(i + 1) % pts.size()])
+	var r := clampf(sqrt(absf(area) / 2.0 / (2.0 * sqrt(2.0))), 2.2, 3.5) # kahdeksankulmion kärkisäde
+	var a0 := (pts[1] - pts[0]).angle()
+	var base := lake.height_at(center.x, center.y) - 0.3
+	var wall_top := base + 0.3 + 1.8
+	var wall := Color(0.38, 0.4, 0.42)
+	var white := Color(0.85, 0.86, 0.84)
+	var glass := Color(0.12, 0.13, 0.15)
+	var roof := season.snowy(Color(0.17, 0.18, 0.2), 0.6)
+	var ridge := season.snowy(Color(0.3, 0.31, 0.33), 0.6)
+	var door_dir := _toward_start(center)
+	var corners: Array[Vector2] = []
+	for i in 8:
+		corners.append(center + Vector2.from_angle(a0 + TAU * i / 8.0) * r)
+	var door_side := 0
+	for i in 8:
+		var mid_dir := ((corners[i] + corners[(i + 1) % 8]) / 2.0 - center).normalized()
+		if mid_dir.dot(door_dir) > (((corners[door_side] + corners[(door_side + 1) % 8]) / 2.0 - center).normalized()).dot(door_dir):
+			door_side = i
+	for i in 8:
+		var a := corners[i]
+		var b := corners[(i + 1) % 8]
+		var out2 := ((a + b) / 2.0 - center).normalized()
+		var n := Vector3(out2.x, 0, out2.y)
+		_quad(st, [Vector3(a.x, base, a.y), Vector3(b.x, base, b.y), Vector3(b.x, wall_top, b.y), Vector3(a.x, wall_top, a.y)], n, wall)
+		# Valkoiset kulmapielet
+		_beam(st, Vector3(a.x, base, a.y) + n * 0.02, Vector3(a.x, wall_top, a.y) + n * 0.02, 0.1, white)
+		var mid := (a + b) / 2.0
+		var along := (b - a).normalized()
+		var side := Vector3(along.x, 0, along.y)
+		var m3 := Vector3(mid.x, 0, mid.y)
+		if i == door_side:
+			var floor_y := base + 0.3
+			_panel(st, m3 + Vector3(0, floor_y + 0.85, 0) + n * 0.03, side, n, 0.5, 0.85, white)
+			_panel(st, m3 + Vector3(0, floor_y + 0.8, 0) + n * 0.05, side, n, 0.42, 0.8, Color(0.3, 0.33, 0.36))
+		elif i % 2 == 0:
+			var win_y := base + 0.3 + 1.1
+			_panel(st, m3 + Vector3(0, win_y, 0) + n * 0.03, side, n, 0.42, 0.36, white)
+			_panel(st, m3 + Vector3(0, win_y, 0) + n * 0.05, side, n, 0.33, 0.28, glass)
+	# Katto: räystäs seinän yli, jyrkkä pyramidi
+	var eave_r := r + 0.4
+	var eave_y := wall_top - 0.1
+	var apex := Vector3(center.x, wall_top + (r + 0.4) * 1.05, center.y)
+	for i in 8:
+		var a := center + Vector2.from_angle(a0 + TAU * i / 8.0) * eave_r
+		var b := center + Vector2.from_angle(a0 + TAU * (i + 1) / 8.0) * eave_r
+		var a3 := Vector3(a.x, eave_y, a.y)
+		var b3 := Vector3(b.x, eave_y, b.y)
+		var n := (b3 - a3).cross(apex - a3).normalized()
+		if n.y < 0.0:
+			n = -n
+		for v in [a3, b3, apex]:
+			st.set_color(roof)
+			st.set_normal(n)
+			st.add_vertex(v)
+		# Räystäslauta ja kattoharja
+		var down := Vector3(0, -0.2, 0)
+		var out3 := Vector3((a + b).x / 2.0 - center.x, 0, (a + b).y / 2.0 - center.y).normalized()
+		_quad(st, [a3 + down, b3 + down, b3, a3], out3, white)
+		_beam(st, a3 + Vector3(0, 0.05, 0), apex + Vector3(0, 0.05, 0), 0.12, ridge)
+	# Peltipiippu hatun kanssa
+	var steel := Color(0.5, 0.51, 0.52)
+	_beam(st, apex - Vector3(0, 0.4, 0), apex + Vector3(0, 0.9, 0), 0.3, steel)
+	_box(st, apex + Vector3(0, 1.0, 0), Vector3(0.24, 0.08, 0.24), Color(0.15, 0.15, 0.16))
+
+
+## Puuvaja: harmaantuneet vaakahirret ylittyvine nurkkineen hirsijalasten päällä,
+## harjakatto, harmaansininen ovi päätykolmiossa ja ilmoitustaulu kyljessä
+func _woodshed(st: SurfaceTool, center: Vector2, pts: PackedVector2Array) -> void:
+	var e0 := pts[1] - pts[0]
+	var e1 := pts[pts.size() - 1] - pts[0]
+	# Harja pidemmän sivun suuntaan, ovi laiturin puoleiseen päätyyn
+	var along := e0.normalized() if e0.length() >= e1.length() else e1.normalized()
+	var half_l := clampf(maxf(e0.length(), e1.length()) / 2.0 - 0.3, 1.2, 2.5)
+	var half_w := clampf(minf(e0.length(), e1.length()) / 2.0 - 0.3, 1.0, 2.0)
+	if along.dot(_toward_start(center)) < 0.0:
+		along = -along
+	var fwd := Vector3(along.x, 0, along.y)
+	var side := Vector3(-along.y, 0, along.x)
+	var ground := lake.height_at(center.x, center.y)
+	var c3 := Vector3(center.x, ground, center.y)
+	var log_a := Color(0.46, 0.42, 0.36)
+	var log_b := Color(0.4, 0.36, 0.31)
+	var d := 0.22 # hirren paksuus
+	# Jalakset maassa
+	for s in [-1.0, -0.2, 0.6, 1.0]:
+		var o: Vector3 = c3 + side * half_w * s * 0.95 + Vector3(0, d * 0.4, 0)
+		_log(st, o - fwd * (half_l + 0.35), o + fwd * (half_l + 0.35), d * 1.1, log_b)
+	# Seinähirret vuorokerroksin, päät ylittävät nurkat
+	var floor_y := ground + d
+	var layers := 9
+	for k in layers:
+		var y := floor_y + d * (k + 0.5)
+		var color := log_a if k % 2 == 0 else log_b
+		var lift := Vector3(0, d * 0.5, 0) if k % 2 else Vector3.ZERO
+		for s in [-1.0, 1.0]:
+			var o: Vector3 = c3 + side * half_w * s
+			o.y = y
+			_log(st, o - fwd * (half_l + 0.25), o + fwd * (half_l + 0.25), d, color)
+			var q: Vector3 = c3 + fwd * half_l * s + lift
+			q.y = y + lift.y
+			_log(st, q - side * (half_w + 0.25), q + side * (half_w + 0.25), d, color.darkened(0.04))
+	# Päätykolmiot hirsistä, lyhenevät harjaa kohti
+	var eave_y := floor_y + d * layers
+	var rise := half_w * 0.6
+	var gable_layers := int(rise / d)
+	for k in gable_layers:
+		var y := eave_y + d * (k + 0.5)
+		var w := half_w * (1.0 - (k + 0.5) / gable_layers)
+		for s in [-1.0, 1.0]:
+			var q: Vector3 = c3 + fwd * half_l * s
+			q.y = y
+			_log(st, q - side * w, q + side * w, d, log_a if k % 2 == 0 else log_b)
+	# Harjakatto räystäineen ja vaaleat otsalaudat
+	var roof := season.snowy(Color(0.36, 0.38, 0.35), 0.6)
+	var trim := Color(0.72, 0.72, 0.68)
+	var ridge := c3 + Vector3(0, eave_y + rise + 0.15 - ground, 0)
+	for s in [-1.0, 1.0]:
+		var eave: Vector3 = c3 + side * (half_w + 0.5) * s + Vector3(0, eave_y - 0.15 - ground, 0)
+		var front: Vector3 = fwd * (half_l + 0.45)
+		var n: Vector3 = (eave - ridge).cross(front).normalized()
+		if n.y < 0.0:
+			n = -n
+		_quad(st, [eave - front, eave + front, ridge + front, ridge - front], n, roof)
+		for f in [-1.0, 1.0]:
+			_beam(st, eave + front * f, ridge + front * f, 0.12, trim)
+	# Ovi päädyssä ja ilmoitustaulu kyljessä
+	var door_c := c3 + fwd * (half_l + d * 0.6) + Vector3(0, floor_y - ground + 0.95, 0)
+	_panel(st, door_c, side, fwd, 0.45, 0.98, Color(0.62, 0.6, 0.55))
+	_panel(st, door_c + fwd * 0.03, side, fwd, 0.38, 0.92, Color(0.4, 0.5, 0.6))
+	var board_c := c3 - side * (half_w + d * 0.6) + Vector3(0, floor_y - ground + 1.2, 0) - fwd * half_l * 0.35
+	_panel(st, board_c, fwd, -side, 0.5, 0.55, Color(0.62, 0.48, 0.32))
+	_panel(st, board_c - side * 0.03, fwd, -side, 0.42, 0.47, Color(0.72, 0.75, 0.76))
+
+
+## Hirsi: neliöpalkki kierrettynä särmälleen, jolloin varjostus pyöristyy
+func _log(st: SurfaceTool, a: Vector3, b: Vector3, width: float, color: Color) -> void:
+	var y := (b - a).normalized()
+	var x := y.cross(Vector3.UP).normalized().rotated(y, PI / 4.0)
+	_box(st, (a + b) / 2.0, Vector3(width / 2.0, a.distance_to(b) / 2.0, width / 2.0), color, Basis(x, y, x.cross(y)))
+
+
+## Lintutorni (Haapajärven mallin mukaan): katoton näköalatasanne neljän
+## tolpan varassa, edessä alempi välitasanne ja kaksi porrassyöksyä, laidoilla
+## pystyrimakaiteet
+func _build_towers() -> void:
+	var wood := Color(0.47, 0.42, 0.35)
+	var dark := Color(0.36, 0.32, 0.27)
+	var deck_color := season.snowy(Color(0.5, 0.45, 0.37), 0.6)
+	for t in lake.towers:
+		var st := SurfaceTool.new()
+		st.begin(Mesh.PRIMITIVE_TRIANGLES)
+		var top_y := 5.0
+		var mid_y := 2.4
+		for c in [Vector2(-1.6, -1.4), Vector2(1.6, -1.4), Vector2(-1.6, 2.6), Vector2(1.6, 2.6)]:
+			_beam(st, Vector3(c.x, -1.0, c.y), Vector3(c.x, top_y, c.y), 0.24, wood)
+		# Pitkät vinotuet tolpista tasanteen alle
+		_beam(st, Vector3(-1.6, 0.8, 2.75), Vector3(1.6, top_y - 0.3, 2.75), 0.16, wood)
+		_beam(st, Vector3(1.6, 0.8, -1.55), Vector3(-1.6, top_y - 0.3, -1.55), 0.16, wood)
+		_beam(st, Vector3(-1.75, 0.8, -1.4), Vector3(-1.75, top_y - 0.3, 2.6), 0.16, wood)
+		# Näköalatasanne kantavine palkkeineen ja kaiteineen
+		_box(st, Vector3(0, top_y, 0.6), Vector3(2.2, 0.06, 2.4), deck_color)
+		for z in [-1.4, 2.6]:
+			_box(st, Vector3(0, top_y - 0.2, z), Vector3(2.2, 0.14, 0.1), dark)
+		var deck := [Vector3(-2.2, top_y, -1.8), Vector3(2.2, top_y, -1.8), Vector3(2.2, top_y, 3.0), Vector3(-2.2, top_y, 3.0)]
+		for i in 4:
+			_railing(st, deck[i], deck[(i + 1) % 4], wood)
+		# Välitasanne tornin edessä; ensimmäinen syöksy tulee sen itäpäähän
+		_box(st, Vector3(0.4, mid_y, 2.2), Vector3(2.4, 0.06, 0.8), deck_color)
+		_beam(st, Vector3(2.8, -1.0, 3.0), Vector3(2.8, mid_y, 3.0), 0.18, wood)
+		_beam(st, Vector3(-2.0, -1.0, 3.0), Vector3(-2.0, mid_y, 3.0), 0.18, wood)
+		_railing(st, Vector3(-2.0, mid_y, 3.0), Vector3(1.9, mid_y, 3.0), wood)
+		_railing(st, Vector3(-2.0, mid_y, 1.4), Vector3(-2.0, mid_y, 3.0), wood)
+		_stairs(st, Vector3(2.4, 0.0, 5.8), Vector3(2.4, mid_y, 3.0), dark, wood)
+		_stairs(st, Vector3(1.4, mid_y, 1.9), Vector3(-1.9, top_y, 1.9), dark, wood)
+		st.set_material(_vertex_color_material(true))
+		var mi := MeshInstance3D.new()
+		mi.mesh = st.commit()
+		mi.position = Vector3(t["x"], lake.height_at(t["x"], t["z"]), t["z"])
+		mi.rotation.y = _tower_yaw(t)
+		add_child(mi)
+
+
+## Portaat (tornin +z) kohti korkeinta maata, ettei ensimmäinen syöksy laskeudu rantaveteen
+func _tower_yaw(t: Dictionary) -> float:
+	var best := 0.0
+	var best_h := -INF
+	for i in 16:
+		var a := TAU * i / 16.0
+		var p := Vector2(t["x"], t["z"]) + Vector2(sin(a), cos(a)) * 7.0
+		var h := lake.height_at(p.x, p.y)
+		if h > best_h:
+			best_h = h
+			best = a
+	return best
+
+
+## Kaide pisteestä toiseen: ylä- ja alajuoksu sekä tiheät pystyrimat
+func _railing(st: SurfaceTool, a: Vector3, b: Vector3, color: Color) -> void:
+	_beam(st, a + Vector3(0, 1.1, 0), b + Vector3(0, 1.1, 0), 0.1, color)
+	_beam(st, a + Vector3(0, 0.15, 0), b + Vector3(0, 0.15, 0), 0.07, color)
+	var count := int(a.distance_to(b) / 0.14)
+	for i in count + 1:
+		var p := a.lerp(b, float(i) / count)
+		_beam(st, p + Vector3(0, 0.08, 0), p + Vector3(0, 1.1, 0), 0.05 if i % count else 0.12, color)
+
+
+## Porrassyöksy kahden pisteen välillä: sivupalkit ja askelmat
+func _stairs(st: SurfaceTool, from: Vector3, to: Vector3, beam_color: Color, step_color: Color) -> void:
+	var run := Vector3(to.x - from.x, 0, to.z - from.z)
+	var across := run.normalized().cross(Vector3.UP) * 0.4
+	for s in [-1.0, 1.0]:
+		_beam(st, from + across * s, to + across * s, 0.1, beam_color)
+		# Käsijohde tolppineen
+		var up := Vector3(0, 0.95, 0)
+		_beam(st, from + across * s + up, to + across * s + up, 0.07, step_color)
+		for f in [0.0, 0.5]:
+			var q: Vector3 = from.lerp(to, f) + across * s
+			_beam(st, q, q + up, 0.07, step_color)
+	var steps := int(ceil((to.y - from.y) / 0.25))
+	var basis := Basis(across.normalized(), Vector3.UP, run.normalized())
+	for i in steps:
+		var p := from.lerp(to, (i + 0.5) / steps) + Vector3(0, 0.05, 0)
+		_box(st, p, Vector3(0.4, 0.025, 0.13), step_color, basis)
+
+
+## Pystysuora levy (ikkuna, ovi, lautalaita): keskipiste, vaakasuunta, normaali ja puolikoot
+func _panel(st: SurfaceTool, center: Vector3, side: Vector3, n: Vector3, half_w: float, half_h: float, color: Color) -> void:
+	var u := side * half_w
+	var v := Vector3(0, half_h, 0)
+	_quad(st, [center - u - v, center + u - v, center + u + v, center - u + v], n, color)
+
+
+func _quad(st: SurfaceTool, quad: Array, n: Vector3, color: Color) -> void:
+	for idx in [0, 1, 2, 0, 2, 3]:
+		st.set_color(color)
+		st.set_normal(n)
+		st.add_vertex(quad[idx])
+
+
+## Laatikko: keskipiste, puolikoot ja kierto
+func _box(st: SurfaceTool, center: Vector3, half: Vector3, color: Color, basis := Basis.IDENTITY) -> void:
+	var ax := [basis.x * half.x, basis.y * half.y, basis.z * half.z]
+	for axis in 3:
+		for sgn in [-1.0, 1.0]:
+			var face: Vector3 = ax[axis] * sgn
+			var u: Vector3 = ax[(axis + 1) % 3]
+			var v: Vector3 = ax[(axis + 2) % 3]
+			var c := center + face
+			_quad(st, [c - u - v, c + u - v, c + u + v, c - u + v], face.normalized(), color)
+
+
+## Palkki pisteestä toiseen, neliön muotoinen poikkileikkaus
+func _beam(st: SurfaceTool, a: Vector3, b: Vector3, width: float, color: Color) -> void:
+	var y := (b - a).normalized()
+	var x := y.cross(Vector3.FORWARD) if absf(y.dot(Vector3.FORWARD)) < 0.9 else y.cross(Vector3.RIGHT)
+	x = x.normalized()
+	_box(st, (a + b) / 2.0, Vector3(width / 2.0, a.distance_to(b) / 2.0, width / 2.0), color, Basis(x, y, x.cross(y)))
 
 
 ## Laiturin ja aloituspaikan ympärille jätetään avoin ranta (puut eivät
