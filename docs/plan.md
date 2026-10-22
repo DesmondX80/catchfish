@@ -373,6 +373,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   merikotka näkyy kamerassa alle 260 m päässä, kalastaja huudahtaa "Oho!
   Merikotka!".
   Testi `--birdtest` (lähikuvat `--birdshots=KANSIO`).
+  Julkaistu [v0.39.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.39.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
