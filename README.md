@@ -4,7 +4,17 @@ Kalastussimulaattori Godot 4 -pelimoottorilla. Pelialueena on Raahen
 Haapajärven tekoallas, joka on mallinnettu Maanmittauslaitoksen avoimesta
 aineistosta. Lähdet soutuveneellä laiturista ja heittelet virvelillä uistinta.
 
-## Käynnistys
+## Pelaa
+
+- **Selaimessa:** <https://desmondx80.github.io/catchfish/> (uusin julkaisu;
+  klikkaa peliruutua, niin hiiri kaappautuu peliin)
+- **Windows:** lataa `Catchfish.exe`
+  [uusimmasta julkaisusta](https://github.com/DesmondX80/catchfish/releases/latest)
+
+Selainversio tehdään jokaisesta GitHub-julkaisusta automaattisesti
+(`.github/workflows/pages.yml`).
+
+## Käynnistys Godotissa
 
 1. Asenna [Godot 4.7](https://godotengine.org/download) (tavallinen versio, ei .NET).
 2. Avaa Godotissa *Import* → valitse tämän kansion `project.godot`.

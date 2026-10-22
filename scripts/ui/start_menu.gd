@@ -92,9 +92,10 @@ func _build() -> void:
 	var settings := _button("Asetukset")
 	settings.pressed.connect(_show_settings)
 	box.add_child(settings)
-	var quit := _button("Lopeta peli")
-	quit.pressed.connect(func(): get_tree().quit())
-	box.add_child(quit)
+	if not OS.has_feature("web"): # selaimessa peli suljetaan sulkemalla välilehti
+		var quit := _button("Lopeta peli")
+		quit.pressed.connect(func(): get_tree().quit())
+		box.add_child(quit)
 	if lake.attribution != "":
 		var credit := _label(lake.attribution, 12, Color(0.7, 0.72, 0.66))
 		credit.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART

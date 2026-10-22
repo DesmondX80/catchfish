@@ -42,7 +42,8 @@ func fetch() -> void:
 		+ "&parameters=" + FMI_PARAMS + "&starttime=" + start
 	_stage = "fmi"
 	var roots := X509Certificate.new()
-	if roots.load(FMI_ROOTS) == OK:
+	# Selaimessa haku kulkee selaimen kautta ja sen varmenteilla
+	if not OS.has_feature("web") and roots.load(FMI_ROOTS) == OK:
 		_http.set_tls_options(TLSOptions.client(roots))
 	if _http.request(url) != OK:
 		_fetch_open_meteo()
@@ -50,7 +51,8 @@ func fetch() -> void:
 
 func _fetch_open_meteo() -> void:
 	_stage = "open-meteo"
-	_http.set_tls_options(TLSOptions.client()) # järjestelmän tavalliset varmenteet
+	if not OS.has_feature("web"):
+		_http.set_tls_options(TLSOptions.client()) # järjestelmän tavalliset varmenteet
 	var url := "https://api.open-meteo.com/v1/forecast?latitude=%.2f&longitude=%.2f" % [LAT, LON] \
 		+ "&current=temperature_2m,precipitation,snowfall,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,weather_code,pressure_msl" \
 		+ "&hourly=pressure_msl&past_hours=3&forecast_hours=1" \
