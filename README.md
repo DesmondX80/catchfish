@@ -48,6 +48,10 @@ Hiiren herkkyyden, käänteisen pystyohjauksen ja äänenvoimakkuudet (kaikki ä
 taustaäänet, efektit, kalastajan puhe) voi säätää alkuvalikon tai taukovalikon
 kohdasta *Asetukset*. Asetukset tallennetaan koneelle.
 
+Alkuvalikon taustalla on mökin pirtti, jossa takka lepattaa ja pöydän takana
+vanhassa kuvaputki-TV:ssä pyörii kalastusohjelma (veneilijä iltajärvellä, koho
+painuu, hauki hyppää).
+
 ## Simulaatio lyhyesti
 
 - **Vene**: oma vesifysiikka (työntövoima, vastus, sivuttaisvastus), tuuli

@@ -38,7 +38,7 @@ func _ready() -> void:
 		return
 	var args := OS.get_cmdline_user_args()
 	for arg in args:
-		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test", "--careertest=": "career_test"}
+		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test", "--careertest=": "career_test", "--tvtest=": "tv_test"}
 		for prefix in menu_tests:
 			if arg.begins_with(prefix):
 				CatchLog.persist = false

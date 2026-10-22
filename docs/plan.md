@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.41.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.41.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.42.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.42.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -411,6 +411,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   tarkistaa voimakkuudet, mykistyksen, herkkyyden ja käänteisen ohjauksen (ja
   sen painikeindeksit korjattiin Kalakirja-painikkeen jäljiltä).
   Julkaistu [v0.41.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.41.0).
+- **#54 TV valikon taustaan – tehty (0.42.0).** Pirtin takaseinällä pöydän
+  takana on lipaston päällä vanha puukuorinen kuvaputki-TV sisäantenneineen
+  (`CabinScene._tv`). Ruudulla pyörii varjostimella piirretty kalastusohjelma
+  (`shaders/tv_fishing.gdshader`, 24 s kierto): veneilijä iltajärvellä ja tärppi,
+  lähikuva painuvasta kohosta sekä hauen hypyt roiskeineen. Kuvaputken
+  kaarevuus, kohina, kanavan logo ja leikkausten lumisade; juovat häivytetään
+  kaukaa katsottaessa (ei moiréta). Ruudun hohde valaisee pöytää ja välähtää
+  leikkauksissa. `--tvtest=<kansio>` tarkistaa TV:n näkyvyyden ja tallentaa
+  kuvat ohjelmasta.
 
 
 ## Huomioita ja avoimia kysymyksiä

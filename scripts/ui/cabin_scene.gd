@@ -1,8 +1,8 @@
 class_name CabinScene
 extends Node3D
 ## Alkuvalikon taustanäkymä: kodikas mökin pirtti. Hirsiseinät, lankkulattia,
-## ikkunat sivuseinillä, takka nurkassa lepattavine tulineen sekä pirtinpöytä
-## tuoleineen. Huoneen koordinaatit: x -3..3, z -4.6 (takaseinä)..0, y 0..2.6.
+## ikkunat sivuseinillä, takka nurkassa lepattavine tulineen, pirtinpöytä
+## tuoleineen sekä takaseinällä vanha kuvaputki-TV, jossa pyörii kalastusohjelma. Huoneen koordinaatit: x -3..3, z -4.6 (takaseinä)..0, y 0..2.6.
 
 const W := 3.0 # puolileveys
 const D := 4.6 # syvyys
@@ -11,6 +11,8 @@ const LOG_R := 0.11
 
 var _fire_light: OmniLight3D
 var _flames: Array[MeshInstance3D] = []
+var _tv_light: OmniLight3D
+var tv_screen: MeshInstance3D
 var _time := 0.0
 var _rng := RandomNumberGenerator.new()
 ## Ikkunanäkymän vuodenaika: todellisessa ajassa tämän päivän mukaan
@@ -33,6 +35,7 @@ func _ready() -> void:
 	_windows()
 	_fireplace()
 	_table_and_chairs()
+	_tv()
 	_details()
 
 
@@ -263,6 +266,61 @@ func _table_and_chairs() -> void:
 	_box(Vector3(0.3, 0.08, 0.2), Vector3(-0.15, 0.83, cz + 0.15), _mat(Color(0.6, 0.45, 0.25)))
 
 
+## Vanha puukuorinen kuvaputki-TV lipaston päällä takaseinällä, pöydän takana
+func _tv() -> void:
+	var root := Node3D.new()
+	root.position = Vector3(0.45, 0, -D + 0.3)
+	root.rotation.y = -0.12 # hieman kameraa kohti
+	add_child(root)
+	var dresser := _mat(Color(0.36, 0.23, 0.13), 0.7)
+	var dark := _mat(Color(0.27, 0.17, 0.1), 0.75)
+	_box(Vector3(1.1, 0.6, 0.48), Vector3(0, 0.3, 0), dresser, root)
+	_box(Vector3(1.14, 0.04, 0.52), Vector3(0, 0.62, 0), dark, root)
+	for x in [-0.27, 0.27]: # laatikot ja vetimet
+		_box(Vector3(0.5, 0.24, 0.02), Vector3(x, 0.38, 0.245), dark, root)
+		_box(Vector3(0.1, 0.025, 0.03), Vector3(x, 0.42, 0.26), _mat(Color(0.75, 0.62, 0.35), 0.4), root)
+	# TV: puujäljitelmäkuori, musta etupaneeli, kupera ruutu ja nupit oikealla
+	var tv := Node3D.new()
+	tv.position = Vector3(-0.05, 0.64, 0.0)
+	root.add_child(tv)
+	var shell := _mat(Color(0.42, 0.27, 0.15), 0.55)
+	var black := _mat(Color(0.07, 0.07, 0.07), 0.6)
+	_box(Vector3(0.84, 0.6, 0.44), Vector3(0, 0.3, -0.02), shell, tv)
+	_box(Vector3(0.52, 0.42, 0.18), Vector3(0, 0.3, -0.3), black, tv) # kuvaputken takaosa
+	_box(Vector3(0.78, 0.54, 0.02), Vector3(0, 0.3, 0.205), black, tv)
+	tv_screen = MeshInstance3D.new()
+	var quad := QuadMesh.new()
+	quad.size = Vector2(0.58, 0.44)
+	var m := ShaderMaterial.new()
+	m.shader = load("res://shaders/tv_fishing.gdshader")
+	quad.material = m
+	tv_screen.mesh = quad
+	tv_screen.position = Vector3(-0.07, 0.3, 0.218)
+	tv.add_child(tv_screen)
+	var knob := _mat(Color(0.8, 0.78, 0.72), 0.35)
+	for k in 2:
+		var kn := _cyl(0.03, 0.03, Vector3(0.3, 0.42 - k * 0.12, 0.22), knob, tv, 12)
+		kn.rotation.x = PI / 2.0
+	_box(Vector3(0.08, 0.1, 0.01), Vector3(0.3, 0.14, 0.218), _mat(Color(0.2, 0.2, 0.2), 0.9), tv) # kaiutinsäleikkö
+	var led := StandardMaterial3D.new()
+	led.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
+	led.albedo_color = Color(1.0, 0.15, 0.1)
+	_box(Vector3(0.015, 0.015, 0.01), Vector3(0.3, 0.06, 0.218), led, tv)
+	# Sisäantenni ("pupunkorvat")
+	var metal := _mat(Color(0.7, 0.7, 0.72), 0.3)
+	_cyl(0.05, 0.03, Vector3(0.1, 0.615, -0.05), black, tv, 12)
+	for side in [-1.0, 1.0]:
+		var ear := _cyl(0.004, 0.55, Vector3(0.1 + side * 0.12, 0.84, -0.05), metal, tv, 6)
+		ear.rotation.z = -side * 0.45
+	# Ruudun hohde valaisee pöytää ja seinää sinertävästi
+	_tv_light = OmniLight3D.new()
+	_tv_light.light_color = Color(0.65, 0.75, 1.0)
+	_tv_light.omni_range = 3.0
+	_tv_light.light_energy = 0.5
+	_tv_light.position = Vector3(-0.07, 0.3, 0.5)
+	tv.add_child(_tv_light)
+
+
 func _details() -> void:
 	# Räsymatto pöydän alle
 	var stripes := [Color(0.55, 0.15, 0.12), Color(0.82, 0.78, 0.66), Color(0.2, 0.3, 0.5), Color(0.82, 0.78, 0.66)]
@@ -292,3 +350,7 @@ func _process(delta: float) -> void:
 		var f := _flames[i]
 		f.scale.y = 0.8 + 0.3 * sin(_time * (9.0 + i * 1.7) + i)
 		f.scale.x = 1.0 + 0.1 * sin(_time * 13.0 + i * 2.0)
+	# TV:n valo elää kuvan mukana; leikkauksissa (8 s välein) välähtää
+	(tv_screen.mesh.material as ShaderMaterial).set_shader_parameter("time", _time)
+	var since_cut := fmod(_time, 8.0)
+	_tv_light.light_energy = 0.45 + 0.08 * sin(_time * 1.7) + 0.04 * sin(_time * 7.3) + (0.4 if since_cut < 0.15 else 0.0)
