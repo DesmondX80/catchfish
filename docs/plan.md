@@ -328,6 +328,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   2 km/h ja 6 m/s tuuleen hitaasti. Laituritörmäys kääntää venettä
   kosketuskohdan mukaan, joten keula ei enää jää kiinni laiturin kulmaan.
   Laiturin puoleinen airo nostetaan veneeseen kääntämättä sitä laiturin läpi.
+  Julkaistu [v0.34.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.34.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
