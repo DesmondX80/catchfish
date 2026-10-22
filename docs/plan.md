@@ -398,6 +398,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ankkuria kohti. Nosto etenee myös 1 m/s. `--anchortest` tarkistaa köyden
   pituuden, laskun ja noston nopeuden, ajoyrityksen ja liikkuvasta veneestä
   laskun.
+  Julkaistu [v0.40.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.1).
 
 
 ## Huomioita ja avoimia kysymyksiä
