@@ -420,6 +420,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   kaukaa katsottaessa (ei moiréta). Ruudun hohde valaisee pöytää ja välähtää
   leikkauksissa. `--tvtest=<kansio>` tarkistaa TV:n näkyvyyden ja tallentaa
   kuvat ohjelmasta.
+  Julkaistu [v0.42.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.42.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
