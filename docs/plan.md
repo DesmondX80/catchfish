@@ -387,6 +387,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Uistimet ovat koodissa tehtyjä 3D-malleja (`LureModels`), jotka näkyvät myös
   vavan päässä ja vedessä siimaan päin (ennen pallo). Testi `--tackletest`
   (kuva `--tackleshots=KANSIO`).
+  Julkaistu [v0.40.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
