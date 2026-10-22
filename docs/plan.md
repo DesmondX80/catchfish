@@ -432,6 +432,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   jalkatasolla, etutuhdolla kalastaja istuu polvet koholla ja perätuhdolla
   keskempänä. `--boattest` tarkistaa esineiden ja jalkojen paikat rungon
   sisällä ja potkurin pyörimisen; `--boatshots=<kansio>` ottaa kuvat veneestä.
+  Julkaistu [v0.43.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.43.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
