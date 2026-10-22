@@ -32,9 +32,18 @@ func set_viewing(on: bool) -> void:
 	_lamp.visible = on
 
 
-## Kamera katsoo saavia tästä pisteestä alas
+## Kamera katsoo saavia tästä pisteestä alas. Lasketaan veneen tämänhetkisestä
+## asennosta: kameran _process voi ajaa ennen saavin omaa, ja edellisen framen
+## paikka saisi kuvan tärisemään veneen liikkuessa.
 func view_point() -> Vector3:
-	return global_transform * Vector3(0, SIZE.y * WATER_LEVEL, 0)
+	return _placement() * Vector3(0, SIZE.y * WATER_LEVEL, 0)
+
+
+## Saavin paikka veneessä tai jäällä
+func _placement() -> Transform3D:
+	if boat.on_ice:
+		return boat.global_transform * Transform3D(Basis.IDENTITY, ON_ICE)
+	return boat.hull.global_transform * ON_BOAT
 
 
 ## Näyttää saavissa reissun kalat. Juuri saatu kala on vielä haavissa tai
@@ -76,10 +85,7 @@ func _show_catch() -> void:
 func _process(_delta: float) -> void:
 	if boat == null:
 		return
-	if boat.on_ice:
-		global_transform = boat.global_transform * Transform3D(Basis.IDENTITY, ON_ICE)
-	else:
-		global_transform = boat.hull.global_transform * ON_BOAT
+	global_transform = _placement()
 	_show_catch()
 
 

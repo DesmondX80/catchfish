@@ -9,6 +9,7 @@ var _log: Array[String] = []
 var _step := 0
 var _t := 0.0
 var _shots := ""
+var _lag := 0.0 # saavinäkymässä kameran suurin poikkeama saavin yläpuolelta
 
 
 func _ready() -> void:
@@ -76,7 +77,20 @@ func _process(delta: float) -> void:
 				_tap("catch_log")
 				_next()
 		4:
+			# Vene ajelehtii ja kääntyy: kameran pitää pysyä saavin yläpuolella
+			# samassa kohdassa joka kuvassa, eikä jäädä framen jälkeen (tärinä)
+			if not main.boat.on_ice:
+				main.boat.velocity = Vector2(1.2, -0.8)
+				main.boat.yaw_rate = 0.4
+			if _t > 1.0:
+				# Kamera saavin tämänhetkisen paikan yläpuolella (camera_rig: 0,65 m ylempänä,
+				# 0,25 m oikealla). Jos kamera käyttää edellisen framen paikkaa, virhe
+				# vaihtelee fysiikka-askelten mukaan ja kuva tärisee.
+				var water: Vector3 = tub.global_transform * Vector3(0, CatchTub.SIZE.y * CatchTub.WATER_LEVEL, 0)
+				var right := Vector3(cos(main.boat.yaw), 0, -sin(main.boat.yaw))
+				_lag = maxf(_lag, cam.global_position.distance_to(water + Vector3(0, 0.65, 0) + right * 0.25))
 			if _t > 1.5:
+				_check("Tab: kamera pysyy saavin yläpuolella veneen liikkuessa (heitto %.3f m)" % _lag, _lag < 0.01)
 				var above := cam.global_position - tub.view_point()
 				_check("Tab: kamera saavin yläpuolella (%.2f m ylempänä, %.2f m sivussa)" % [above.y, Vector2(above.x, above.z).length()], main.hud.tub_open() and above.y > 0.5 and Vector2(above.x, above.z).length() < 0.35)
 				var text: String = main.hud._log_label.text
