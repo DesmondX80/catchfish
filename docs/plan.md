@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.33.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.33.0)).
+Päivitetty 22.10.2026. Nykyinen versio **0.34.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.34.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,12 +10,12 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.33.0)
+### Valmiina (versiot 0.1–0.34.0)
 
 | Alue | Ominaisuudet |
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
-| Maailma | MML-aineistosta tehty järvi ja maasto, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
+| Maailma | MML-aineistosta tehty järvi ja maasto, metsässä mäntyjä, kuusia ja koivuja, vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
@@ -312,6 +312,22 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   pystyrimakaiteet. Torni käännetään niin, että portaat laskeutuvat
   korkeimmalle maalle. Katoille tulee talvella lunta.
   Julkaistu [v0.33.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.33.0).
+- **#52 Puut luonnollisen näköisiksi – tehty (0.34.0).** Metsässä on kolme
+  puulajia (`LakeWorld._pine`, `_spruce`, `_birch`): mänty (pitkä suora runko,
+  tyvellä harmaanruskea ja ylempänä oranssi kaarna, laakeat neulastupsut vain
+  latvassa), kuusi (kapea tuuhea kartio maahan asti, riippuvat sahalaitaiset
+  oksakerrokset) ja koivu (valkoinen runko mustin laikuin ja tummin tyvin,
+  soikea latvus; talvella paljaat oksat ja punaruskeat varvut). Kangasmetsässä
+  mäntyä 45 %, kuusta 30 % ja koivua 25 %, rämeillä ja kallioilla enimmäkseen
+  mäntyä. Lajista on kolme muunnelmaa. Puut ovat 128 m:n lohkoina
+  (MultiMesh): alle 260 m:n päässä tarkat mallit, kauempana kevyet siluetit
+  ilman varjoja, ja näkökartion ulkopuoliset lohkot jäävät piirtämättä.
+- **Melonta vastatuuleen ja laiturin kulma – korjattu (0.34.0).** Melan veto
+  on paikallaan voimakkaampi ja heikkenee vauhdin kasvaessa (`PADDLE_BLADE_SPEED`):
+  tyynellä vauhti on ennallaan noin 4 km/h, 4 m/s vastatuuleen pääsee noin
+  2 km/h ja 6 m/s tuuleen hitaasti. Laituritörmäys kääntää venettä
+  kosketuskohdan mukaan, joten keula ei enää jää kiinni laiturin kulmaan.
+  Laiturin puoleinen airo nostetaan veneeseen kääntämättä sitä laiturin läpi.
 
 
 ## Huomioita ja avoimia kysymyksiä

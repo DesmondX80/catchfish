@@ -4,6 +4,11 @@ extends Node3D
 
 const CHUNK := 64 # soluja lohkossa (lohkot nopeuttavat piirtoa näkökartioon rajaamalla)
 const TREE_BAND := 350.0 # tiheä metsä näin lähellä rantaa, kauempana harvempi
+const TREE_CHUNK := 128.0 # puut lohkoina (m), jotta lähilohkoissa voidaan piirtää tarkat mallit
+const TREE_DETAIL_RANGE := 260.0 # tätä lähempänä tarkat puumallit, kauempana kevyet siluetit
+const TREE_VARIANTS := 3 # muunnelmaa lajia kohden, ettei metsä näytä kloonatulta
+
+enum TreeKind { PINE, SPRUCE, BIRCH }
 
 var lake: LakeData
 var water_material: ShaderMaterial
@@ -150,8 +155,7 @@ func _water_or_next_to_water(c: int, r: int) -> bool:
 func _build_trees() -> void:
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 42
-	var pine := []
-	var birch := []
+	var chunks := {} # Vector4i(laji, muunnelma, lohko x, lohko z) -> muunnokset
 	for r in range(0, lake.rows, 2):
 		for c in range(0, lake.cols, 2):
 			if lake.cell_is_water(c, r):
@@ -173,15 +177,38 @@ func _build_trees() -> void:
 				var y := lake.height_at(p.x, p.y)
 				var size := rng.randf_range(0.7, 1.3) * (0.6 if ground == LakeData.Ground.BOG else 1.0)
 				var t := Transform3D(Basis(Vector3.UP, rng.randf() * TAU).scaled(Vector3.ONE * size), Vector3(p.x, y, p.y))
-				if rng.randf() < 0.7:
-					pine.append(t)
-				else:
-					birch.append(t)
-	_multimesh(_pine_mesh(), pine)
-	_multimesh(_birch_mesh(), birch)
+				var key := Vector4i(_tree_species(ground, rng.randf()), rng.randi() % TREE_VARIANTS, floori(p.x / TREE_CHUNK), floori(p.y / TREE_CHUNK))
+				if not chunks.has(key):
+					chunks[key] = []
+				chunks[key].append(t)
+	var detail := {}
+	var far := {}
+	for species in [TreeKind.PINE, TreeKind.SPRUCE, TreeKind.BIRCH]:
+		far[species] = _tree_far_mesh(species)
+		for v in TREE_VARIANTS:
+			detail[Vector2i(species, v)] = _tree_mesh(species, v)
+	for key in chunks:
+		# Lähellä tarkka malli, kauempana kevyt siluetti; lohkot rajautuvat myös näkökartioon
+		var near_mmi := _multimesh(detail[Vector2i(key.x, key.y)], chunks[key])
+		near_mmi.visibility_range_end = TREE_DETAIL_RANGE
+		near_mmi.visibility_range_end_margin = 20.0
+		var far_mmi := _multimesh(far[key.x], chunks[key])
+		far_mmi.visibility_range_begin = TREE_DETAIL_RANGE
+		far_mmi.visibility_range_begin_margin = 20.0
+		far_mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 
 
-func _multimesh(mesh: Mesh, transforms: Array) -> void:
+## Puulaji maapohjan mukaan: rämeillä ja kallioilla kasvaa enimmäkseen mäntyä,
+## kangasmetsässä mäntyä, kuusta ja koivua
+func _tree_species(ground: LakeData.Ground, roll: float) -> TreeKind:
+	if ground == LakeData.Ground.BOG or ground == LakeData.Ground.ROCK:
+		return TreeKind.PINE if roll < 0.8 else TreeKind.BIRCH
+	if roll < 0.45:
+		return TreeKind.PINE
+	return TreeKind.SPRUCE if roll < 0.75 else TreeKind.BIRCH
+
+
+func _multimesh(mesh: Mesh, transforms: Array) -> MultiMeshInstance3D:
 	var mm := MultiMesh.new()
 	mm.transform_format = MultiMesh.TRANSFORM_3D
 	mm.mesh = mesh
@@ -191,6 +218,7 @@ func _multimesh(mesh: Mesh, transforms: Array) -> void:
 	var mmi := MultiMeshInstance3D.new()
 	mmi.multimesh = mm
 	add_child(mmi)
+	return mmi
 
 
 func _vertex_color_material(cull_disabled := false) -> StandardMaterial3D:
@@ -217,34 +245,192 @@ func _cone(st: SurfaceTool, base_y: float, top_y: float, radius: float, color: C
 			st.add_vertex(v)
 
 
-func _pine_mesh() -> Mesh:
+## Verteksi värin ja normaalin kanssa
+func _vert(st: SurfaceTool, v: Vector3, n: Vector3, color: Color) -> void:
+	st.set_color(color)
+	st.set_normal(n)
+	st.add_vertex(v)
+
+
+## Kapeneva runko tyvestä latvaan; väri liukuu tyven väristä latvan väriin
+func _trunk(st: SurfaceTool, y0: float, y1: float, r0: float, r1: float, c0: Color, c1: Color, segments := 6) -> void:
+	for i in segments:
+		var d0 := Vector3(cos(TAU * i / segments), 0, sin(TAU * i / segments))
+		var d1 := Vector3(cos(TAU * (i + 1) / segments), 0, sin(TAU * (i + 1) / segments))
+		var b0 := d0 * r0 + Vector3(0, y0, 0)
+		var b1 := d1 * r0 + Vector3(0, y0, 0)
+		var t0 := d0 * r1 + Vector3(0, y1, 0)
+		var t1 := d1 * r1 + Vector3(0, y1, 0)
+		_vert(st, b0, d0, c0)
+		_vert(st, t0, d0, c1)
+		_vert(st, b1, d1, c0)
+		_vert(st, t0, d0, c1)
+		_vert(st, t1, d1, c1)
+		_vert(st, b1, d1, c0)
+
+
+## Epäsäännöllinen litistetty pallo lehvästön tai neulasoksiston möhkäleeksi.
+## Alapinta tummempi (oma varjo), yläpinnalle sataa lunta.
+func _blob(st: SurfaceTool, rng: RandomNumberGenerator, center: Vector3, radii: Vector3, color: Color, snow := 0.0, segments := 6) -> void:
+	var lats := [deg_to_rad(38.0), deg_to_rad(-22.0)]
+	var rings := []
+	for lat in lats:
+		var ring := []
+		for i in segments:
+			var a := TAU * (i + 0.5 * rings.size()) / segments
+			var d := Vector3(cos(a) * cos(lat), sin(lat), sin(a) * cos(lat)) * rng.randf_range(0.78, 1.15)
+			ring.append(d)
+		rings.append(ring)
+	var top := Vector3.UP
+	var bottom := Vector3.DOWN
+	var pt := func(d: Vector3) -> Vector3: return center + d * radii
+	var nrm := func(d: Vector3) -> Vector3: return (d / radii).normalized()
+	var col := func(d: Vector3) -> Color:
+		var n: Vector3 = (d / radii).normalized()
+		var c := color * lerpf(0.62, 1.12, n.y * 0.5 + 0.5)
+		c.a = 1.0
+		return c.lerp(Color(0.86, 0.89, 0.93), snow * clampf(n.y * 1.5 - 0.2, 0.0, 1.0))
+	var tris := []
+	for i in segments:
+		var j := (i + 1) % segments
+		tris.append([rings[0][i], top, rings[0][j]])
+		tris.append([rings[1][i], rings[0][i], rings[1][j]])
+		tris.append([rings[0][i], rings[0][j], rings[1][j]])
+		tris.append([rings[1][i], rings[1][j], bottom])
+	for tri in tris:
+		for d in tri:
+			_vert(st, pt.call(d), nrm.call(d), col.call(d))
+
+
+## Kuusen oksakerros: riippuva, sahalaitainen kartio
+func _skirt(st: SurfaceTool, rng: RandomNumberGenerator, y: float, height: float, radius: float, droop: float, rim_color: Color, top_color: Color, segments := 9) -> void:
+	var top := Vector3(0, y + height, 0)
+	var rim := []
+	for i in segments:
+		var a := TAU * i / segments
+		var r := radius * (1.0 if i % 2 == 0 else 0.72) * rng.randf_range(0.88, 1.1)
+		rim.append(Vector3(cos(a) * r, y - droop * rng.randf_range(0.7, 1.2), sin(a) * r))
+	for i in segments:
+		var p0: Vector3 = rim[i]
+		var p1: Vector3 = rim[(i + 1) % segments]
+		var n := (p1 - p0).cross(top - p0).normalized() * -1.0
+		_vert(st, p0, n, rim_color)
+		_vert(st, top, Vector3.UP, top_color)
+		_vert(st, p1, n, rim_color)
+
+
+func _tree_mesh(species: TreeKind, variant: int) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_cone(st, 0.0, 9.0, 0.25, Color(0.3, 0.2, 0.12), 5)
-	# Talvella kuusten oksilla on lunta
-	var needles := Color(0.1, 0.22, 0.1).lerp(Color(0.75, 0.8, 0.82), season.snow * 0.45)
-	var top := Color(0.12, 0.26, 0.11).lerp(Color(0.85, 0.88, 0.9), season.snow * 0.55)
-	_cone(st, 2.0, 8.0, 2.2, needles)
-	_cone(st, 5.0, 12.0, 1.6, top)
-	st.set_material(_vertex_color_material())
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 100 + species * 10 + variant
+	match species:
+		TreeKind.PINE:
+			_pine(st, rng)
+		TreeKind.SPRUCE:
+			_spruce(st, rng)
+		TreeKind.BIRCH:
+			_birch(st, rng)
+	# Kuusen oksakerrosten alapinnat näkyvät rannalta katsottaessa
+	st.set_material(_vertex_color_material(species == TreeKind.SPRUCE))
 	return st.commit()
 
 
-func _birch_mesh() -> Mesh:
+## Mänty: pitkä suora runko, alaosassa harmaanruskea paksu kaarna ja ylempänä
+## oranssi kilpikaarna; oksat vain latvassa, latvus laakeina neulastupsuina
+func _pine(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
+	var height := rng.randf_range(14.5, 17.0)
+	var bark_low := Color(0.62, 0.36, 0.2)
+	_trunk(st, 0.0, height * 0.3, 0.36, 0.26, Color(0.3, 0.25, 0.21), Color(0.46, 0.32, 0.22))
+	_trunk(st, height * 0.3, height * 0.93, 0.26, 0.07, bark_low, Color(0.75, 0.47, 0.26))
+	# Kuivuneet oksantyngät rungon keskiosassa
+	for k in 2:
+		var y := height * rng.randf_range(0.35, 0.55)
+		var a := rng.randf() * TAU
+		_beam(st, Vector3(0, y, 0), Vector3(cos(a) * 1.1, y + 0.3, sin(a) * 1.1), 0.07, Color(0.36, 0.32, 0.28))
+	var needles := Color(0.13, 0.22, 0.12)
+	var clumps := rng.randi_range(5, 6)
+	for i in clumps:
+		var t := float(i) / (clumps - 1)
+		var y := lerpf(height * 0.62, height * 0.96, t) + rng.randf_range(-0.3, 0.3)
+		var a := i * 2.4 + rng.randf() * 0.8
+		var reach := (1.0 - t) * rng.randf_range(1.2, 2.1) + 0.3
+		var center := Vector3(cos(a) * reach, y, sin(a) * reach)
+		_beam(st, Vector3(0, y - 0.7, 0), center, 0.14, bark_low)
+		var w := rng.randf_range(1.6, 2.2) * (1.15 - 0.4 * t)
+		var color := needles.lerp(Color(0.18, 0.28, 0.13), t) * rng.randf_range(0.9, 1.1)
+		_blob(st, rng, center, Vector3(w, rng.randf_range(0.6, 0.85), w * rng.randf_range(0.8, 1.1)), color, season.snow * 0.8)
+
+
+## Kuusi: kapea tuuhea kartio maahan asti, riippuvat oksakerrokset ja terävä latva
+func _spruce(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
+	var height := rng.randf_range(13.0, 16.0)
+	_trunk(st, 0.0, height, 0.3, 0.05, Color(0.3, 0.25, 0.21), Color(0.36, 0.28, 0.2), 5)
+	var tiers := 8
+	var step := (height - 2.4) / tiers
+	for i in tiers:
+		var t := float(i) / tiers
+		var rim := Color(0.06, 0.15, 0.08).lerp(Color(0.1, 0.2, 0.1), t)
+		var top := Color(0.1, 0.22, 0.11).lerp(Color(0.86, 0.89, 0.93), season.snow * 0.6)
+		rim = rim.lerp(Color(0.8, 0.84, 0.88), season.snow * 0.3)
+		_skirt(st, rng, 0.5 + i * step, step * 1.9, lerpf(2.7, 0.6, t) * rng.randf_range(0.9, 1.08), 0.55 * (1.0 - t * 0.5), rim, top)
+	_skirt(st, rng, height - 2.6, 2.6, 0.4, 0.1, Color(0.1, 0.2, 0.1), Color(0.14, 0.26, 0.12), 5)
+
+
+## Koivu: valkoinen runko mustine laikkuineen ja tummana uurteisena tyvenä,
+## soikea ilmava latvus; lehvästö vuodenajan mukaan (talvella paljaat oksat)
+func _birch(st: SurfaceTool, rng: RandomNumberGenerator) -> void:
+	var height := rng.randf_range(12.5, 14.5)
+	var white := Color(0.86, 0.85, 0.8)
+	_trunk(st, 0.0, 1.4, 0.24, 0.19, Color(0.18, 0.17, 0.15), Color(0.5, 0.48, 0.45))
+	_trunk(st, 1.4, height * 0.82, 0.19, 0.05, white, Color(0.9, 0.88, 0.84))
+	for k in 6:
+		var y := rng.randf_range(2.0, height * 0.6)
+		var a := rng.randf() * TAU
+		var r := lerpf(0.19, 0.05, (y - 1.4) / (height * 0.82 - 1.4))
+		_box(st, Vector3(cos(a) * r, y, sin(a) * r), Vector3(0.07, 0.035, 0.07), Color(0.12, 0.11, 0.1), Basis(Vector3.UP, -a))
+	var leaves := season.leaves
+	var clumps := 7
+	for i in clumps:
+		var t := float(i) / (clumps - 1)
+		var y := lerpf(height * 0.45, height * 0.93, t)
+		var a := i * 2.4 + rng.randf() * 0.8
+		var reach := (1.0 - t * 0.6) * rng.randf_range(0.8, 1.4)
+		var center := Vector3(cos(a) * reach, y, sin(a) * reach)
+		if leaves > 0.05:
+			_beam(st, Vector3(0, y - 1.0, 0), center, 0.09, white)
+			var size := (0.55 + 0.45 * leaves) * (1.1 - 0.3 * t)
+			var base := Color(0.32, 0.5, 0.16).lerp(Color(0.26, 0.44, 0.13), rng.randf())
+			_blob(st, rng, center - Vector3(0, 0.4, 0), Vector3(1.8, 2.1, 1.8) * size * rng.randf_range(0.85, 1.15), season.birch_leaf_color(base))
+		else:
+			# Paljaat oksat ja riippuvat punaruskeat varvut
+			var twig := Color(0.33, 0.24, 0.22)
+			var tip := center * 1.5 + Vector3(0, 1.2, 0)
+			_beam(st, Vector3(0, y - 1.2, 0), tip, 0.09, Color(0.7, 0.68, 0.64))
+			_beam(st, tip, tip + Vector3(center.x * 0.3, -1.3, center.z * 0.3), 0.05, twig)
+			_beam(st, center, center + Vector3(-center.z * 0.4, -1.0, center.x * 0.4), 0.05, twig)
+
+
+## Kaukaisten puiden kevyt siluetti
+func _tree_far_mesh(species: TreeKind) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_cone(st, 0.0, 9.0, 0.18, Color(0.85, 0.85, 0.8), 5)
-	# Lehvästö: koko ja väri vuodenajan mukaan (keväällä vaalea, syksyllä ruska, talvella paljas)
-	var leaves := season.leaves
-	if leaves > 0.05:
-		var size := 0.55 + 0.45 * leaves
-		_cone(st, 3.0 + (1.0 - size) * 2.0, 10.5, 2.0 * size, season.birch_leaf_color(Color(0.32, 0.5, 0.16)), 8)
-		_cone(st, 7.0, 3.0 + (1.0 - size) * 2.5, 1.9 * size, season.birch_leaf_color(Color(0.28, 0.46, 0.14)), 8) # alaspäin osoittava kartio pyöristää latvuksen
-	else:
-		# Paljaat oksat: muutama ohut kartio
-		for k in 4:
-			var branch := Color(0.35, 0.3, 0.27)
-			_cone(st, 4.0 + k * 1.3, 9.5, 0.9 - k * 0.15, branch, 5)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 200 + species
+	match species:
+		TreeKind.PINE:
+			_cone(st, 0.0, 14.5, 0.3, Color(0.6, 0.36, 0.2), 4)
+			_blob(st, rng, Vector3(0, 13.0, 0), Vector3(2.4, 1.5, 2.4), Color(0.15, 0.25, 0.13), season.snow * 0.8, 5)
+		TreeKind.SPRUCE:
+			var dark := Color(0.08, 0.18, 0.09).lerp(Color(0.8, 0.84, 0.88), season.snow * 0.4)
+			_cone(st, 0.2, 14.5, 2.6, dark, 6)
+		TreeKind.BIRCH:
+			_cone(st, 0.0, 11.0, 0.2, Color(0.86, 0.85, 0.8), 4)
+			if season.leaves > 0.05:
+				var size := 0.55 + 0.45 * season.leaves
+				_blob(st, rng, Vector3(0, 9.0, 0), Vector3(2.4, 3.2, 2.4) * size, season.birch_leaf_color(Color(0.3, 0.48, 0.15)), 0.0, 5)
+			else:
+				_blob(st, rng, Vector3(0, 9.0, 0), Vector3(2.0, 2.8, 2.0), Color(0.33, 0.25, 0.23), 0.0, 5)
 	st.set_material(_vertex_color_material())
 	return st.commit()
 
