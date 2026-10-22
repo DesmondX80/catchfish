@@ -42,7 +42,11 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
 | F1 | ohje |
-| Esc | tauko (myös ohjeet ja kalakirja) |
+| Esc | tauko (myös ohjeet, kalakirja ja asetukset) |
+
+Hiiren herkkyyden, käänteisen pystyohjauksen ja äänenvoimakkuudet (kaikki äänet,
+taustaäänet, efektit, kalastajan puhe) voi säätää alkuvalikon tai taukovalikon
+kohdasta *Asetukset*. Asetukset tallennetaan koneelle.
 
 ## Simulaatio lyhyesti
 

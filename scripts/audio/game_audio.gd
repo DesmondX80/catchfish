@@ -5,6 +5,8 @@ extends Node
 ## paikassa. Äänet syntetisoidaan työkalulla tools/make_sounds.py; moottorin, aaltojen
 ## ja tuulen äänet, airo- ja melavedot sekä taivaan lintujen huudot tehdään
 ## nauhoituksista (tools/make_recorded_sounds.py).
+## Taustaäänet (tuuli, sade, laineet, linnut) soivat Taustaäänet-väylällä, muut
+## Efektit-väylällä; voimakkuudet säädetään asetuksista (Settings).
 
 const DIR := "res://assets/sounds/"
 const LOOPS := ["wind_light_loop", "wind_strong_loop", "wind_light_winter_loop", "wind_strong_winter_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
@@ -98,22 +100,27 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	_wind_light = AudioStreamPlayer.new()
 	_wind_light.stream = _streams["wind_light_loop"]
 	_wind_light.volume_db = -80.0
+	_wind_light.bus = "Taustaäänet"
 	add_child(_wind_light)
 	_wind_light.play()
 	_wind_strong = AudioStreamPlayer.new()
 	_wind_strong.stream = _streams["wind_strong_loop"]
 	_wind_strong.volume_db = -80.0
+	_wind_strong.bus = "Taustaäänet"
 	add_child(_wind_strong)
 	_wind_strong.play()
 
 	_rain = AudioStreamPlayer.new()
 	_rain.stream = _streams["rain_loop"]
 	_rain.volume_db = -80.0
+	_rain.bus = "Taustaäänet"
 	add_child(_rain)
 
 	_lap = _attached_loop("water_lap_loop", 6.0)
+	_lap.bus = "Taustaäänet"
 	_lap.play()
 	_waves = _attached_loop("water_waves_loop", 8.0)
+	_waves.bus = "Taustaäänet"
 	_waves.play()
 	_motor = _attached_loop("motor_loop", 20.0)
 	_reel = _attached_loop("reel_loop", 3.0)
@@ -122,6 +129,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	_chime = AudioStreamPlayer.new()
 	_chime.stream = _streams["record_chime"]
 	_chime.volume_db = -6.0
+	_chime.bus = "Efektit"
 	add_child(_chime)
 
 	boat.sound_event.connect(play_at)
@@ -136,6 +144,7 @@ func _attached_loop(name: String, unit_size: float) -> AudioStreamPlayer3D:
 	p.stream = _streams[name]
 	p.unit_size = unit_size
 	p.volume_db = -80.0
+	p.bus = "Efektit"
 	boat.add_child(p)
 	return p
 
@@ -152,6 +161,7 @@ func play_at(sound: String, at: Vector3) -> void:
 	p.unit_size = cfg[1]
 	p.max_distance = cfg[1] * 40.0
 	p.pitch_scale = 1.0 + _rng.randf_range(-cfg[2], cfg[2])
+	p.bus = "Taustaäänet" if sound.begins_with("bird_") else "Efektit"
 	add_child(p)
 	p.global_position = at
 	p.finished.connect(p.queue_free)

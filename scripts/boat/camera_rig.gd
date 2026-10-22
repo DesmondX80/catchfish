@@ -43,8 +43,9 @@ func setup(target: Boat, lake_data: LakeData) -> void:
 
 func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and GameInput.active():
-		yaw -= event.relative.x * 0.0035
-		pitch = clampf(pitch + event.relative.y * 0.0035, -0.15, 1.3)
+		var look: Vector2 = event.relative * Settings.mouse_look_scale() * 0.0035
+		yaw -= look.x
+		pitch = clampf(pitch + look.y, -0.15, 1.3)
 	elif event is InputEventMouseButton and event.pressed:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			distance = maxf(3.0, distance * 0.9)

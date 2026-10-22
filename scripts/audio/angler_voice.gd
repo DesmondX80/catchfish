@@ -80,6 +80,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, hud_no
 	_player = AudioStreamPlayer3D.new()
 	_player.unit_size = 6.0
 	_player.volume_db = -2.0
+	_player.bus = "Puhe"
 	boat.angler.add_child(_player)
 	_player.position = Vector3(0, 0.9, 0) # pään korkeudella
 	fishing.voice.connect(func(event): say(event, event.begins_with(URGENT_PREFIX)))

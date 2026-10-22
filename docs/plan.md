@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 22.10.2026. Nykyinen versio **0.40.1**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.1)).
+Päivitetty 22.10.2026. Nykyinen versio **0.41.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.41.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -10,7 +10,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ## Tähänastinen tilanne
 
-### Valmiina (versiot 0.1–0.40.1)
+### Valmiina (versiot 0.1–0.41.0)
 
 | Alue | Ominaisuudet |
 |---|---|
@@ -27,6 +27,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot), tuuli (heikko / kova, talvella omat) ja taivaan lintujen huudot oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
+| Asetukset | Hiiren herkkyys, käänteinen pystyohjaus ja äänenvoimakkuudet (kaikki, taustaäänet, efektit, puhe) alku- ja taukovalikossa, tallennetaan koneelle |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
 
 ### Tehtävänhallinta
@@ -72,7 +73,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | # | Tehtävä |
 |---|---|
-| 26 | Asetukset: hiiren herkkyys, käänteinen ohjaus, äänenvoimakkuudet |
 | 27 | Peliohjaimen tuki |
 | 28 | Ensimmäisen kerran vinkit |
 | 6 | Ohjeen päivitys (backlog) – README:n "Kalat ovat dataa: niitä ei näe" -kohta ja ohjaustaulukko kannattaa tarkistaa |
@@ -399,6 +399,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   pituuden, laskun ja noston nopeuden, ajoyrityksen ja liikkuvasta veneestä
   laskun.
   Julkaistu [v0.40.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.40.1).
+- **#26 Asetukset – tehty (0.41.0).** Alkuvalikon Asetukset on kaksipalstainen
+  (ohjaus ja äänet | aika ja sää), ja taukovalikossa on oma Asetukset-näkymä
+  (`SettingsControls`, `scripts/ui/settings_controls.gd`). Hiiren herkkyys
+  0,25–3,0× ja käänteinen pystyohjaus vaikuttavat kameran kääntöön
+  (`Settings.mouse_look_scale`). Äänet soivat omilla mikseriväylillä
+  (Taustaäänet: tuuli, sade, laineet, linnut; Efektit: muut pelin äänet; Puhe:
+  kalastaja), jotka `Settings` luo käynnistyessä; nollaan säädetty väylä
+  mykistyy, M mykistää edelleen kaiken. Asetukset tallentuvat
+  `user://asetukset.cfg`:hen, testiajot käyttävät oletuksia. `--pausetest`
+  tarkistaa voimakkuudet, mykistyksen, herkkyyden ja käänteisen ohjauksen (ja
+  sen painikeindeksit korjattiin Kalakirja-painikkeen jäljiltä).
 
 
 ## Huomioita ja avoimia kysymyksiä

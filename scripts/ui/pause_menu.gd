@@ -1,6 +1,7 @@
 class_name PauseMenu
 extends CanvasLayer
-## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Kalakirja, Mene kotiin (alkuvalikkoon).
+## Taukovalikko (Esc): Jatka kalastusta, Ohjeet, Kalakirja, Asetukset (ohjaus ja
+## äänet), Mene kotiin (alkuvalikkoon).
 ## Peli on pysähdyksissä valikon ollessa auki; tämä solmu toimii tauollakin.
 
 signal resumed
@@ -9,6 +10,8 @@ signal going_home
 var _box: Control
 var _help: Control
 var _book: FishBookView
+var _settings: Control
+var _settings_back: Button
 var _buttons: Array[Button] = []
 
 
@@ -57,7 +60,7 @@ func _build(help_text: String) -> void:
 	title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45))
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(title)
-	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Kalakirja", _show_book], ["Mene kotiin", _go_home]]:
+	for item in [["Jatka kalastusta", resume], ["Ohjeet", _show_help], ["Kalakirja", _show_book], ["Asetukset", _show_settings], ["Mene kotiin", _go_home]]:
 		var b := _button(item[0])
 		b.pressed.connect(item[1])
 		col.add_child(b)
@@ -86,6 +89,29 @@ func _build(help_text: String) -> void:
 	_buttons.append(back)
 	_help.visible = false
 
+	# Asetukset: ohjaus ja äänenvoimakkuudet (muutokset kuuluvat heti)
+	_settings = CenterContainer.new()
+	add_child(_settings)
+	_settings.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	var settings_panel := PanelContainer.new()
+	settings_panel.add_theme_stylebox_override("panel", sb)
+	_settings.add_child(settings_panel)
+	var settings_col := VBoxContainer.new()
+	settings_col.add_theme_constant_override("separation", 18)
+	settings_panel.add_child(settings_col)
+	var settings_title := Label.new()
+	settings_title.text = "Asetukset"
+	settings_title.add_theme_font_size_override("font_size", 32)
+	settings_title.add_theme_color_override("font_color", Color(0.95, 0.85, 0.45))
+	settings_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	settings_col.add_child(settings_title)
+	settings_col.add_child(SettingsControls.new())
+	_settings_back = _button("Takaisin")
+	_settings_back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	_settings_back.pressed.connect(_show_menu)
+	settings_col.add_child(_settings_back)
+	_settings.visible = false
+
 	_book = FishBookView.new()
 	_book.visible = false
 	add_child(_book)
@@ -109,6 +135,7 @@ func resume() -> void:
 
 func _show_menu() -> void:
 	_help.visible = false
+	_settings.visible = false
 	_book.visible = false
 	_box.visible = true
 	_buttons[0].grab_focus()
@@ -118,6 +145,12 @@ func _show_help() -> void:
 	_box.visible = false
 	_help.visible = true
 	_buttons[-1].grab_focus()
+
+
+func _show_settings() -> void:
+	_box.visible = false
+	_settings.visible = true
+	_settings_back.grab_focus()
 
 
 func _show_book() -> void:
@@ -139,7 +172,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not event.is_action_pressed("pause"):
 		return
 	get_viewport().set_input_as_handled()
-	if _help.visible:
-		_show_menu() # Esc ohjeista takaisin valikkoon
+	if _help.visible or _settings.visible:
+		_show_menu() # Esc ohjeista tai asetuksista takaisin valikkoon
 	else:
 		resume()

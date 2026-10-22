@@ -1,7 +1,8 @@
 class_name StartMenu
 extends CanvasLayer
 ## Aloitusvalikko: "Mene kalalle" avaa järven kartan, josta valitaan
-## aloituspaikka; "Kalakirja" (saadut lajit); "Asetukset" (todellinen aika ja sää);
+## aloituspaikka; "Kalakirja" (saadut lajit); "Asetukset" (ohjaus, äänet,
+## todellinen aika ja sää);
 ## "Lopeta peli" sulkee pelin.
 
 signal start_selected(index: int)
@@ -12,6 +13,7 @@ var _map_view: Control
 var _map_bg: ColorRect
 var _settings: Control
 var _real_toggle: CheckButton
+var _controls: SettingsControls
 var _weather_label: Label
 var _real_weather: RealWeather
 var _map_real: CheckButton
@@ -238,11 +240,27 @@ func _build_settings() -> void:
 	sb.set_content_margin_all(30)
 	panel.add_theme_stylebox_override("panel", sb)
 	center.add_child(panel)
+	var outer := VBoxContainer.new()
+	outer.add_theme_constant_override("separation", 16)
+	panel.add_child(outer)
+	outer.add_child(_label("Asetukset", 40, Color(0.95, 0.85, 0.45)))
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 40)
+	outer.add_child(columns)
+
+	# Vasemmalla ohjaus ja äänet, oikealla aika ja sää
+	var controls_box := VBoxContainer.new()
+	controls_box.add_theme_constant_override("separation", 16)
+	columns.add_child(controls_box)
+	controls_box.add_child(_section_title("Ohjaus ja äänet"))
+	_controls = SettingsControls.new()
+	controls_box.add_child(_controls)
+
 	var box := VBoxContainer.new()
 	box.add_theme_constant_override("separation", 16)
-	box.custom_minimum_size.x = 460
-	panel.add_child(box)
-	box.add_child(_label("Asetukset", 40, Color(0.95, 0.85, 0.45)))
+	box.custom_minimum_size.x = 420
+	columns.add_child(box)
+	box.add_child(_section_title("Aika ja sää"))
 
 	_real_toggle = CheckButton.new()
 	_real_toggle.text = "Todellinen kellonaika ja sää\n(Saloinen, Raahe)"
@@ -262,8 +280,9 @@ func _build_settings() -> void:
 	var credit := _label("Säätiedot: Ilmatieteen laitos ja Open-Meteo (CC BY 4.0)", 12, Color(0.65, 0.68, 0.62))
 	box.add_child(credit)
 	var back := _button("Takaisin", 20)
+	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.pressed.connect(_show_main)
-	box.add_child(back)
+	outer.add_child(back)
 	_settings.visible = false
 
 	_real_weather = RealWeather.new()
@@ -272,6 +291,12 @@ func _build_settings() -> void:
 		_weather_label.text = "Nyt Saloisissa: %s\n(%s, klo %s)" % [RealWeather.summary(data), data["source"], data["time"]])
 	_real_weather.failed.connect(func(msg):
 		_weather_label.text = msg + ". Pelissä käytetään silloin simuloitua säätä.")
+
+
+func _section_title(text: String) -> Label:
+	var l := _label(text, 22, Color(0.9, 0.84, 0.72))
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	return l
 
 
 func _on_real_toggled(on: bool) -> void:

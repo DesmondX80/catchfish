@@ -1,7 +1,8 @@
 extends Node
 ## Taukovalikon testi oikealla Esc-näppäimellä ja hiiren klikkauksilla:
 ##   godot -- --pausetest   (vaatii ikkunan)
-## Esc avaa valikon ja pysäyttää pelin → Ohjeet → Takaisin → Jatka kalastusta →
+## Esc avaa valikon ja pysäyttää pelin → Ohjeet → Takaisin → Asetukset (äänet,
+## hiiren herkkyys ja käänteinen ohjaus) → Esc → Jatka kalastusta →
 ## Esc → Esc jatkaa → Esc → Mene kotiin avaa alkuvalikon.
 ## --shots=KANSIO tallentaa kuvat taukovalikosta ja kotinäkymästä.
 
@@ -65,10 +66,10 @@ func _finish(name: String, ok: bool) -> void:
 
 func _process(_delta: float) -> void:
 	_frame += 1
-	if _frame >= 60:
+	if _frame >= 80 or not is_instance_valid(main):
 		return _late()
 	var pm: PauseMenu = main.pause_menu
-	var b := pm._buttons # Jatka, Ohjeet, Mene kotiin, Takaisin
+	var b := pm._buttons # Jatka, Ohjeet, Kalakirja, Asetukset, Mene kotiin, Takaisin
 	match _frame:
 		10:
 			_clock = main.sky.minutes
@@ -83,31 +84,59 @@ func _process(_delta: float) -> void:
 			_click(b[1])
 		26:
 			_check("Ohjeet aukesivat", pm._help.visible and not pm._box.visible)
-			_click(b[3])
+			_click(b[-1])
 		32:
 			_check("Takaisin palasi valikkoon", pm._box.visible and not pm._help.visible)
-			_click(b[0])
+			_check("painikkeen teksti on Asetukset", b[3].text == "Asetukset")
+			_click(b[3])
 		38:
+			_check("Asetukset aukesivat", pm._settings.visible and not pm._box.visible)
+			_shot("tauko-asetukset")
+			var controls: SettingsControls = pm._settings.find_children("*", "SettingsControls", true, false)[0]
+			controls.volume_sliders["Efektit"].value = 0.5
+			controls.volume_sliders["Puhe"].value = 0.0
+			controls.sensitivity.value = 2.0
+			_click(controls.invert)
+		42:
+			var fx := AudioServer.get_bus_index("Efektit")
+			_check("efektien voimakkuus 50 %% (%.1f dB)" % AudioServer.get_bus_volume_db(fx), absf(AudioServer.get_bus_volume_db(fx) - linear_to_db(0.5)) < 0.01)
+			_check("puhe nollassa mykistää väylän", AudioServer.is_bus_mute(AudioServer.get_bus_index("Puhe")))
+			_check("hiiren herkkyys 2,0 ja käänteinen ohjaus", is_equal_approx(Settings.mouse_sensitivity, 2.0) and Settings.invert_y)
+			_check("kalastajan puhe soi Puhe-väylällä", main.voice._player.bus == &"Puhe")
+			_key(KEY_ESCAPE)
+		46:
+			_check("Esc asetuksista palasi valikkoon", pm.visible and pm._box.visible and not pm._settings.visible)
+			_click(b[0])
+		50:
 			_check("Jatka kalastusta sulki valikon", not pm.visible)
 			_check("peli jatkuu", not get_tree().paused)
 			_check("hiiri kaapattu peliin", Input.mouse_mode == Input.MOUSE_MODE_CAPTURED)
+			_clock = main.camera_rig.pitch
+			var ev := InputEventMouseMotion.new()
+			ev.relative = Vector2(0, 20)
+			Input.parse_input_event(ev)
+		54:
+			# Käänteinen ohjaus ja herkkyys 2: hiiri alas kääntää kameraa ylös 20 * 2 * 0,0035
+			var turned: float = main.camera_rig.pitch - _clock
+			_check("hiiri alas kääntää käänteisenä toiseen suuntaan (%.3f)" % turned, absf(turned + 0.14) < 0.001)
+			Settings.invert_y = false
+			Settings.mouse_sensitivity = 1.0
 			_key(KEY_ESCAPE)
-		44:
+		60:
 			_check("Esc avasi valikon uudelleen", pm.visible)
 			_key(KEY_ESCAPE)
-		50:
+		66:
 			_check("toinen Esc jatkoi peliä", not pm.visible and not get_tree().paused)
 			_key(KEY_ESCAPE)
-		56:
-			_check("painikkeen teksti on Mene kotiin", b[2].text == "Mene kotiin")
-			_click(b[2])
-
+		72:
+			_check("painikkeen teksti on Mene kotiin", b[4].text == "Mene kotiin")
+			_click(b[4])
 
 
 ## Kotiin paluun jälkeen: pää-scene on ladattu uudelleen
 func _late() -> void:
 	match _frame:
-		90:
+		110:
 			var home: Node = get_tree().current_scene
 			_check("Mene kotiin avasi alkuvalikon", not is_instance_valid(main) and home.menu != null and home.menu._main.visible)
 			_check("peli ei ole käynnissä kotona", not home.running and not get_tree().paused)
@@ -115,6 +144,6 @@ func _late() -> void:
 			_check("alkuvalikossa lukee Kotona", "Kotona" in texts)
 			_check("hiiri vapaana valikossa", Input.mouse_mode == Input.MOUSE_MODE_VISIBLE)
 			_shot("koti-valikko")
-		92:
+		112:
 			_finish("valmis", true)
 			get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
