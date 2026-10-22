@@ -340,6 +340,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vaihtelevasti fysiikka-askeleen jälkeen ja nyki veneen liikkuessa (tuuli,
   moottori). `CatchTub.view_point()` lasketaan nyt rungon tämänhetkisestä
   asennosta; `--tubtest` tarkistaa joka kuvassa kameran paikan ajelehtivassa veneessä.
+  Julkaistu [v0.36.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.36.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
