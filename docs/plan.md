@@ -410,6 +410,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   `user://asetukset.cfg`:hen, testiajot käyttävät oletuksia. `--pausetest`
   tarkistaa voimakkuudet, mykistyksen, herkkyyden ja käänteisen ohjauksen (ja
   sen painikeindeksit korjattiin Kalakirja-painikkeen jäljiltä).
+  Julkaistu [v0.41.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.41.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
