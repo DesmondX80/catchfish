@@ -32,51 +32,76 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 
 ### Tehtävänhallinta
 
-Tehtävät ovat Plane Cloudissa, projekti **CATCHFISH**. Tila 20.10.2026:
-14 tehtävää valmiina, 1 peruttu, 26 avoinna.
+Tehtävät ovat Plane Cloudissa, projekti **CATCHFISH**. Tila 23.10.2026:
+41 tehtävää valmiina, 1 työn alla, 33 avoinna (8 Todo, 25 Backlog).
 
 ## Suunnitelma: seuraavat tehtävät
 
 Prioriteetti Planen mukaan, sitten oma suositusjärjestys. Numerot ovat Planen
 tunnisteita (CATCHFISH-N).
 
-### Kiireelliset ja korkeat (Todo)
+### Työn alla
+
+| # | Tehtävä |
+|---|---|
+| 48 | Veneen varjo |
+
+### Kiireelliset ja korkeat
 
 Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
-### Pelattavuus ja realismi (Todo)
+### Pelattavuus ja realismi
 
-| # | Tehtävä | Huomio |
+| # | Tehtävä | Tila | Huomio |
+|---|---|---|---|
+| 36 | Verkkokalastus | Todo | Uusi pyyntitapa |
+| 21 | Tuulikellunta ja uistinankkuri | Todo | |
+| 34 | Haavinta aivan omaksi animaatiokseen | Backlog | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
+| 8 | Lisää välineitä | Backlog | Onki tehty (#15); syöttikala virvelillä puuttuu |
+| 56 | Onkimiseen madon laittaminen | Backlog | |
+| 62 | Hämärä- ja yökalastus: otsalamppu ja veneen valo | Backlog | |
+| 63 | Siiman vahvuus ja vaihto | Backlog | Pohjana `line_strength` (fishing.gd) |
+| 64 | Kiinni tarttuneen uistimen irrotus | Backlog | |
+| 65 | Rantakalastus | Backlog | Pohjana jäällä kävely |
+| 66 | Kevään ja syksyn heikot jäät | Backlog | |
+
+### Maailma, grafiikka, kamera ja äänet
+
+| # | Tehtävä | Tila |
 |---|---|---|
-| 34 | Haavinta aivan omaksi animaatiokseen | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
-| 36 | Verkkokalastus | Uusi pyyntitapa |
-| 8 | Lisää välineitä | Onki tehty (#15); syöttikala virvelillä puuttuu |
+| 42 | FPV-kamera | Todo |
+| 53 | Uisteluun vavan kärjen näkymä | Backlog |
+| 61 | Uistimet samannäköisiksi siiman päässä kuin pakissa | Backlog |
+| 59 | Tuolit oikeinpäin pöydän ympärille | Backlog |
+| 60 | Musiikki alkuvalikkoon | Backlog |
+| 67 | Aamusumu ja usva | Backlog |
+| 68 | Muita veneitä järvellä | Backlog |
+| 69 | Rannan äänimaailma ja pintapolskeet | Backlog |
 
-### Grafiikka ja äänet (Todo/Backlog)
+### Palkitsevuus ja uramoodi
 
-| # | Tehtävä |
-|---|---|
-| 37 | Veneen malli |
-| 41 | Koho kelluu aaltojen mukana (backlog) |
+| # | Tehtävä | Tila |
+|---|---|---|
+| 22 | Trofeekuva saaliista | Todo |
+| 24 | Uramoodi: kalastonhoitomaksu ja kalan vapautus | Todo |
+| 25 | Uramoodi: tilauskalat | Todo |
+| 7 | Uramoodin laajennus: kauppa, välineiden päivitykset ja tehtävät | Todo |
+| 46 | Tyhjennetään ennätyskalalista | Todo |
+| 70 | Saavutukset | Backlog |
+| 71 | Päivän saalisyhteenveto | Backlog |
 
-### Palkitsevuus ja uramoodi (Todo)
+### Käytettävyys ja tekniikka
 
-| # | Tehtävä |
-|---|---|
-| 22 | Trofeekuva saaliista |
-| 24 | Uramoodi: kalastonhoitomaksu ja kalan vapautus |
-| 25 | Uramoodi: tilauskalat |
-| 7 | Uramoodin laajennus: kauppa, välineiden päivitykset ja tehtävät |
-
-### Käytettävyys (Todo/Backlog)
-
-| # | Tehtävä |
-|---|---|
-| 27 | Peliohjaimen tuki |
-| 28 | Ensimmäisen kerran vinkit |
-| 6 | Ohjeen päivitys (backlog) – README:n "Kalat ovat dataa: niitä ei näe" -kohta ja ohjaustaulukko kannattaa tarkistaa |
-
-Peruttu: #21 Tuulikellunta ja uistinankkuri.
+| # | Tehtävä | Tila |
+|---|---|---|
+| 27 | Peliohjaimen tuki | Backlog |
+| 28 | Ensimmäisen kerran vinkit | Backlog |
+| 6 | Ohjeen päivitys – README:n "Kalat ovat dataa: niitä ei näe" -kohta ja ohjaustaulukko kannattaa tarkistaa | Backlog |
+| 58 | FPS-laskuri | Backlog |
+| 72 | Kaikuluotaimen asetukset | Backlog |
+| 73 | Englanninkielinen versio | Backlog |
+| 74 | Automaattitestit GitHub Actionsiin | Backlog |
+| 75 | Selainversion suorituskyky | Backlog |
 
 ## Arkkitehtuuri lyhyesti
 
@@ -129,6 +154,7 @@ godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
+godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 ```
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
@@ -457,6 +483,22 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   soutaa ja meloo 12 m/s tuuleen, jonka puuskat nousevat 18 m/s:iin, ja
   tarkistaa myös tyynen sään huippunopeudet.
   Julkaistu [v0.44.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.44.1).
+- **#48 Veneen varjo – tehty (0.45.0).** Läpikuultava vesi ei näyttänyt
+  varjoa pinnassa, joten auringon varjo piirtyi pohjaan ja näkyi syvältä
+  irrallisena läiskänä metrien päässä veneen vierestä. Vesivarjostimessa on
+  nyt oma `light()`: auringonvalo siroaa humusvedessä (`scatter_color`,
+  `sun_scatter`), joten aurinkoinen vesi hehkuu ruskeana ja veneen varjo
+  erottuu pinnassa rungosta alkaen; varjossa myös kimallus sammuu (GGX kuten
+  Godotissa). Sironta lisätään omana valonaan eikä ALBEDOn kautta, koska
+  lineaarisena ALBEDO on enimmäkseen taivaan heijastusta: muuten pinta
+  vaaleni ja `--foamshots` näki rannassa valkoista. Heijastuksen ja vaahdon
+  osuus ei siroa (`scatter_weight`). Maasto ja
+  pohja saivat oman varjostimen (`terrain.gdshader`), jossa auringon varjo
+  sumenee veden alla syvyyden mukaan (`shadow_fade`), joten 1–2 m syvyydessä
+  pohjavarjo näkyy vielä haaleana. `--shadowshots=<kansio>` ottaa kuvat
+  ylhäältä aamulla, keskipäivällä ja illalla syvässä ja matalassa vedessä ja
+  tarkistaa, että vesi rungon varjopuolella on yli 12 % tummempaa kuin
+  aurinkoisella puolella.
 
 
 ## Huomioita ja avoimia kysymyksiä

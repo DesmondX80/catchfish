@@ -70,9 +70,8 @@ func _summer_ground_color(c: int, r: int, h: float) -> Color:
 
 
 func _build_terrain() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.vertex_color_use_as_albedo = true
-	mat.roughness = 1.0
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/terrain.gdshader")
 	var cs := lake.cell_size
 	for r0 in range(0, lake.rows - 1, CHUNK):
 		for c0 in range(0, lake.cols - 1, CHUNK):

@@ -14,9 +14,15 @@ uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
 uniform float rain = 0.0; // sateen voimakkuus: pisararenkaat pinnassa
 uniform float ice = 0.0; // talvi: järvi jäässä, lumen peittämä jää
 uniform vec3 foam_color : source_color = vec3(0.9, 0.92, 0.92);
+// Auringonvalo siroaa humusveden sisällä: aurinkoinen vesi hehkuu ruskeana,
+// varjossa ei. Tästä veneen varjo erottuu pinnassa.
+uniform vec3 scatter_color : source_color = vec3(0.3, 0.24, 0.13);
+uniform float sun_scatter = 0.1;
 
 varying vec3 world_pos;
 varying float shore_dist; // metreinä rantaan (verteksiväristä)
+varying float spec_f0; // pinnan heijastavuus kohtisuoraan (Godotin kaava 0,16 * SPECULAR²)
+varying float scatter_weight; // veden sisältä tulevan valon osuus (ei heijastusta eikä vaahtoa)
 
 float rhash(vec2 p) {
 	return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -162,8 +168,10 @@ void fragment() {
 	SPECULAR = 0.4;
 	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa
 	ALPHA = mix(0.55, 0.97, fresnel);
+	scatter_weight = 1.0 - fresnel;
 	if (ice < 0.5) {
 		float foam = whitecaps(p, footprint);
+		scatter_weight *= 1.0 - foam;
 		ALBEDO = mix(ALBEDO, foam_color, foam);
 		ALPHA = mix(ALPHA, 1.0, foam);
 		ROUGHNESS = mix(ROUGHNESS, 0.85, foam);
@@ -182,4 +190,28 @@ void fragment() {
 		SPECULAR = 0.3;
 		ALPHA = 1.0;
 	}
+	spec_f0 = 0.16 * SPECULAR * SPECULAR;
+}
+
+// Oma valaistus, jotta veneen varjo näkyy pinnassa rungosta alkaen: varjossa
+// pinnan sironta ja auringon kimallus sammuvat (pohjan varjo häipyy syvyyden
+// mukaan, ks. terrain.gdshader).
+void light() {
+	float ndl = clamp(dot(NORMAL, LIGHT), 0.0, 1.0);
+	DIFFUSE_LIGHT += ndl * ATTENUATION * LIGHT_COLOR / PI;
+	if (LIGHT_IS_DIRECTIONAL) {
+		// Sironta lisätään suoraan (ei kerrota ALBEDOlla, joka on enimmäkseen taivaan heijastusta)
+		SPECULAR_LIGHT += scatter_color * sun_scatter * scatter_weight * (1.0 - ice) * ATTENUATION * LIGHT_COLOR / PI;
+	}
+	// GGX-kimallus
+	vec3 h = normalize(VIEW + LIGHT);
+	float ndh = clamp(dot(NORMAL, h), 0.0, 1.0);
+	float ndv = clamp(dot(NORMAL, VIEW), 0.001, 1.0);
+	float a = ROUGHNESS * ROUGHNESS;
+	float a2 = a * a;
+	float d = ndh * ndh * (a2 - 1.0) + 1.0;
+	float dist = a2 / (PI * d * d);
+	float vis = 0.5 / (ndl * sqrt(ndv * ndv * (1.0 - a2) + a2) + ndv * sqrt(ndl * ndl * (1.0 - a2) + a2) + 0.0001);
+	float f = spec_f0 + (1.0 - spec_f0) * pow(1.0 - clamp(dot(LIGHT, h), 0.0, 1.0), 5.0);
+	SPECULAR_LIGHT += dist * vis * f * ndl * ATTENUATION * LIGHT_COLOR * SPECULAR_AMOUNT;
 }

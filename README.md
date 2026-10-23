@@ -70,6 +70,9 @@ painuu, hauki hyppää).
   noin 4 m/s tuulesta alkaen aallonharjat murtuvat selällä (yli 200 m
   rannasta) vaahtopäiksi, jotka ajelehtivat tuulen mukana ja hajoavat;
   kovalla tuulella pintaan jää myös tuulen suuntaisia vaahtojuovia.
+  Veneen varjo lankeaa vedenpintaan rungosta alkaen auringon mukaan:
+  aamulla ja illalla pitkänä, keskipäivällä lähes veneen alla. Ruskeassa
+  vedessä pohjan varjo sumenee syvyyden mukaan.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti
   pohjaan. Lusikka ui kelatessa ja uistellessa 1,5 metrin syvyydessä
   ja nopeasti kelatessa 1 metrissä (syvältä se nousee sinne hiljalleen).
