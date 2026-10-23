@@ -1434,23 +1434,35 @@ func _recognize_fish() -> void:
 	voice.emit("fish_" + _fish["sp"])
 
 
+## Saaliskirjan merkintä; lure = uistimen tai verkon nimi
+static func catch_entry(sp: String, weight: float, lure_name: String, clock: String, place: String) -> Dictionary:
+	return {
+		"species": sp,
+		"name": Species.DATA[sp]["name"],
+		"weight": snappedf(weight, 0.01),
+		"length": snappedf(Species.length_cm(sp, weight), 0.5),
+		"lure": lure_name,
+		"time": clock,
+		"place": place,
+		"date": Time.get_datetime_string_from_system(false, true),
+	}
+
+
+## Saalis kirjoihin (vapa ja verkko): kertakalastuksen saaliit ennätyslistalle
+## (uramoodin saalis menee saaviin), kalakirjaan kaikki saaliit, myös uramoodin.
+## Palauttaa {"record": uusi ennätys, "new_species": laji avautui kalakirjaan}
+static func record_catch(entry: Dictionary) -> Dictionary:
+	var record := false if Career.active else CatchLog.add(entry)
+	var first := FishBook.add(entry)
+	return {"record": record, "new_species": first}
+
+
 func _try_land() -> void:
 	if _stamina < 0.35:
 		var sp: String = _fish["sp"]
 		var weight: float = _fish["weight"]
-		var entry := {
-			"species": sp,
-			"name": Species.DATA[sp]["name"],
-			"weight": snappedf(weight, 0.01),
-			"length": snappedf(Species.length_cm(sp, weight), 0.5),
-			"lure": lure()["name"],
-			"time": sky.clock_text(),
-			"place": lake.nearest_place(boat.pos.x, boat.pos.y),
-			"date": Time.get_datetime_string_from_system(false, true),
-		}
-		# Kertakalastuksen saaliit ennätyslistalle; uramoodin saalis menee saaviin
-		_landing_record = false if Career.active else CatchLog.add(entry)
-		FishBook.add(entry) # kalakirjaan kaikki saaliit, myös uramoodin
+		var entry := catch_entry(sp, weight, lure()["name"], sky.clock_text(), lake.nearest_place(boat.pos.x, boat.pos.y))
+		_landing_record = record_catch(entry)["record"]
 		_landing_entry = entry
 		_landing_species = sp
 		_landing_weight = weight

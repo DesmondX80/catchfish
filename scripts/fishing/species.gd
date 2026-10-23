@@ -22,6 +22,10 @@ class_name Species
 ## length_a       paino (g) = length_a * pituus (cm)^3
 ## per_km2        kalojen määrä neliökilometrillä
 ## school         parven koko
+## net            verkon silmäkokovalinta: k = parhaiten tarttuvan kalan pituus (cm)
+##                silmäkoon millimetriä kohden (ruumiinmuoto), sigma = valinnan
+##                leveys suhteessa parhaaseen pituuteen (hauki tarttuu hampaistaan
+##                kaikenkokoisiin verkkoihin, ahven ja särki tarkasti kiduksistaan)
 
 const DATA := {
 	"hauki": {
@@ -48,6 +52,7 @@ const DATA := {
 		"length_a": 0.0063,
 		"per_km2": 400,
 		"school": 1,
+		"net": {"k": 1.0, "sigma": 0.45},
 	},
 	"ahven": {
 		"name": "Ahven",
@@ -72,6 +77,7 @@ const DATA := {
 		"length_a": 0.0125,
 		"per_km2": 2500,
 		"school": 30,
+		"net": {"k": 0.62, "sigma": 0.25},
 	},
 	"sarki": {
 		"name": "Särki",
@@ -96,6 +102,7 @@ const DATA := {
 		"length_a": 0.0128,
 		"per_km2": 2000,
 		"school": 25,
+		"net": {"k": 0.66, "sigma": 0.25},
 	},
 	"kiiski": {
 		"name": "Kiiski",
@@ -118,6 +125,7 @@ const DATA := {
 		"length_a": 0.0145,
 		"per_km2": 1000,
 		"school": 15,
+		"net": {"k": 0.6, "sigma": 0.25},
 	},
 	"lahna": {
 		"name": "Lahna",
@@ -142,6 +150,7 @@ const DATA := {
 		"length_a": 0.0143,
 		"per_km2": 400,
 		"school": 10,
+		"net": {"k": 0.72, "sigma": 0.2},
 	},
 	"made": {
 		"name": "Made",
@@ -165,6 +174,7 @@ const DATA := {
 		"length_a": 0.0072,
 		"per_km2": 200,
 		"school": 1,
+		"net": {"k": 0.9, "sigma": 0.28},
 	},
 }
 

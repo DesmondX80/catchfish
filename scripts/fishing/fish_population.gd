@@ -70,10 +70,15 @@ func _new_fish(sp: String, p: Vector2) -> Dictionary:
 
 ## Elinpaikan sopivuus 0..1 (vuodenajan mukaan)
 func habitat_score(sp: String, p: Vector2) -> float:
+	return habitat(lake, sp, _traits[sp], p)
+
+
+## Elinpaikan sopivuus lajin vuodenaikatiedoilla t (Species.traits); myös verkon
+## saalismalli (Nets) käyttää tätä eri päiville
+static func habitat(lake: LakeData, sp: String, t: Dictionary, p: Vector2) -> float:
 	if not lake.is_water(p.x, p.y):
 		return 0.0
 	var data: Dictionary = Species.DATA[sp]
-	var t: Dictionary = _traits[sp]
 	var depth := lake.depth_at(p.x, p.y)
 	var shore := lake.shore_distance(p.x, p.y)
 	var dr: Array = t["depth"]

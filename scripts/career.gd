@@ -2,6 +2,7 @@ extends Node
 ## Uramoodi: päivät, kello, rahat, kalasäilö ja uistinvarasto.
 ## Ura alkaa maanantaina 1.6. aamulla. Päivä vaihtuu, kun kello ohittaa puolenyön
 ## (kalareissulla tai nukkuessa), ja vuodenaika etenee päivien mukana.
+## Järveen lasketut verkot jäävät paikoilleen reissujen yli.
 ## Tallennetaan: user://ura.json
 
 const PATH := "user://ura.json"
@@ -21,7 +22,9 @@ var day := 1
 var minutes := 7.0 * 60.0 # kotikello
 var money := START_MONEY
 var storage: Array = [] # säilössä olevat kalat: {species, name, weight, length, day}
-var lures: Dictionary = {} # uistimen id -> kappalemäärä
+var lures: Dictionary = {} # uistimen id -> kappalemäärä (myös verkot, Nets.LIST)
+## Järveen jääneet verkot (Nets-muoto); ne odottavat nostoa seuraavalla reissulla
+var nets: Array = []
 var trip_start := 0.0
 var persist := true
 
@@ -43,6 +46,7 @@ func new_career() -> void:
 	money = START_MONEY
 	storage = []
 	lures = START_LURES.duplicate()
+	nets = []
 	save_game()
 
 
@@ -61,6 +65,7 @@ func load_game() -> void:
 	lures = {}
 	for id in data.get("lures", {}):
 		lures[id] = int(data["lures"][id])
+	nets = data.get("nets", [])
 
 
 func save_game() -> void:
@@ -68,7 +73,7 @@ func save_game() -> void:
 		return
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify({"day": day, "minutes": minutes, "money": money, "storage": storage, "lures": lures}, "  "))
+		f.store_string(JSON.stringify({"day": day, "minutes": minutes, "money": money, "storage": storage, "lures": lures, "nets": nets}, "  "))
 
 
 ## Kello etenee; puolenyön jälkeen vaihtuu seuraava päivä
@@ -85,6 +90,18 @@ func sleep(hours: float) -> int:
 	var passed := advance(hours * 60.0)
 	save_game()
 	return passed
+
+
+## Uran kello absoluuttisina minuutteina (päivä * 1440 + minuutit); reissulla
+## kello on sky.minutes, joka alkaa uran kellosta (Career.trip_start)
+func abs_minutes(clock_minutes: float) -> float:
+	return day * 1440.0 + clock_minutes
+
+
+## Vuodenpäivä absoluuttisten minuuttien hetkellä
+func day_of_year_at(abs_min: float) -> int:
+	var d := int(abs_min / 1440.0)
+	return (START_DAY_OF_YEAR - 1 + d - 1) % 365 + 1
 
 
 func weekday() -> String:

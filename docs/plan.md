@@ -24,6 +24,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Talvi | Pilkkiminen avannosta: kairaus, pilkki ja tasapainopilkki, kävely jäällä |
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa, kalakirja (lajin sivu avautuu ensimmäisestä saaliista) |
+| Verkko | Pohjaverkko 30 m kolmella silmäkoolla (22, 35, 50 mm): lasku laidan yli soutaen (N, silmäkoko B), pyytää tunteja, nosto pyykin luota laidan yli (kalat näkyvät verkossa), saalis lajin elinpaikan, rytmien ja silmäkoon mukaan; uramoodissa ostetaan ja jää järveen reissujen yli |
 | Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
 | Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot), tuuli (heikko / kova, talvella omat) ja taivaan lintujen huudot oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
@@ -52,7 +53,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | # | Tehtävä | Tila | Huomio |
 |---|---|---|---|
-| 36 | Verkkokalastus | Todo | Uusi pyyntitapa |
 | 34 | Haavinta aivan omaksi animaatiokseen | Backlog | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
 | 8 | Lisää välineitä | Backlog | Onki tehty (#15); syöttikala virvelillä puuttuu |
 | 56 | Onkimiseen madon laittaminen | Backlog | |
@@ -107,6 +107,7 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | `scripts/fishing/lures.gd` | Uistimet ja syöttivälineet (kind: sink, dive, bobber, bottom) |
 | `scripts/fishing/lure_models.gd`, `scripts/boat/tackle_box.gd` | Uistinten 3D-mallit ja kalapakki (L) / pilkkirasia |
 | `scripts/fishing/species.gd` | Lajien ominaisuudet |
+| `scripts/fishing/nets.gd`, `gill_net.gd`, `net_control.gd` | Verkot: silmäkoot ja saalismalli (`catch_between`), verkon 3D-malli (pyykit, nouseva verkko), lasku ja nosto (N/B), tallennus `Career.nets` |
 | `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
 | `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
 | `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
@@ -143,6 +144,7 @@ godot --headless --fixed-fps 30 -- --day=180 --overlaptest  # päällekkäiset p
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
 godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
+godot --headless --fixed-fps 30 -- --day=180 --nettest      # verkon lasku, saalismalli ja nosto (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --paddletest    # airot laiturin vieressä, melonta
 godot --headless --fixed-fps 30 -- --day=180 --headwindtest  # soutu ja melonta vastatuuleen
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
@@ -582,6 +584,39 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (siima vedessä) tai veneen pohjalle. Telinevavan tärppi kestää 0,6 s
   pidempään, ja itsekoukutus harvinaistui (10–40 %). Testi `--trollstriketest`.
   Julkaistu [v0.48.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.48.0).
+- **#36 Verkkokalastus – tehty (0.49.0).** Uusi pyyntitapa: 30 m:n pohjaverkko
+  (korkeus 1,8 m) kolmella silmäkoolla, 22 mm (särki, ahven, kiiski), 35 mm
+  (lahna, isot ahvenet, made) ja 50 mm (hauki, iso lahna, made). Silmäkoko
+  valitaan B:llä, ja N laskee verkon: ensimmäinen pyykki ja kivi putoavat
+  veteen, ja verkko valuu löysänä nippuna oikean laidan yli perän läheltä
+  veneen reitille (piste metrin välein), kun soudetaan tai ajetaan. Yli
+  1,5 m/s vauhdissa verkko jarruttaa. Lasku
+  päättyy 30 metriin, N:ään tai matalaan (alle 0,8 m), ja se alkaa vain
+  vähintään 1,2 m:n syvyydestä, kauempana laiturista, ankkuri ylhäällä ja
+  siimat sisällä. Järvessä voi olla kolme verkkoa. Pyykin luona pysähtyneenä
+  (moottori sammuksissa) N nostaa verkon: kalastaja istuu perätuhdolla kasvot
+  oikealle laidalle ja vetää löysää verkkoa laidan yli 0,5 m/s kasaan veneen
+  pohjalle, vene liukuu verkkoa pitkin, ja tarttuneet kalat nousevat pinnasta
+  verkossa roikkuen (kidukset silmässä, pyrstö laidan ulkopuolella) ennen kuin
+  ne tulevat saaviin. Lopuksi tulee yhteenveto.
+  Saalismalli (`Nets.catch_between`) lasketaan nostettaessa koko pyyntiajalta
+  15 minuutin askelin, joten se toimii myös reissujen yli. Kohtaamiset tulevat
+  lajin tiheydestä, verkkopaikan elinpaikkasopivuudesta (`FishPopulation.habitat`
+  on nyt staattinen ja ottaa vuodenpäivän tiedot), vuorokausi- ja
+  vuodenaika-aktiivisuudesta ja siitä, kattaako 1,8 m:n verkko lajin
+  uintisyvyydet. Tarttuminen tulee silmäkoon valinnasta (`Species` "net": paras
+  pituus k × silmäkoko; pienet kalat uivat läpi). Täyttyvä verkko pyytää
+  huonommin, ja iso hauki voi repiä itsensä irti. Kalibrointi: kesäyönä (12 h)
+  2–2,5 m:n syvyydessä 35 mm:n verkko tuo noin 9–10 kalaa (1,4–1,7 kg), 50 mm
+  noin 5 kalaa (2,5–3,5 kg) ja 22 mm noin 8–10 pientä kalaa, enimmäkseen
+  kiiskiä. Elävää populaatiota verkko ei vähennä. Verkkokalat kirjataan kuten
+  vapakalat (`Fishing.record_catch`): saaliskirja ja ennätykset
+  kertakalastuksessa, kalakirja aina ja saavi; merkinnän välineenä on verkon
+  nimi. Uramoodissa verkot ostetaan kaupasta (25–35 €), ne jäävät järveen
+  reissujen ja yöunien yli (`ura.json`: `nets`), ja kolmen repeämän jälkeen
+  verkko on pilalla. Jäiden tullessa järveen jääneet verkot menetetään.
+  Kertakalastuksessa verkkoja on kolme kutakin silmäkokoa. Verkot näkyvät
+  kartalla (K) oransseina viivoina. Testi `--nettest` (kesä ja talvi).
 
 ## Huomioita ja avoimia kysymyksiä
 

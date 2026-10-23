@@ -10,6 +10,8 @@ const KEYS := {
 	"motor_toggle": [KEY_Q],
 	"anchor_toggle": [KEY_X],
 	"paddle_toggle": [KEY_V],
+	"net_toggle": [KEY_N],
+	"net_mesh": [KEY_B],
 	"lure_next": [KEY_L],
 	"rod_holder": [KEY_R],
 	"float_shallower": [KEY_F],

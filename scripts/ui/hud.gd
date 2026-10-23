@@ -29,6 +29,10 @@ var sounder: EchoSounder
 var _pressure_hinted := false
 var _map_panel: PanelContainer
 var _map: LakeMap
+var nets: NetControl # verkkokalastus (main asettaa)
+var _net_panel: PanelContainer
+var _net_label: Label
+var _net_timer := 0.0
 
 
 func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_time: SkyTime, lake_data: LakeData, population: FishPopulation) -> void:
@@ -188,6 +192,12 @@ func _build() -> void:
 	_map.boat = boat
 	_map_panel.visible = false
 
+	# Verkon noston yhteenveto
+	_net_panel = _panel(center, center)
+	_net_label = _label(_net_panel, 20)
+	_net_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_net_panel.visible = false
+
 	_help_panel = _panel(center, center)
 	var help := _label(_help_panel, 16)
 	help.text = help_text(true)
@@ -216,6 +226,13 @@ func help_text(start_hint := true) -> String:
 		"  Q            perämoottori käyntiin / sammuksiin (sammuksissa soudetaan)",
 		"  X            ankkuri alas / ylös",
 		"  V            mela käteen / pois (laiturin vieressä, kun airot eivät mahdu)",
+		"",
+		"VERKKO (avovesikaudella)",
+		"  B            silmäkoko: 22 mm (särki, ahven, kiiski), 35 mm (lahna, isot ahvenet),",
+		"               50 mm (hauki, iso lahna, made)",
+		"  N            laske verkko: pyykki veteen, souda hitaasti, verkko (30 m) valuu laidan yli",
+		"               perän läheltä; N lopettaa laskun. Anna pyytää tunteja (T nopeuttaa aikaa)",
+		"  N            pyykin luona pysähtyneenä: nosta verkko ja saalis (moottori sammuksissa)",
 		"",
 		"KALASTUS",
 		"  Hiiri        kameran ja heittosuunnan kääntö, rulla = zoomaus",
@@ -276,6 +293,19 @@ func show_message(text: String) -> void:
 	_message.modulate.a = 1.0
 
 
+## Verkkokalastus: tila HUDiin ja verkot kartalle
+func set_nets(control: NetControl) -> void:
+	nets = control
+	_map.nets = control
+
+
+## Verkon noston yhteenveto (NetControl.summary)
+func show_net_summary(text: String) -> void:
+	_net_label.text = text + "\n\n(N tai vasen hiiri sulkee)"
+	_net_panel.visible = true
+	_net_timer = 20.0
+
+
 func _on_caught(entry: Dictionary, record: bool) -> void:
 	var text := "%s  %.2f kg  •  %.0f cm\n" % [entry["name"], entry["weight"], entry["length"]]
 	text += "Uistin: %s   klo %s" % [entry["lure"], entry["time"]]
@@ -292,6 +322,10 @@ func _on_caught(entry: Dictionary, record: bool) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
+	if _net_panel.visible and (event.is_action_pressed("net_toggle") or event.is_action_pressed("cast")):
+		_net_panel.visible = false
+		get_viewport().set_input_as_handled() # sulkeminen ei heitä eikä laske verkkoa
+		return
 	if event.is_action_pressed("catch_log"):
 		_show_tub(not _log_panel.visible)
 	elif event.is_action_pressed("help"):
@@ -375,6 +409,9 @@ func _process(delta: float) -> void:
 	_speech_timer -= delta
 	if _speech_timer < 1.0:
 		_speech.modulate.a = maxf(0.0, _speech_timer)
+	_net_timer -= delta
+	if _net_panel.visible and _net_timer <= 0.0:
+		_net_panel.visible = false
 
 	var motor := "Airot"
 	if boat.on_ice:
@@ -418,6 +455,8 @@ func _process(delta: float) -> void:
 		motor, boat.speed_kmh(), _anchor_text(),
 		boat.depth_below(), ("\nLähellä: " + place) if place != "" else "",
 	]
+	if nets != null and not boat.on_ice:
+		_status.text += "\n" + nets.status_text()
 
 	var l := fishing.lure()
 	var lure_name: String = l["name"]

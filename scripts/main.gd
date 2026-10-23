@@ -77,6 +77,7 @@ var tub: CatchTub
 var voice: AnglerVoice
 var birds: Birds
 var tackle_box: TackleBox
+var nets: NetControl # verkkokalastus
 
 
 func _start_game(start_index: int, career := false) -> void:
@@ -178,9 +179,17 @@ func _start_game(start_index: int, career := false) -> void:
 		if not weather.real_mode:
 			weather.snow = true
 
+	# Verkot ennen HUDia: HUD saa syötteet ensin (yhteenvedon sulkeminen), verkot ennen virveliä
+	nets = NetControl.new()
+	add_child(nets)
+	nets.setup(boat, lake, sky, fishing, trip_catch, season.frozen())
+
 	hud = Hud.new()
 	add_child(hud)
 	hud.setup(boat, fishing, weather, sky, lake, population)
+	hud.set_nets(nets)
+	nets.message.connect(hud.show_message)
+	nets.summary.connect(hud.show_net_summary)
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
 	if boat.on_ice:
 		hud.show_message("Järvi on jäässä – pilkille! Kairaa reikä pitämällä vasenta hiirtä pohjassa")
@@ -201,6 +210,7 @@ func _start_game(start_index: int, career := false) -> void:
 		fishing.inventory = Career.lures # sama sanakirja: menetetyt uistimet vähenevät urasta
 		fishing.lure_index = 0
 		pause_menu.going_home.connect(func():
+			nets.end_trip() # kesken jäänyt lasku tai nosto loppuun, verkot jäävät järveen
 			Career.end_trip(trip_catch, sky.minutes - Career.trip_start)
 			Main.return_to_career = true)
 
@@ -284,6 +294,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/fpv_test.gd").new())
 	elif "--booktest" in args:
 		add_child(load("res://tests/book_test.gd").new())
+	elif "--nettest" in args:
+		add_child(load("res://tests/net_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

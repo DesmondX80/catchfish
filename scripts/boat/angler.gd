@@ -10,7 +10,7 @@ extends Node3D
 ## Istuessa jalat taivutetaan polvista lattialle. Jäällä kävellessä käytetään
 ## mallin omaa kävelyanimaatiota.
 
-enum Pose { FISHING, ROWING, MOTOR, ICE_STAND, ICE_SIT, ICE_DRILL, ANCHOR, PADDLE }
+enum Pose { FISHING, ROWING, MOTOR, ICE_STAND, ICE_SIT, ICE_DRILL, ANCHOR, PADDLE, NET }
 
 const MODEL := preload("res://assets/characters/adventurer.glb")
 const SEATS := {
@@ -19,6 +19,7 @@ const SEATS := {
 	Pose.PADDLE: Vector3(0, 0.225, 0.25), # keskituhdolla kasvot keulaan
 	Pose.MOTOR: Vector3(-0.12, 0.225, 1.35), # perätuhto, hieman vasemmalla
 	Pose.ANCHOR: Vector3(0, 0.225, -0.9), # etutuhto: ankkurin lasku ja nosto keulasta
+	Pose.NET: Vector3(0.1, 0.225, 1.35), # perätuhto kasvot oikealle laidalle: verkon nosto laidan yli
 	# Jäällä (veneen solmu on jään tasolla): seisten lantio 0,85 m, ämpärin päällä 0,32 m
 	Pose.ICE_STAND: Vector3(0, 0.85, 0),
 	Pose.ICE_SIT: Vector3(0, 0.32, 0),
@@ -308,6 +309,8 @@ func _choose_pose() -> int:
 		return Pose.ICE_STAND
 	if boat.anchor and boat.anchor.handling():
 		return Pose.ANCHOR
+	if not boat.net_hands.is_empty():
+		return Pose.NET
 	if fishing.busy():
 		return Pose.FISHING
 	if boat.motor_running or boat.motor_starting > 0.0:
@@ -353,6 +356,8 @@ func _process(delta: float) -> void:
 	var yaw := aim_yaw
 	if pose == Pose.ROWING:
 		yaw = PI # selkä keulaan päin
+	elif pose == Pose.NET:
+		yaw = -PI / 2.0 # kasvot oikealle laidalle
 	elif pose == Pose.MOTOR or pose == Pose.ANCHOR or pose == Pose.PADDLE:
 		yaw = 0.0 # kasvot keulaan
 	rotation.y = lerp_angle(rotation.y, yaw, minf(1.0, delta * 5.0))
@@ -370,6 +375,8 @@ func _process(delta: float) -> void:
 		lean = -0.3 # nojaa kairan kahvoihin
 	elif pose == Pose.ANCHOR:
 		lean = -0.35 # kurottaa keulan köyteen
+	elif pose == Pose.NET:
+		lean = -0.3 # kurottaa laidan yli verkkoon
 	elif pose == Pose.PADDLE and boat._paddle_stroking:
 		var f := boat._paddle_phase
 		lean = lerpf(-0.3, 0.1, f / 0.5) if f < 0.5 else lerpf(0.1, -0.3, (f - 0.5) / 0.5) # kurottaa ottoon
@@ -401,6 +408,9 @@ func _hand_targets() -> Array:
 			var hands: Array = boat.anchor.hand_points()
 			right = hands[0]
 			left = hands[1]
+		Pose.NET:
+			right = boat.net_hands[0]
+			left = boat.net_hands[1]
 		Pose.MOTOR:
 			right = boat.tiller_handle()
 			left = global_transform * Vector3(-0.14, 0.12, -0.4) # polvella

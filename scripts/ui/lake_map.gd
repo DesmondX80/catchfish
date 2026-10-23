@@ -9,6 +9,7 @@ var lake: LakeData
 var texture: Texture2D
 var select_mode := false # true = aloituspaikat ovat klikattavia
 var boat: Boat # pelissä: veneen sijainti ja suunta
+var nets: NetControl # pelissä: järveen lasketut verkot
 var hovered := -1
 var _font: Font
 
@@ -94,6 +95,19 @@ func _draw() -> void:
 		draw_string(_font, p + Vector2(-_font.get_string_size(num, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x / 2.0, fs * 0.36), num, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, Color.BLACK)
 		if big:
 			_text(p + Vector2(radius + 6.0, 5.0), lake.starts[i]["name"], 15)
+
+	# Verkot: oranssi viiva pyykistä pyykkiin ja silmäkoko
+	if nets != null:
+		for n in nets.map_lines():
+			var pts := PackedVector2Array()
+			for p in n["points"]:
+				pts.append(world_to_map(p))
+			if pts.size() >= 2:
+				draw_polyline(pts, Color(0, 0, 0, 0.7), 5.0)
+				draw_polyline(pts, Color(1.0, 0.55, 0.1), 3.0)
+				_text(pts[pts.size() - 1] + Vector2(6, 4), n["label"], 13, Color(1.0, 0.75, 0.4))
+			elif pts.size() == 1:
+				draw_circle(pts[0], 4.0, Color(1.0, 0.55, 0.1))
 
 	# Vene: kolmio keula edellä
 	if boat != null:

@@ -50,6 +50,10 @@ var anchor_point := Vector2.ZERO
 var anchor_rope := 0.0
 var anchor: BoatAnchor # ankkurin ja köyden malli ja animaatio
 var _rope_warned := false
+## Verkko (NetControl): veto perästä (N), kalastajan kädet verkolla nostossa;
+## nostaessa kädet ovat varattuina eikä soudeta
+var stern_pull := Vector2.ZERO
+var net_hands: Array = []
 ## Mela käytössä: airot ovat veneessä ja melotaan veneen kyljeltä
 var paddling := false
 var _paddle: Node3D
@@ -297,6 +301,9 @@ func _simulate(dt: float) -> void:
 
 	var drive := Input.get_axis("boat_back", "boat_forward")
 	var steer := Input.get_axis("boat_right", "boat_left")
+	if not net_hands.is_empty():
+		drive = 0.0 # kädet verkolla
+		steer = 0.0
 	var fwd := forward()
 	var side := right()
 	var v_fwd := velocity.dot(fwd)
@@ -381,6 +388,12 @@ func _simulate(dt: float) -> void:
 		elif d.length() < reach - 1.0:
 			_rope_warned = false
 		torque -= yaw_rate * 300.0
+
+	# Verkko vetää perästä: laskiessa jarruttaa, nostaessa vetää venettä verkkoa pitkin
+	if stern_pull != Vector2.ZERO:
+		var stern_offset := -fwd * LENGTH * 0.5
+		force += stern_pull
+		torque -= stern_offset.x * stern_pull.y - stern_offset.y * stern_pull.x
 
 	velocity += force / MASS * dt
 	yaw_rate += torque / YAW_INERTIA * dt

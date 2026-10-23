@@ -102,6 +102,13 @@ func show_home() -> void:
 		if n > 0:
 			owned.append("%s %d" % [l["name"].split(" ")[0], n])
 	_label("Uistimet: " + (", ".join(owned) if not owned.is_empty() else "ei yhtään"), 16)
+	var nets: Array = []
+	for n in Nets.LIST:
+		var k := int(Career.lures.get(n["id"], 0))
+		if k > 0:
+			nets.append("%s %d" % [n["name"].trim_prefix("Verkko "), k])
+	if not nets.is_empty() or not Career.nets.is_empty():
+		_label("Verkot: %s%s" % [", ".join(nets) if not nets.is_empty() else "ei veneessä", "   •   järvessä pyytämässä %d" % Career.nets.size() if not Career.nets.is_empty() else ""], 16)
 	_flash()
 	var go := _button("Lähde kalalle", func(): go_fishing.emit(), 22)
 	_button("Myy kaloja", show_market)
@@ -166,7 +173,7 @@ func show_shop() -> void:
 	_clear()
 	_title("Kalastustarvikeliike")
 	_label("Rahaa: %s" % _eur(Career.money), 18)
-	for group in [["Avovesi (virveli ja onki)", Lures.LIST], ["Talvi (pilkki)", Lures.ICE]]:
+	for group in [["Avovesi (virveli ja onki)", Lures.LIST], ["Talvi (pilkki)", Lures.ICE], ["Verkot (30 m, avovesikaudella; jäävät järveen pyytämään)", Nets.LIST]]:
 		_label(group[0], 16, Color(0.95, 0.85, 0.45))
 		for l in group[1]:
 			var row := HBoxContainer.new()

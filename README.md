@@ -2,7 +2,8 @@
 
 Kalastussimulaattori Godot 4 -pelimoottorilla. Pelialueena on Raahen
 Haapajärven tekoallas, joka on mallinnettu Maanmittauslaitoksen avoimesta
-aineistosta. Lähdet soutuveneellä laiturista ja heittelet virvelillä uistinta.
+aineistosta. Lähdet soutuveneellä laiturista ja heittelet virvelillä uistinta
+tai lasket verkon pyytämään.
 
 ## Pelaa
 
@@ -41,6 +42,8 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | F / G | kohon syvyys matalammalle / syvemmälle (ennen heittoa) |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
 | Hiiri uistellessa | kun vapa on telineessä (uistelumoodi): vasen hiiri pohjassa laskee käsivavan uistimen veneen perään; FPV:ssä vasen/oikea hiiri nostaa ruudun vasemman/oikean telinevavan ja antaa tärpissä vastaiskun |
+| B | verkon silmäkoko: 22 mm (särki, ahven, kiiski), 35 mm (lahna, isot ahvenet, made), 50 mm (hauki, iso lahna, made) |
+| N | verkko: laske soutaen laidan yli perän läheltä (N uudelleen lopettaa), pyykin luona pysähtyneenä nosta |
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
 | F1 | ohje |
@@ -127,6 +130,21 @@ painuu, hauki hyppää).
   nykii tai vavan kärki värähtelee, ja vastaisku tehdään vasta, kun koho
   painuu pinnan alle tai siima kiristyy. Särki, lahna, kiiski, ahven ja made
   syövät matoa, hauki tuskin koskaan.
+- **Verkkokalastus** (avovesikaudella): valitse silmäkoko (B) ja paina N, niin
+  merkkipyykki ja kivi putoavat veteen. Souda hitaasti: 30 metrin pohjaverkko
+  valuu löysänä laidan yli perän läheltä veneen reitille, ja toinen pyykki putoaa, kun verkko on
+  vedessä (N lopettaa aiemmin, matalassa lasku päättyy itsestään). Liian
+  kovassa vauhdissa verkko jarruttaa. Anna verkon pyytää tunteja, esimerkiksi
+  illasta aamuun (T nopeuttaa aikaa), ja nosta se pysähtymällä pyykin luo
+  moottori sammuksissa ja painamalla N: kalastaja vetää löysää verkkoa laidan
+  yli kasaan veneen pohjalle, vene liukuu verkkoa pitkin, ja verkkoon
+  tarttuneet kalat nousevat pinnasta näkyviin verkossa roikkuen. Saalis riippuu
+  verkkopaikasta, kellonajoista, vuodenajasta ja silmäkoosta: pieni silmä pyytää
+  pieniä kaloja, iso isoja. Iso hauki voi repiä verkkoon reiän. Järvessä voi
+  olla kolme verkkoa, ja ne näkyvät kartalla (K). Verkkokalat menevät saaviin,
+  ennätyksiin ja kalakirjaan kuten vapakalat. Uramoodissa verkot ostetaan
+  kalastustarvikeliikkeestä, ne jäävät järveen reissujen yli, ja jäiden tullessa
+  järveen jääneet verkot menetetään.
 - **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
   repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
   näkyy myös tekstityksenä.
