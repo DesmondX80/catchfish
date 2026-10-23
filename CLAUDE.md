@@ -57,7 +57,7 @@ määritelty kansiossa `.claude/agents/`:
 
 | Rooli | Määritys | Tehtävä |
 |---|---|---|
-| Tiimin johtaja | Teemu | Priorisoi tehtävät Planessa, ratkaisee epäselvyydet ja poikkeamat, kokeilee julkaisut |
+| Tiimin johtaja | Teemu | Priorisoi tehtävät Planessa, on mukana suunnittelussa (linjaukset), ratkaisee epäselvyydet ja poikkeamat, kokeilee julkaisut |
 | Työnjohtaja (lead) | pääsessio | Ottaa tehtävät työn alle, käynnistää tiimin, vie tehtävän vaiheesta toiseen, hyväksyy suunnitelman, julkaisee |
 | Designer | `designer.md` | Suunnittelee tehtävän: miten ominaisuus toimii ja miltä se näyttää ja kuulostaa |
 | Koodaaja | `koodaaja.md` | Toteuttaa hyväksytyn suunnitelman ja sen testin omassa työkopiossa |
@@ -65,9 +65,12 @@ määritelty kansiossa `.claude/agents/`:
 
 ### Työnkulku
 
-Tiimi toimii itsenäisesti: se ottaa tehtävät työn alle ja vie ne julkaisuun
-asti kysymättä Teemulta. Teemuun otetaan yhteyttä vain, kun jokin on
-epäselvää tai suunnitelmasta pitää poiketa, ja hän sanoo, miten tehdään.
+Teemu on mukana suunnittelussa: hän ratkaisee suunnitelman linjaukset ja
+näkee jokaisen hyväksytyn suunnitelman Planessa. Kaiken muun tiimi hoitaa
+itse: se ottaa tehtävät työn alle, toteuttaa, testaa ja julkaisee kysymättä
+Teemulta, eikä suunnitelma odota Teemun erillistä hyväksyntää. Toteutuksen
+ja testauksen aikana Teemuun otetaan yhteyttä vain, kun jokin on epäselvää
+tai suunnitelmasta pitää poiketa, ja hän sanoo, miten tehdään.
 
 Jokainen tehtävä kulkee nämä vaiheet tässä järjestyksessä:
 
@@ -88,6 +91,8 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
    itse ja kirjaa suunnitelmaan. Todelliset linjaukset ja epäselvyydet
    (pelimekaniikka, ulkoasu, luvut, joita ei voi päätellä) työnjohtaja kysyy
    Teemulta konkreettisin vaihtoehdoin; toteutus alkaa, kun ne on ratkaistu.
+   Hyväksytty suunnitelma liitetään kokonaisena Planen tehtävään kommentiksi
+   ("Koko suunnitelma (hyväksytty)"), jotta Teemu näkee sen.
 4. **Toteutus.** Koodaaja toteuttaa hyväksytyn suunnitelman sellaisenaan,
    tallentaa sen haaraansa tiedostoon `docs/suunnitelmat/<tunniste>.md` ja
    kirjoittaa testin. Jos suunnitelmasta pitää poiketa, koodaaja kysyy ensin
