@@ -87,6 +87,13 @@ var _strike_cooldown := 0.0
 var _shallow_warned := false
 var _time := 0.0
 var _dock_contact := Vector2.ZERO # viimeisimmän laiturikosketuksen kohta (_dock_push)
+## Ruudulla vene piirretään kahden viimeisimmän fysiikka-askeleen väliin.
+## Fysiikka etenee omassa tahdissaan (60 Hz), ja ilman välitilaa vene nykisi
+## kameraan, kalastajaan ja vapoihin nähden, kun ruudunpäivitys ei osu
+## fysiikan tahtiin (esim. 144 Hz:n näyttö). [veneen paikka, rungon asento]
+var _pose_prev: Array[Transform3D] = []
+var _pose_now: Array[Transform3D] = []
+const POSE_SNAP := 3.0 # m: tätä pidempi siirto (siirto toiseen paikkaan) ilman välitilaa
 
 
 func setup(lake_data: LakeData, weather_node: Weather) -> void:
@@ -102,6 +109,10 @@ func setup(lake_data: LakeData, weather_node: Weather) -> void:
 		pos += push * 1.05
 	_build_visuals()
 	_apply_transform()
+	snap_pose()
+	# Vene ennen muita: kamera, kalastaja, saavi ja vavat lukevat sen asennon
+	process_priority = -10
+	process_physics_priority = -10
 
 
 func forward() -> Vector2:
@@ -136,6 +147,23 @@ func set_on_ice(on: bool) -> void:
 		anchor.visible = not on # ankkuri on veneen mukana talviteloilla
 	motor_running = false
 	_apply_transform()
+	snap_pose()
+
+
+## Ruudulla näkyvä asento suoraan nykyiseen fysiikan asentoon ilman välitilaa
+func snap_pose() -> void:
+	_pose_now = [transform, hull.transform]
+	_pose_prev = _pose_now
+
+
+func _process(_delta: float) -> void:
+	if _pose_now.is_empty():
+		return
+	var f := Engine.get_physics_interpolation_fraction()
+	transform = _pose_prev[0].interpolate_with(_pose_now[0], f)
+	hull.transform = _pose_prev[1].interpolate_with(_pose_now[1], f)
+	if anchor:
+		anchor.follow_boat()
 
 
 func _unhandled_input(event: InputEvent) -> void:
@@ -243,6 +271,18 @@ func _walk(dt: float) -> void:
 
 
 func _physics_process(dt: float) -> void:
+	# Fysiikka jatkaa viimeisimmästä askeleesta, ei ruudulla näkyneestä välitilasta
+	if not _pose_now.is_empty():
+		transform = _pose_now[0]
+		hull.transform = _pose_now[1]
+	_simulate(dt)
+	_pose_prev = _pose_now
+	_pose_now = [transform, hull.transform]
+	if _pose_prev.is_empty() or _pose_prev[0].origin.distance_to(_pose_now[0].origin) > POSE_SNAP:
+		_pose_prev = _pose_now
+
+
+func _simulate(dt: float) -> void:
 	if on_ice:
 		_walk(dt)
 		return
@@ -1187,13 +1227,14 @@ func _build_hull() -> void:
 		_part(hull, _box_mesh(Vector3(w * 2.0, 0.045, 0.3)), Vector3(0, 0.2025, z), molded)
 		_part(hull, _box_mesh(Vector3(w * 2.0 - 0.04, 0.06, 0.02)), Vector3(0, 0.15, z - 0.14), molded) # etureunan helma
 
-	# Peräpeilin moottorilevy ja kromiset hankaimet laidalla
+	# Peräpeilin moottorilevy ja kromiset hankaimet laidalla. Levy on 2 mm irti
+	# peräpeilistä: samassa tasossa olevat pinnat välkkyvät (z-fighting).
 	var stern := _hull_at(2.2)
-	_part(hull, _box_mesh(Vector3(0.34, 0.22, 0.02)), Vector3(0, stern.y - 0.11, 2.21), _shiny(Color(0.12, 0.12, 0.13), 0.5))
+	_part(hull, _box_mesh(Vector3(0.34, 0.22, 0.02)), Vector3(0, stern.y - 0.11, 2.212), _shiny(Color(0.12, 0.12, 0.13), 0.5))
 	var chrome := _shiny(Color(0.82, 0.83, 0.85), 0.2, 0.9)
 	for s in [-1.0, 1.0]:
 		var w := _hull_at(OARLOCK.z).x
-		_part(hull, _box_mesh(Vector3(w - OARLOCK.x + 0.03, 0.012, 0.06)), Vector3(s * (OARLOCK.x + w) / 2.0, OARLOCK.y + 0.018, OARLOCK.z), chrome)
+		_part(hull, _box_mesh(Vector3(w - OARLOCK.x + 0.03, 0.012, 0.06)), Vector3(s * (OARLOCK.x + w) / 2.0, OARLOCK.y + 0.019, OARLOCK.z), chrome)
 		for dz in [-0.035, 0.035]:
 			_part(hull, _cyl_mesh(0.006, 0.07, 8), Vector3(OARLOCK.x * s, OARLOCK.y + 0.055, OARLOCK.z + dz), chrome)
 	# Keulan kiinnityslenkki
@@ -1238,7 +1279,7 @@ func _build_motor() -> void:
 	var g := _hull_at(2.2).y
 	# Kiinnike peräpeilin yli ja kiristysruuvit veneen puolella
 	_part(hull, _box_mesh(Vector3(0.17, 0.24, 0.05)), Vector3(0, g - 0.09, 2.245), black)
-	_part(hull, _box_mesh(Vector3(0.17, 0.04, 0.12)), Vector3(0, g + 0.02, 2.2), black)
+	_part(hull, _box_mesh(Vector3(0.174, 0.04, 0.12)), Vector3(0, g + 0.02, 2.2), black)
 	for x in [-0.05, 0.05]:
 		var screw := _part(hull, _cyl_mesh(0.008, 0.08, 8), Vector3(x, g - 0.12, 2.15), dark)
 		screw.rotation.x = PI / 2.0
@@ -1260,7 +1301,7 @@ func _build_motor() -> void:
 	_part(_motor, _box_mesh(Vector3(0.14, 0.025, 0.035)), Vector3(0, 0.355, 0.2), dark) # kantokahva
 	_part(_motor, _box_mesh(Vector3(0.03, 0.02, 0.06)), Vector3(0.12, 0.04, -0.06), dark) # vaihdevipu
 	# Varsi, kavitaatiolevy, vaihteistokotelo, skegi
-	_part(_motor, _box_mesh(Vector3(0.075, 0.7, 0.13)), Vector3(0, -0.39, 0.03), black)
+	_part(_motor, _box_mesh(Vector3(0.075, 0.72, 0.13)), Vector3(0, -0.38, 0.03), black) # yläpää kopan sisällä
 	_part(_motor, _box_mesh(Vector3(0.2, 0.012, 0.3)), Vector3(0, -0.745, 0.07), black)
 	_part(_motor, _box_mesh(Vector3(0.06, 0.14, 0.12)), Vector3(0, -0.81, 0.03), black)
 	var torpedo := _part(_motor, _cyl_mesh(0.042, 0.26), Vector3(0, -0.9, 0.04), black)

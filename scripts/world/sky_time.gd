@@ -22,6 +22,11 @@ var sky_material: ShaderMaterial
 var weather: Weather
 var horizon_color := Color(0.72, 0.78, 0.84) # vedenpinnan heijastukselle
 var _cloud_offset := Vector2.ZERO
+## Auringon suunta, johon valo on viimeksi käännetty. Valoa käännetään
+## SUN_STEP-askelin: joka ruudulla hieman kääntyvä valo siirtää varjokarttaa
+## alle tekselin verran, ja varjojen reunat välkkyvät veneessä (#78).
+var _sun_dir := Vector3.ZERO
+const SUN_STEP := deg_to_rad(0.1)
 
 
 func setup(sun_light: DirectionalLight3D, env: Environment, weather_node: Weather) -> void:
@@ -92,7 +97,9 @@ func _update_sun() -> void:
 	var elevation := maxf(angles.x, deg_to_rad(-4.0))
 	# Atsimuutti pohjoisesta myötäpäivään; Godotissa pohjoinen = -Z, itä = +X
 	var dir := Vector3(sin(angles.y) * cos(elevation), sin(elevation), -cos(angles.y) * cos(elevation))
-	sun.look_at_from_position(Vector3.ZERO, -dir, Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD)
+	if _sun_dir == Vector3.ZERO or dir.angle_to(_sun_dir) >= SUN_STEP:
+		_sun_dir = dir
+		sun.look_at_from_position(Vector3.ZERO, -dir, Vector3.UP if absf(dir.y) < 0.99 else Vector3.FORWARD)
 	var light := daylight()
 	var low := clampf(rad_to_deg(angles.x) / 12.0, 0.0, 1.0)
 	var cover := weather.cloud_cover if weather else 0.3

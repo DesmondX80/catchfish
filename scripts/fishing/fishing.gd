@@ -628,8 +628,7 @@ func _process_rod(dt: float, in_hand: bool) -> void:
 	if in_hand:
 		_aim_angler(dt)
 	else:
-		# Telineessä, tai käyttämättömänä veneen pohjalla
-		_rod_pivot.global_transform = boat.hull.global_transform * (holder_transform(_cur) if in_holder else SPARE_ROD)
+		_place_rod(false)
 	_update_rod(dt)
 	_twitch = move_toward(_twitch, 0.0, dt * 3.0)
 	match state:
@@ -689,9 +688,41 @@ func _aim_angler(dt: float) -> void:
 		if state == State.FIGHT:
 			pitch = -0.4 + clampf(tension / 3.0, 0.0, 1.0) * 0.6
 	_rod_pitch = lerpf(_rod_pitch, pitch, minf(1.0, dt * 8.0))
-	# Vapa kalastajan käsissä tai veneen pohjalla (soudettaessa ja moottoriajossa)
+	_place_rod(true)
+
+
+## Vavan tyven paikka: kalastajan käsissä tai veneen pohjalla (soudettaessa ja
+## moottoriajossa), telineessä tai käyttämättömänä veneen pohjalla
+func _place_rod(in_hand: bool) -> void:
+	if not in_hand:
+		_rod_pivot.global_transform = boat.hull.global_transform * (holder_transform(_cur) if in_holder else SPARE_ROD)
+		return
 	var in_hands := boat.angler.rod_mount.global_transform * Transform3D(Basis(Vector3.RIGHT, _rod_pitch), Vector3.ZERO)
 	_rod_pivot.global_transform = in_hands.interpolate_with(boat.angler.rod_stow_transform(), boat.angler.rod_stow_blend())
+
+
+## Ruudun tahdissa (Angler._process): vavat siirretään ruudulla näkyvän rungon
+## ja kalastajan vartalon mukaan ja piirretään uudelleen. Fysiikan tahdissa
+## piirretyt vavat nykivät käännettäessä ja veneen keinuessa, kun ruudunpäivitys
+## ei osu fysiikan tahtiin.
+func follow_boat() -> void:
+	if _rods.is_empty():
+		return
+	var keep := _cur
+	for i in rod_count():
+		_swap_to(i)
+		if _rod_points.size() < 2:
+			continue
+		var before := _rod_pivot.global_transform
+		_place_rod(i == held)
+		var move := _rod_pivot.global_transform * before.affine_inverse()
+		_rod_points = move * _rod_points
+		_tip_world = _rod_points[_rod_points.size() - 1]
+		if state in [State.READY, State.LANDED, State.CHARGING]:
+			lure_pos = move * lure_pos # uistin roikkuu vavan kärjessä
+		_update_visuals()
+	_swap_to(keep)
+	_landing_net.follow_boat()
 
 
 func _cast() -> void:

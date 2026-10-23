@@ -69,7 +69,7 @@ var _beanie: Node3D
 var _sleeves: Array[Node3D] = []
 var _winter := false
 var _hand_targets_now := [Vector3.ZERO, Vector3.ZERO]
-var _posed := {} # luun nimi -> paikka maailmassa muokkauksen jälkeen (muokkaimen tulos on väliaikainen)
+var _posed := {} # luun nimi -> paikka luurangossa muokkauksen jälkeen (muokkaimen tulos on väliaikainen)
 var _arms_ik := true
 var _sit := 1.0 # 1 = istuu, 0 = seisoo (pehmeä siirtymä)
 var _since_rowing := 10.0
@@ -374,6 +374,9 @@ func _process(delta: float) -> void:
 		var f := boat._paddle_phase
 		lean = lerpf(-0.3, 0.1, f / 0.5) if f < 0.5 else lerpf(0.1, -0.3, (f - 0.5) / 0.5) # kurottaa ottoon
 	torso.rotation.x = lerpf(torso.rotation.x, lean, minf(1.0, delta * 8.0))
+	# Vavat vartalon ja rungon uuden asennon mukaan ennen käsien kohteita
+	if fishing:
+		fishing.follow_boat()
 
 	if _arms_ik:
 		_hand_targets_now = _hand_targets()
@@ -482,8 +485,10 @@ func apply_pose() -> void:
 	# Hiusten leikkaus seuraa päätä
 	var head_pose := _skel.get_bone_global_pose(_bones["Head"])
 	_hair.set_shader_parameter("head_inv", Projection(head_pose.affine_inverse()))
+	# Luurangon koordinaateissa: kamera lukee pään paikan seuraavalla ruudulla,
+	# jolloin vene on jo liikkunut
 	for bone_name in POSED_BONES:
-		_posed[bone_name] = _bone_pos(_bones[bone_name])
+		_posed[bone_name] = _skel.get_bone_global_pose(_bones[bone_name]).origin
 	# FPV: pää kutistetaan kameran sisään (paikka säilyy kameraa varten)
 	_head_root.visible = not hide_head
 	if hide_head:
@@ -493,7 +498,9 @@ func apply_pose() -> void:
 
 ## Luun paikka maailmassa sellaisena kuin se näkyy (asento ja IK mukana)
 func posed_position(bone_name: String) -> Vector3:
-	return _posed.get(bone_name, _bone_pos(_bones[bone_name]))
+	if _posed.has(bone_name):
+		return _skel.global_transform * (_posed[bone_name] as Vector3)
+	return _bone_pos(_bones[bone_name])
 
 
 ## Istuessa reidet vaakaan eteen ja sääret alas, jalkapohjat lattialle

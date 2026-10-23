@@ -6,9 +6,10 @@ extends Node3D
 
 const SIZE := Vector3(0.52, 0.28, 0.38) # pituus, korkeus, leveys
 ## Pohjan keskikohta veneen rungossa: perätuhdon takana oikealla, pituus veneen
-## suuntaan, ettei perämoottorin ohjausaisa peitä saavia ylhäältä katsottaessa
-const ON_BOAT := Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.12, -0.13, 1.84))
-const ON_ICE := Vector3(0.75, 0.0, 0.35) # jäällä kalastajan oikealla puolella
+## suuntaan, ettei perämoottorin ohjausaisa peitä saavia ylhäältä katsottaessa.
+## Pohja on 3 mm lattian yläpuolella: samassa tasossa pohja ja lattia välkkyivät.
+const ON_BOAT := Transform3D(Basis(Vector3.UP, PI / 2.0), Vector3(0.12, -0.127, 1.84))
+const ON_ICE := Vector3(0.75, 0.003, 0.35) # jäällä kalastajan oikealla puolella (pohja jään yläpuolella)
 const WATER_LEVEL := 0.7 # osuus saavin korkeudesta
 
 var boat: Boat

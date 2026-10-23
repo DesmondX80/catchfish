@@ -124,6 +124,12 @@ func hand_points() -> Array:
 	return [hp + side * 0.06 + up * swing, hp - side * 0.06 - up * swing + boat.hull.global_basis.z * 0.12]
 
 
+## Ruudun tahdissa: telineessä oleva ankkuri ja köysi seuraavat ruudulla
+## näkyvää runkoa (Boat._process)
+func follow_boat() -> void:
+	_place()
+
+
 func update(dt: float) -> void:
 	_time += dt
 	var lake := boat.lake

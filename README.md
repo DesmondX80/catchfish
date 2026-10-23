@@ -73,7 +73,9 @@ painuu, hauki hyppää).
   kovalla tuulella pintaan jää myös tuulen suuntaisia vaahtojuovia.
   Veneen varjo lankeaa vedenpintaan rungosta alkaen auringon mukaan:
   aamulla ja illalla pitkänä, keskipäivällä lähes veneen alla. Ruskeassa
-  vedessä pohjan varjo sumenee syvyyden mukaan.
+  vedessä pohjan varjo sumenee syvyyden mukaan. Vene, kalastaja, vavat ja
+  kamera liikkuvat ruudulla tasaisesti myös silloin, kun näytön
+  virkistystaajuus ei ole pelin fysiikan 60 Hz.
 - **Uistimet**: uppoavat (lusikka, lippa, jigi) vajoavat levossa nopeasti
   pohjaan. Lusikka ui kelatessa ja uistellessa 1,5 metrin syvyydessä
   ja nopeasti kelatessa 1 metrissä (syvältä se nousee sinne hiljalleen).
@@ -179,7 +181,9 @@ tools/run_tests.sh /polku/godotiin luretest   # vain nimetyt
 
 Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.
 Ikkunaa vaativat testit (esim. `--inputtest`, `--pausetest`, `--menutest`)
-ajetaan käsin.
+ajetaan käsin. Välkkymisen ja nykimisen voi mitata kuvista:
+`godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO`
+merkitsee punaisella pikselit, jotka vaihtavat väriä edestakaisin.
 
 ## Lisenssit
 

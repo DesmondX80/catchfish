@@ -42,7 +42,7 @@ tunnisteita (CATCHFISH-N).
 
 ### Työn alla
 
-Ei mitään (#74 Automaattitestit GitHub Actionsiin tehty 0.45.1:ssä).
+Ei mitään (#78 Välkkyminen tehty 0.47.1:ssä).
 
 ### Kiireelliset ja korkeat
 
@@ -137,6 +137,8 @@ godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, hell
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
 godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera
+godot --headless --fixed-fps 30 -- --day=180 --synctest     # vene, kamera ja vavat ruudun tahdissa
+godot --headless --fixed-fps 30 -- --day=180 --overlaptest  # päällekkäiset pinnat (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
 godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
@@ -154,6 +156,7 @@ godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähiku
 godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
+godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
@@ -540,6 +543,29 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Rulla ei zoomaa FPV:ssä. Kohon lähikuva, saavi, kalapakki ja haavinta
   toimivat ennallaan, ja niissä pää näkyy. Testi `--fpvtest`, kuvat `--fpvshots`.
   Julkaistu [v0.47.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.47.0).
+- **#78 Välkkyminen – tehty (0.47.1).** Välke ja edestakainen heiluminen
+  mitattiin kuvista (`--jittershots`): kamera kääntyy hitaasti tai pysyy
+  paikallaan, ja pikselit, jotka vaihtavat väriä edestakaisin, merkitään.
+  Syyt ja korjaukset:
+  - *Tahtiero*: vene liikkui fysiikan tahdissa (60 Hz), mutta kamera,
+    kalastaja ja vavat ruudun tahdissa, joten kun ruutuja ja fysiikka-askelia
+    ei ollut yhtä monta (esim. 144 Hz:n näyttö), vene ja vapa nykivät
+    edestakaisin, FPV:ssä jopa 17 cm. Nyt `Boat` piirtää rungon kahden
+    viimeisen fysiikka-askeleen väliin (`Engine.get_physics_interpolation_fraction`)
+    ja ajetaan ennen muita; vavat, siimat, ankkuri ja haavi siirretään joka
+    ruudulla rungon ja kalastajan vartalon mukaan (`Fishing.follow_boat`), ja
+    FPV-kamera lukee pään paikan luurangon koordinaateista saman ruudun
+    asennossa. Testi `--synctest` (fysiikka 45 Hz, ruutu 30 Hz).
+  - *Päällekkäiset pinnat* (z-fighting): moottorilevy peräpeilin tasossa
+    (perälauta), saavin pohja lattian ja talvella jään tasossa, moottorin
+    kiinnikkeen ja varren osat. Osia siirrettiin 1–3 mm. Testi
+    `--overlaptest` etsii veneen ja sen ympäristön verkoista samassa tasossa
+    päällekkäin olevat kolmiot, jotka näkyvät samalta puolelta.
+  - *Varjot*: aurinko kääntyi joka ruudulla, jolloin varjokartta siirtyi alle
+    tekselin verran ja varjojen reunat välkkyivät. Aurinko kääntyy nyt
+    0,1°:n askelin (`SkyTime.SUN_STEP`).
+  - Kaukaisen metsän välke kameraa käännettäessä on reunojen aliasointia
+    (peli käyttää jo 4× MSAA:ta), eikä sitä muutettu.
 
 
 ## Huomioita ja avoimia kysymyksiä

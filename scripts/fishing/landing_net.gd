@@ -110,6 +110,12 @@ func update(dt: float) -> void:
 		_end()
 
 
+## Ruudun tahdissa: haavi seuraa ruudulla näkyvää venettä (Fishing.follow_boat)
+func follow_boat() -> void:
+	if _active and not _on_ice:
+		_boat_netting(0.0)
+
+
 func _end() -> void:
 	_active = false
 	_net.visible = false
@@ -145,7 +151,7 @@ func _camera_shot() -> Transform3D:
 ## Avovesi: haavin reitti ja kala haavissa
 func _boat_netting(dt: float) -> void:
 	var side := _side3()
-	var center := Vector3(boat.pos.x, 0.0, boat.pos.y)
+	var center := Vector3(boat.global_position.x, 0.0, boat.global_position.z)
 	var raised := center + side * 0.75 + Vector3(0, 0.95, 0) # haavi pystyssä laidan yllä
 	var beside := Vector3(_from.x, -0.05, _from.z) + side * 0.15 # vedenpinnassa kalan takana
 	var under := Vector3(_from.x, -0.4, _from.z)
