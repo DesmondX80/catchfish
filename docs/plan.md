@@ -1,6 +1,6 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 23.10.2026. Nykyinen versio **0.45.1**
+Päivitetty 23.10.2026. Nykyinen versio **0.46.0**
 ([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.45.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
@@ -84,7 +84,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | 24 | Uramoodi: kalastonhoitomaksu ja kalan vapautus | Todo |
 | 25 | Uramoodi: tilauskalat | Todo |
 | 7 | Uramoodin laajennus: kauppa, välineiden päivitykset ja tehtävät | Todo |
-| 46 | Tyhjennetään ennätyskalalista | Todo |
 | 70 | Saavutukset | Backlog |
 | 71 | Päivän saalisyhteenveto | Backlog |
 
@@ -518,6 +517,13 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   oikea kala tai merikotka huusi väliin (kalat ovat nyt testissä varovaisia
   eikä lintuja tule).
   Julkaistu [v0.45.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.45.1).
+- **#46 Ennätyslistan tyhjennys – tehty (0.46.0).** Kalalajit ovat muuttuneet
+  projektin alusta (kuha ja taimen poistuivat 0.18.0), joten vanhat ennätykset
+  tyhjennetään kerran. Saaliskirja (`user://saaliskirja.json`) ja kalakirja
+  (`user://kalakirja.json`) tallennetaan nyt muodossa `{"version": 2, ...}`;
+  vanhan muodon tallennus luetaan tyhjänä ja kirjoitetaan uudessa muodossa.
+  Testiajot eivät enää kirjoita saaliskirjaan edes käynnistyessään.
+  Tarkistukset `--booktest`issa.
 
 
 ## Huomioita ja avoimia kysymyksiä

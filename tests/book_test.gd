@@ -2,7 +2,8 @@ extends Node
 ## Kalakirjan testi: godot --headless -- --day=180 --booktest
 ## Tarkistaa lajin avautumisen, saaliiden määrän ja ennätyksen, vanhan saaliskirjan
 ## siirron kirjaan, kirjan sivut (saamaton laji varjokuvana) ja taukovalikon
-## Kalakirja-painikkeen sekä saalisikkunan "uusi laji" -ilmoituksen.
+## Kalakirja-painikkeen sekä saalisikkunan "uusi laji" -ilmoituksen. Lisäksi vanhan
+## tallennusmuodon kertaluonteisen tyhjennyksen (ennätyslista ja kalakirja, 0.46.0).
 ## Kuvat sivuista: godot --fixed-fps 30 -- --day=180 --booktest --bookshots=KANSIO
 
 var main: Node
@@ -48,6 +49,19 @@ func _data_checks() -> void:
 	_check("uusi laji avautuu (made)", FishBook.add(_entry("made", 0.9, "2026-06-05 23:10:00")))
 	_check("toinen made ei ole uusi laji", not FishBook.add(_entry("made", 0.5, "2026-06-06 23:10:00")))
 	_check("pienempi made ei muuta ennätystä", is_equal_approx(FishBook.best("made")["weight"], 0.9) and FishBook.count("made") == 2)
+	_save_format_checks()
+
+
+func _save_format_checks() -> void:
+	_check("testiajo ei tallenna saaliskirjaa", not CatchLog.persist)
+	var e := _entry("hauki", 1.2, "2026-06-01 10:00:00")
+	_check("vanha saaliskirja (taulukko) tyhjennetään", CatchLog.parse_save([e]).is_empty())
+	_check("versioton saaliskirja tyhjennetään", CatchLog.parse_save({"entries": [e]}).is_empty())
+	_check("nykyinen saaliskirja säilyy", CatchLog.parse_save({"version": CatchLog.SAVE_VERSION, "entries": [e]}).size() == 1)
+	# JSON palauttaa luvut liukulukuina
+	_check("JSONista luettu saaliskirja säilyy", CatchLog.parse_save(JSON.parse_string(JSON.stringify({"version": CatchLog.SAVE_VERSION, "entries": [e]}))).size() == 1)
+	_check("vanha kalakirja tyhjennetään", not FishBook.is_current_save({"hauki": {"count": 1, "best": e, "first": e["date"]}}))
+	_check("nykyinen kalakirja säilyy", FishBook.is_current_save(JSON.parse_string(JSON.stringify({"version": FishBook.SAVE_VERSION, "species": {}}))))
 
 
 func _view_checks() -> void:

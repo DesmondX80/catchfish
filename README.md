@@ -127,7 +127,8 @@ painuu, hauki hyppää).
   jossa on kuvaus, kuva, saaliiden määrä, oma ennätys ja ensimmäinen saalis.
   Laji avautuu kirjaan, kun saat sen ensimmäisen kerran (siihen asti sivulla
   on vain varjokuva). Kirjaan tulevat sekä kertakalastuksen että uramoodin
-  saaliit.
+  saaliit. Versiossa 0.46.0 ennätyslista ja kalakirja tyhjennettiin kerran,
+  koska kalalajit ovat muuttuneet pelin alkuajoista.
 - **Linnut**: taivaalla lentää variksia, korppeja, sorsia, hanhiparvia
   (V-muodostelmassa), lokkeja ja harvinaisempana merikotka. Ne lentävät
   järven yli tai kaartelevat hetken veneen lähistöllä ja ääntelevät

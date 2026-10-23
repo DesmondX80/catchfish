@@ -5,6 +5,9 @@ extends Node
 ## (ensimmäisellä kerralla kirja täytetään saaliskirjan vanhoista saaliista).
 
 const PATH := "user://kalakirja.json"
+## Tallennusmuodon versio. Versiossa 2 (0.46.0) vanha kirja tyhjennettiin
+## kertaalleen yhdessä ennätyslistan kanssa (ks. CatchLog.SAVE_VERSION).
+const SAVE_VERSION := 2
 
 ## Lajin sivun tekstit: tieteellinen nimi ja kuvaus
 const TEXTS := {
@@ -27,11 +30,16 @@ func _ready() -> void:
 			persist = false # testiajot eivät koske pelaajan kalakirjaan
 	if persist and FileAccess.file_exists(PATH):
 		var data = JSON.parse_string(FileAccess.get_file_as_string(PATH))
-		if data is Dictionary:
-			species = data
+		if is_current_save(data):
+			species = data["species"]
 			return
 	rebuild(CatchLog.entries if persist else [])
 	_save()
+
+
+## Onko tallennus nykyistä muotoa (vanha muoto tyhjennetään)
+static func is_current_save(data) -> bool:
+	return data is Dictionary and int(data.get("version", 0)) >= SAVE_VERSION and data.get("species") is Dictionary
 
 
 ## Kirja alusta annetuista saaliista (vanhat saaliskirjan saaliit)
@@ -85,4 +93,4 @@ func _save() -> void:
 		return
 	var f := FileAccess.open(PATH, FileAccess.WRITE)
 	if f:
-		f.store_string(JSON.stringify(species, "  "))
+		f.store_string(JSON.stringify({"version": SAVE_VERSION, "species": species}, "  "))
