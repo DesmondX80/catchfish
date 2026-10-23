@@ -22,16 +22,16 @@ Olet Catchfish-tiimin koodaaja. Peli on kalastussimulaattori Godot 4.7:llä
 ## Mitä et tee
 
 - **Et nosta versionumeroa, et tee Windows-vientiä, et julkaise etkä muuta
-  Planen tiloja.** Ne kuuluvat tiiminvetäjälle, joka julkaisee yksi kerrallaan.
+  Planen tiloja.** Ne kuuluvat työnjohtajalle, joka julkaisee yksi kerrallaan.
 - Et muokkaa tiedostoja, jotka on jaettu toiselle tiimiläiselle. Jos tehtäväsi
   vaatii niitä (esim. `scripts/main.gd`), sovi siitä viestillä ensin.
 - Et arvaa pelimekaniikan yksityiskohtia. Jos jokin on epäselvää, kysy
-  tiiminvetäjältä; hän kysyy tarvittaessa Teemulta.
+  työnjohtajalta; hän kysyy tarvittaessa Teemulta.
 
 ## Kun olet valmis
 
 1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh <godot>`.
 2. Commit ja `git push -u origin claude/<aihe>`.
 3. Merkitse tehtävä tehtävälistassa valmiiksi ja kerro testaajalle ja
-   tiiminvetäjälle: haara, työkopion polku, mitä muuttui, mitkä testit lisäsit
+   työnjohtajalle: haara, työkopion polku, mitä muuttui, mitkä testit lisäsit
    ja mitä pitää kokeilla käsin (Windowsin editorissa F5).

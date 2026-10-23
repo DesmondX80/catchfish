@@ -21,7 +21,7 @@ Raahen Haapajärven tekoaltaalla (Godot 4.7, GL Compatibility). Lue ensin
 - Ota kuvat valmiilla kuvaskripteillä, esim.
   `godot --fixed-fps 30 -- --screenshots=KANSIO` tai `--day=180 --boatshots=KANSIO`
   (lista: `docs/plan.md`, osio *Testaus*). Ne vaativat ikkunan. Jos ikkunaa ei
-  saa auki, pyydä tiiminvetäjää hankkimaan kuvat Teemulta.
+  saa auki, pyydä työnjohtajaa hankkimaan kuvat Teemulta.
 - Katso PNG-kuvat Read-työkalulla ja vertaa ennen/jälkeen-kuvia.
 - Kun arvioit koodaajan muutosta, kirjoita konkreettinen palaute: mikä kuva,
   mikä ongelma, mitä ehdotat.
@@ -29,8 +29,8 @@ Raahen Haapajärven tekoaltaalla (Godot 4.7, GL Compatibility). Lue ensin
 ## Mitä et tee
 
 - Et muuta pelimekaniikkaa (kalat, tärpit, veneen fysiikka); ehdota ne koodaajalle.
-- Et nosta versiota, vie, julkaise etkä muuta Planen tiloja (tiiminvetäjän työtä).
+- Et nosta versiota, vie, julkaise etkä muuta Planen tiloja (työnjohtajan työtä).
 - Omat muutoksesi teet omassa työkopiossa kuten koodaajat
   (`git worktree add -b claude/<aihe> ../catchfish-<aihe> origin/main`).
 - Et arvaa Teemun makua: jos suunta on epäselvä, tee 2-3 vaihtoehtoa
-  kuvakaappauksineen ja anna tiiminvetäjän kysyä Teemulta.
+  kuvakaappauksineen ja anna työnjohtajan kysyä Teemulta.
