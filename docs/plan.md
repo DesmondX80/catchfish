@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 23.10.2026. Nykyinen versio **0.49.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.49.0)).
+Päivitetty 23.10.2026. Nykyinen versio **0.50.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.50.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -618,7 +618,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Kertakalastuksessa verkkoja on kolme kutakin silmäkokoa. Verkot näkyvät
   kartalla (K) oransseina viivoina. Testi `--nettest` (kesä ja talvi).
   Julkaistu [v0.49.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.49.0).
-- **#24 Uramoodi: kalastonhoitomaksu ja kalan vapautus – tehty.** Suunnitelma
+- **#24 Uramoodi: kalastonhoitomaksu ja kalan vapautus – tehty (0.50.0).** Suunnitelma
   `docs/suunnitelmat/CATCHFISH-24.md`. Uramoodissa virvelikalastus ja verkon
   lasku vaativat kalastonhoitomaksun, jonka pelaaja maksaa liikkeessä:
   vuosimaksu 47 € (31.12. asti), viikkomaksu 16 € (7 vrk) tai vuorokausimaksu
@@ -635,6 +635,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ei mitään), ja maine nostaa myyntihintoja 1 % jokaista 10 mainetta kohden
   (enintään 25 %). Kotinäkymä näyttää maineen, maksun ja luvan sekä neuvon,
   jos kalastaa ei voi. Testi `--releasetest` (kesä ja talvi).
+  Julkaistu [v0.50.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.50.0).
 
 ## Huomioita ja avoimia kysymyksiä
 
