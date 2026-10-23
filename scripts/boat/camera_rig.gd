@@ -1,7 +1,8 @@
 class_name CameraRig
 extends Node3D
-## Kolmannen persoonan kamera veneen takana. Hiiri kääntää kameraa, ja
-## kameran katsesuunta on myös heittosuunta.
+## Kolmannen persoonan kamera veneen takana tai FPV-kamera kalastajan
+## silmissä (P vaihtaa). Hiiri kääntää kameraa, ja kameran katsesuunta on
+## myös heittosuunta.
 
 var boat: Boat
 var lake: LakeData
@@ -27,12 +28,25 @@ var _bobber_eye := Vector3.ZERO
 var shot := Transform3D.IDENTITY
 var shot_view := false
 var _shot_blend := 0.0
+## FPV: kamera kalastajan silmissä, pää piilotetaan
+var angler: Angler
+var first_person := false
+var fpv_pitch := 0.3 # katseen kallistus alaspäin (rad)
+var _fpv_blend := 0.0
+const FPV_EYE_UP := 0.12 # silmät pään luun yläpuolella (m)
+const FPV_EYE_FORWARD := 0.1 # silmät pään luun edessä katseen suuntaan (m)
+## Taaksepäin katsottaessa (soutaessa selkä keulaan) silmä siirtyy selän
+## ulkopuolelle, jottei oma vartalo peitä näkymää
+const FPV_EYE_BACK := 0.25
 
 
 func setup(target: Boat, lake_data: LakeData) -> void:
 	boat = target
 	lake = lake_data
 	yaw = boat.yaw
+	angler = boat.angler
+	first_person = Settings.first_person
+	_fpv_blend = 1.0 if first_person else 0.0
 	camera = Camera3D.new()
 	camera.fov = 65.0
 	camera.near = 0.1
@@ -45,8 +59,11 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion and GameInput.active():
 		var look: Vector2 = event.relative * Settings.mouse_look_scale() * 0.0035
 		yaw -= look.x
-		pitch = clampf(pitch + look.y, -0.15, 1.3)
-	elif event is InputEventMouseButton and event.pressed:
+		if first_person:
+			fpv_pitch = clampf(fpv_pitch + look.y, -1.0, 1.3)
+		else:
+			pitch = clampf(pitch + look.y, -0.15, 1.3)
+	elif event is InputEventMouseButton and event.pressed and not first_person:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			distance = maxf(3.0, distance * 0.9)
 		elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
@@ -58,6 +75,28 @@ func aim_direction() -> Vector2:
 	return Vector2(-sin(yaw), -cos(yaw))
 
 
+## P: kolmannen persoonan ja FPV-kameran vaihto (valinta tallennetaan asetuksiin)
+func toggle_first_person() -> void:
+	first_person = not first_person
+	Settings.first_person = first_person
+	Settings.save()
+
+
+## Kalastajan silmät: pään luun yläpuolella ja hieman katseen suuntaan
+func _eye_transform() -> Transform3D:
+	var dir := Vector3(-sin(yaw) * cos(fpv_pitch), -sin(fpv_pitch), -cos(yaw) * cos(fpv_pitch))
+	var flat := Vector3(-sin(yaw), 0, -cos(yaw))
+	var head := boat.global_position + Vector3(0, 0.9, 0)
+	var forward := FPV_EYE_FORWARD
+	if angler != null:
+		head = angler.posed_position("Head")
+		var facing := -angler.global_basis.z
+		var away := (1.0 - flat.dot(Vector3(facing.x, 0, facing.z).normalized())) * 0.5 # 0 eteen, 1 taakse
+		forward += FPV_EYE_BACK * away
+	var eye := head + Vector3(0, FPV_EYE_UP, 0) + flat * forward
+	return Transform3D(Basis.looking_at(dir), eye)
+
+
 func _process(delta: float) -> void:
 	var target := boat.global_position + Vector3(0, 1.5, 0)
 	var offset := Vector3(sin(yaw) * cos(pitch), sin(pitch), cos(yaw) * cos(pitch)) * distance
@@ -66,6 +105,9 @@ func _process(delta: float) -> void:
 	cam_pos.y = maxf(cam_pos.y, ground + 0.5)
 	camera.global_position = cam_pos
 	camera.look_at(target + Vector3(-sin(yaw), 0, -cos(yaw)) * 2.0, Vector3.UP)
+	_fpv_blend = move_toward(_fpv_blend, 1.0 if first_person else 0.0, delta * 3.0)
+	if _fpv_blend > 0.0:
+		camera.global_transform = camera.global_transform.interpolate_with(_eye_transform(), smoothstep(0.0, 1.0, _fpv_blend))
 	_bobber_blend = move_toward(_bobber_blend, 1.0 if bobber_view else 0.0, delta * 1.5)
 	if _bobber_blend > 0.0:
 		var to_boat := Vector3(boat.global_position.x - bobber_pos.x, 0, boat.global_position.z - bobber_pos.z)
@@ -93,3 +135,7 @@ func _process(delta: float) -> void:
 	_shot_blend = move_toward(_shot_blend, 1.0 if shot_view else 0.0, delta * 2.5)
 	if _shot_blend > 0.0:
 		camera.global_transform = camera.global_transform.interpolate_with(shot, smoothstep(0.0, 1.0, _shot_blend))
+	# Pää piilotetaan vain, kun kamera on silmissä (erikoiskuvissa pää näkyy)
+	if angler != null:
+		var special := maxf(maxf(_bobber_blend, _tub_blend), maxf(_box_blend, _shot_blend))
+		angler.hide_head = _fpv_blend > 0.5 and special < 0.5

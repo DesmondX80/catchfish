@@ -53,7 +53,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | # | Tehtävä | Tila | Huomio |
 |---|---|---|---|
 | 36 | Verkkokalastus | Todo | Uusi pyyntitapa |
-| 21 | Tuulikellunta ja uistinankkuri | Todo | |
 | 34 | Haavinta aivan omaksi animaatiokseen | Backlog | Tarkennettava: mitä puuttuu nykyisestä (CATCHFISH-5 tehty) |
 | 8 | Lisää välineitä | Backlog | Onki tehty (#15); syöttikala virvelillä puuttuu |
 | 56 | Onkimiseen madon laittaminen | Backlog | |
@@ -67,7 +66,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | # | Tehtävä | Tila |
 |---|---|---|
-| 42 | FPV-kamera | Todo |
 | 53 | Uisteluun vavan kärjen näkymä | Backlog |
 | 61 | Uistimet samannäköisiksi siiman päässä kuin pakissa | Backlog |
 | 59 | Tuolit oikeinpäin pöydän ympärille | Backlog |
@@ -138,6 +136,7 @@ godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohja
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
+godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
 godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
@@ -152,6 +151,7 @@ godot --headless -- --day=180 --speciestest                 # kalakanta ja saali
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
+godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 ```
@@ -530,6 +530,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Testiajot eivät enää kirjoita saaliskirjaan edes käynnistyessään.
   Tarkistukset `--booktest`issa.
   Julkaistu [v0.46.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.46.0).
+- **#21 Tuulikellunta – tehty.** Vene ajelehtii vapaasti tuulen mukana
+  (veneen tuulifysiikka); uistinankkuria ei toteuteta.
+- **#42 FPV-kamera – tehty (0.47.0).** P vaihtaa kameran veneen takaa
+  kalastajan silmiin ja takaisin; valinta tallennetaan asetuksiin. Kamera on
+  pään luun kohdalla, hiiri kääntää katsetta (ylös 57°, alas 75°), ja
+  katsesuunta on heittosuunta. Pää kutistetaan luurangon muokkaimessa
+  kameran sisään ja päähine piilotetaan, joten kädet, vapa ja vene näkyvät.
+  Rulla ei zoomaa FPV:ssä. Kohon lähikuva, saavi, kalapakki ja haavinta
+  toimivat ennallaan, ja niissä pää näkyy. Testi `--fpvtest`, kuvat `--fpvshots`.
 
 
 ## Huomioita ja avoimia kysymyksiä

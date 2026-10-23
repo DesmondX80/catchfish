@@ -33,6 +33,8 @@ const SENSITIVITY_MIN := 0.25
 const SENSITIVITY_MAX := 3.0
 var mouse_sensitivity := 1.0
 var invert_y := false
+## FPV-kamera kalastajan silmissä (P vaihtaa)
+var first_person := false
 ## Äänenvoimakkuudet 0–1 väylittäin: [väylä, nimi valikossa, asetuksen avain]
 const BUSES := [
 	["Master", "Kaikki äänet", "kaikki"],
@@ -59,6 +61,7 @@ func _ready() -> void:
 		time_index = clampi(cfg.get_value("peli", "kellonaika", 0), 0, TIMES.size() - 1)
 		mouse_sensitivity = clampf(cfg.get_value("ohjaus", "hiiren_herkkyys", 1.0), SENSITIVITY_MIN, SENSITIVITY_MAX)
 		invert_y = cfg.get_value("ohjaus", "kaanteinen_pystyohjaus", false)
+		first_person = cfg.get_value("ohjaus", "fpv_kamera", false)
 		for b in BUSES:
 			volumes[b[0]] = clampf(cfg.get_value("aanet", b[2], 1.0), 0.0, 1.0)
 	# Testiajot eivät käytä pelaajan asetuksia
@@ -69,6 +72,7 @@ func _ready() -> void:
 			time_index = 0
 			mouse_sensitivity = 1.0
 			invert_y = false
+			first_person = false
 			for b in BUSES:
 				volumes[b[0]] = 1.0
 			persist = false
@@ -108,6 +112,7 @@ func save() -> void:
 	cfg.set_value("peli", "kellonaika", time_index)
 	cfg.set_value("ohjaus", "hiiren_herkkyys", mouse_sensitivity)
 	cfg.set_value("ohjaus", "kaanteinen_pystyohjaus", invert_y)
+	cfg.set_value("ohjaus", "fpv_kamera", first_person)
 	for b in BUSES:
 		cfg.set_value("aanet", b[2], volumes[b[0]])
 	cfg.save(PATH)

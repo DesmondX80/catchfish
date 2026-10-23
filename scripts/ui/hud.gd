@@ -219,6 +219,7 @@ func help_text(start_hint := true) -> String:
 		"",
 		"KALASTUS",
 		"  Hiiri        kameran ja heittosuunnan kääntö, rulla = zoomaus",
+		"  P            kamera veneen takana / FPV kalastajan silmistä",
 		"  Vasen hiiri  pidä pohjassa = heittovoima (rengas näyttää osumapisteen), päästä = heitto",
 		"               tärpätessä vastaisku, väsytyksen lopussa haavinta",
 		"  Oikea hiiri  kelaa (Shift = nopeasti)",

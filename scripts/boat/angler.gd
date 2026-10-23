@@ -75,6 +75,10 @@ var _sit := 1.0 # 1 = istuu, 0 = seisoo (pehmeä siirtymä)
 var _since_rowing := 10.0
 var _rod_stow := 0.0 # 0 = vapa kädessä, 1 = veneen pohjalla
 var _bucket: Node3D
+## FPV-kamerassa pää (tukka, parta ja päähine) piilotetaan, kädet ja vapa näkyvät
+var hide_head := false
+var _head_root: Node3D
+const HIDDEN_HEAD_SCALE := 0.001
 
 
 func _ready() -> void:
@@ -148,6 +152,7 @@ func _build() -> void:
 	head_root.scale = Vector3.ONE / _model_scale() # armatuurin skaalaus pois
 	head_root.rotation.y = PI # luun +Z on kasvojen suunta
 	head.add_child(head_root)
+	_head_root = head_root
 	_cap = _build_cap(head_root)
 	_beanie = _build_beanie(head_root)
 	_beanie.visible = false
@@ -479,6 +484,11 @@ func apply_pose() -> void:
 	_hair.set_shader_parameter("head_inv", Projection(head_pose.affine_inverse()))
 	for bone_name in POSED_BONES:
 		_posed[bone_name] = _bone_pos(_bones[bone_name])
+	# FPV: pää kutistetaan kameran sisään (paikka säilyy kameraa varten)
+	_head_root.visible = not hide_head
+	if hide_head:
+		head_pose.basis = head_pose.basis.scaled_local(Vector3.ONE * HIDDEN_HEAD_SCALE)
+		_skel.set_bone_global_pose(_bones["Head"], head_pose)
 
 
 ## Luun paikka maailmassa sellaisena kuin se näkyy (asento ja IK mukana)

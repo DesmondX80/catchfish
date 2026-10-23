@@ -24,6 +24,7 @@ const KEYS := {
 	"pause": [KEY_ESCAPE],
 	"mute": [KEY_M],
 	"map": [KEY_K],
+	"camera_view": [KEY_P],
 }
 
 const MOUSE := {

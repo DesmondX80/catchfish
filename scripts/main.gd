@@ -274,6 +274,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/tackle_test.gd").new())
 	elif "--birdtest" in args:
 		add_child(load("res://tests/bird_test.gd").new())
+	elif "--fpvtest" in args:
+		add_child(load("res://tests/fpv_test.gd").new())
 	elif "--booktest" in args:
 		add_child(load("res://tests/book_test.gd").new())
 	else:
@@ -286,6 +288,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/angler_shots.gd").new())
 			elif arg.begins_with("--boatshots="):
 				add_child(load("res://tests/boat_shots.gd").new())
+			elif arg.begins_with("--fpvshots="):
+				add_child(load("res://tests/fpv_shots.gd").new())
 			elif arg.begins_with("--foamshots="):
 				add_child(load("res://tests/foam_shots.gd").new())
 			elif arg.begins_with("--shadowshots="):
@@ -312,6 +316,9 @@ func _input(event: InputEvent) -> void:
 		var bus := AudioServer.get_bus_index("Master")
 		AudioServer.set_bus_mute(bus, not AudioServer.is_bus_mute(bus))
 		hud.show_message("Äänet pois" if AudioServer.is_bus_mute(bus) else "Äänet päällä")
+	elif event.is_action_pressed("camera_view"):
+		camera_rig.toggle_first_person()
+		hud.show_message("FPV-kamera" if camera_rig.first_person else "Kamera veneen takana")
 	elif event.is_action_pressed("time_speed"):
 		if sky.real_time:
 			hud.show_message("Todellinen aika käytössä – ajan nopeutta ei voi muuttaa")
