@@ -164,6 +164,21 @@ paikallistiedon mukaan altaan syvin kohta. Rannoilla vesi syvenee heti noin
 
 Raakadataa ei ole versionhallinnassa (`.gitignore`).
 
+## Testit
+
+Ikkunattomat testit ajetaan GitHub Actionsissa Godot 4.7.2:lla jokaisesta
+pushista ja PR:stä (`.github/workflows/tests.yml`). Samat testit voi ajaa
+itse:
+
+```bash
+tools/run_tests.sh /polku/godotiin            # kaikki
+tools/run_tests.sh /polku/godotiin luretest   # vain nimetyt
+```
+
+Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.
+Ikkunaa vaativat testit (esim. `--inputtest`, `--pausetest`, `--menutest`)
+ajetaan käsin.
+
 ## Lisenssit
 
 Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m
