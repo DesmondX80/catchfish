@@ -43,7 +43,11 @@ Katso `docs/plan.md`, osio *Työtapa*. Lyhyesti:
 1. Tehtävä Planesta (projekti CATCHFISH) → tila *In Progress*.
 2. Toteutus ja testit (uusi ominaisuus saa oman testinsä), README ja F1-ohje ajan tasalle.
 3. Versio `project.godot`:iin: uusi ominaisuus nostaa minor-, korjaus patch-versiota.
-4. Release: commit → Windows-vienti → push → GitHub-release (suomeksi, exe liitteenä)
+4. Ennen releasea päivitä haara mainin päälle, koska toinen agentti on voinut
+   julkaista välissä: `git fetch && git rebase origin/main`, aja testit uudelleen
+   ja tarkista versionumero mainista (`project.godot`, `docs/plan.md`), ettei
+   samaa versiota julkaista kahdesti.
+5. Release: commit → Windows-vienti → push → GitHub-release (suomeksi, exe liitteenä)
    → tehtävä Planessa *Done*.
 
 ## Testaus

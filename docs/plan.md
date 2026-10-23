@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
 Päivitetty 23.10.2026. Nykyinen versio **0.46.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.45.1)).
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.46.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -173,7 +173,12 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 1. Tehtävä Planesta → tila *In Progress*.
 2. Toteutus, testit (uusi ominaisuus saa oman testinsä), README ja F1-ohje.
 3. Versio `project.godot`:iin: uusi ominaisuus nostaa minor-versiota, korjaus patch-versiota.
-4. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
+4. Ennen releasea haara päivitetään mainin päälle, koska rinnakkainen agentti on
+   voinut julkaista välissä: `git fetch && git rebase origin/main`, testit
+   uudelleen ja versionumero tarkistetaan mainista (`project.godot` ja tämän
+   tiedoston alku), ettei samaa versiota julkaista kahdesti. Jos versio on jo
+   käytetty, nostetaan seuraavaan.
+5. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
    GitHub-release suomenkielisin julkaisutiedoin ja exe liitteenä →
    **tehtävä Planessa *Done***.
 
