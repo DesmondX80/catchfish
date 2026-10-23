@@ -43,9 +43,9 @@ Kaikki, mitä koodista tai suunnitelmasta ei löydy. Ehdota jokaiseen
 vaihtoehto, mutta älä päätä sitä itse.
 ```
 
-Lähetä suunnitelma työnjohtajalle. Hän vie sen Teemun hyväksyttäväksi ja
-sitten koodaajalle. Jos Teemu muuttaa jotain, päivitä suunnitelma ja lähetä se
-uudelleen.
+Lähetä suunnitelma työnjohtajalle. Hän hyväksyy sen, vie avoimet kysymykset
+tarvittaessa Teemulle ja antaa suunnitelman koodaajalle. Jos suunnitelmaa
+muutetaan, päivitä se ja lähetä uudelleen.
 
 ## Tarkistus toteutuksen jälkeen
 
