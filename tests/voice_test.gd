@@ -14,6 +14,10 @@ func _ready() -> void:
 	main = get_parent()
 	main.hud.set_paused_view(false)
 	main.weather.rain = 0.0
+	# Oikeat kalat ja merikotka eivät saa huutaa väliin ("Hauki!", "Merikotka!")
+	for f in main.population.fish:
+		f["wary"] = 3600.0 # varova kala ei ui uistimen perään eikä iske
+	main.birds.auto_spawn = false
 
 
 func _check(name: String, ok: bool) -> void:

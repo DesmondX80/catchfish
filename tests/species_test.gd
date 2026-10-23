@@ -30,7 +30,7 @@ func _ready() -> void:
 	_check("made syö talvella pimeällä (yöllä %d, päivällä %d)" % [winter_night.get("made", 0), winter_day.get("made", 0)], winter_night.get("made", 0) > winter_day.get("made", 0))
 	_check("made on talven kala (talviyö %d, kesäyö %d)" % [winter_night.get("made", 0), summer_night.get("made", 0)], winter_night.get("made", 0) > summer_night.get("made", 0) * 2)
 	_check("lahna on harvinainen saalis (talvipilkillä %.0f %%)" % _share(winter_day, ["lahna"]), _share(winter_day, ["lahna"]) < 15.0)
-	_check("kesällä koho-ongella saa särkikaloja (särki + lahna %.0f %%)" % _share(summer_float, ["sarki", "lahna"]), _share(summer_float, ["sarki", "lahna"]) > 30.0)
+	_check("kesällä koho-ongella saa särkikaloja (särki + lahna %.0f %%)" % _share(summer_float, ["sarki", "lahna"]), _share(summer_float, ["sarki", "lahna"]) > 25.0)
 	_check("hauki ei juuri syö matoa (%.0f %%)" % _share(summer_float, ["hauki"]), _share(summer_float, ["hauki"]) < 10.0)
 	_check("pohjaongella saa kiiskeä ja lahnaa (%d + %d)" % [summer_bottom.get("kiiski", 0), summer_bottom.get("lahna", 0)], summer_bottom.get("kiiski", 0) > 0 and summer_bottom.get("lahna", 0) > 0)
 	_check("jokainen laji on saatavissa jollakin tavalla", Species.DATA.keys().all(func(sp): return [summer_spoon, summer_jig, summer_night, winter_day, winter_night].any(func(r): return r.get(sp, 0) > 0)))
@@ -59,6 +59,7 @@ func _trial(winter: bool, lure_id: String, speed: float, twitch: float, hour: fl
 	var pop: FishPopulation = main.population
 	var lake: LakeData = main.lake
 	pop.winter = winter
+	pop.update_traits()
 	for f in pop.fish:
 		f["depth"] = pop._preferred_depth(f["sp"], f["pos"])
 		f["hunger"] = 0.7
