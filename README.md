@@ -40,6 +40,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | L | kalapakki auki: kamera katsoo pakkia, ja uistin, koho-onki tai pohjaonki valitaan klikkaamalla sen lokeroa (L, Esc tai oikea hiiri sulkee). Talvella pieni pilkkirasia |
 | F / G | kohon syvyys matalammalle / syvemmälle (ennen heittoa) |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
+| Hiiri uistellessa | kun vapa on telineessä (uistelumoodi): vasen hiiri pohjassa laskee käsivavan uistimen veneen perään; FPV:ssä vasen/oikea hiiri nostaa ruudun vasemman/oikean telinevavan ja antaa tärpissä vastaiskun |
 | T | ajan nopeus (x1 / x10 / x60) |
 | Tab | kalasaavi: kamera saavin yläpuolelle ja sivulle saaliin painot |
 | F1 | ohje |
@@ -108,10 +109,17 @@ painuu, hauki hyppää).
   pysähtyy tai kelaat liian lujaa, hauki kääntyy pois.
 - **Vetouistelu**: veneessä on kaksi vapaa. Heitä uistin veneen perään ja
   paina R, niin vapa menee perälaudan vapatelineeseen ja toinen vapa tulee
-  käteen. Kun molemmat vavat ovat telineissä, soutele tai aja moottorilla:
-  uistimet kulkevat perässä omassa uintisyvyydessään. Tärpin tullessa vavan
-  kärki nykäisee, ja veneen vauhti voi koukuttaa kalan itsestään. R ottaa
-  tärppäävän vavan käteen väsytettäväksi.
+  käteen. Samalla peli siirtyy uistelumoodiin ja kamera FPV-tilaan (P
+  vaihtaa takaisin). Uistelumoodissa toisella vavalla ei heitetä: pidä
+  vasenta hiirtä pohjassa ja soutele, niin uistin jää veneen perään ja
+  siimaa lähtee (enintään 60 m), ja R laittaa senkin vavan telineeseen.
+  Uistimet kulkevat perässä omassa uintisyvyydessään. Tärpin tullessa vavan
+  kärki nykäisee. FPV-kamerassa vasen hiiri nostaa ruudun vasemmalla
+  puolella näkyvän telinevavan ja oikea hiiri oikeanpuoleisen, ja tärpissä
+  nosto on samalla vastaisku, joka ei aina onnistu (veneen vauhti auttaa).
+  Jos toinen vapa on kädessä, se menee telineeseen nostettaessa. R ottaa
+  tärppäävän vavan käteen myös kolmannen persoonan kamerassa. Ilman
+  vastaiskua veneen vauhti koukuttaa kalan vain joskus itsestään.
 - **Onki ja syötit**: koho-ongella mato roikkuu kohon alla syvyydessä, jonka
   säädät ennen heittoa (F/G). Koho kelluu aallokon mukana ja kallistelee
   tuulen voimakkuuden mukaan. Pohjaongella paino on pohjassa ja mato noin

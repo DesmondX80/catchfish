@@ -37,6 +37,7 @@ const DIVE_FULL_SPEED := 0.5 # m/s: tällä nopeudella vaappu ui tavoitesyvyydes
 const DIVE_PER_METER := 0.35 # vaapun sukellus (m) vedettyä metriä kohden
 const GRAVITY := 9.81
 const ROD_COUNT := 2
+const TROLL_MAX_LINE := 60.0 # m: uistelussa perään laskettavan siiman enimmäispituus
 ## Koukussa olevan kalan lajin tunnistaa vasta, kun kala näkyy humusvedessä:
 ## lähellä venettä ja pinnan tuntumassa (jäällä avannon suulla)
 const IDENTIFY_DISTANCE := 6.0 # m veneestä
@@ -382,6 +383,9 @@ func _rod_holder_key() -> void:
 		return
 	if held >= 0:
 		if state == State.RETRIEVING and not lure_on_land:
+			if not trolling():
+				# Uistelumoodiin: FPV-kamera päälle (asetusta ei tallenneta, P vaihtaa takaisin)
+				camera_rig.first_person = true
 			in_holder = true
 			_bend_vel += 2.0 # vapa heilahtaa telineeseen
 			sound_event.emit("oar_catch", rod_tip()) # kopsahdus telineeseen
@@ -390,9 +394,9 @@ func _rod_holder_key() -> void:
 			if next < 0:
 				next = _first_rod(false)
 			if next >= 0:
-				_take_rod(next, "Vapa %d telineeseen – vapa %d käteen" % [_cur + 1, next + 1])
+				_take_rod(next, "Vapa %d telineeseen – UISTELU, vapa %d käteen. %s" % [_cur + 1, next + 1, let_out_hint()])
 			else:
-				message.emit("Vapa %d telineeseen – molemmat vavat telineissä, soutele ja odota tärppiä" % (_cur + 1))
+				message.emit("Vapa %d telineeseen – UISTELU: soutele ja odota tärppiä. %s" % [_cur + 1, trolling_hint()])
 		elif state == State.READY or state == State.LANDED:
 			var next := alert_rod()
 			if next < 0:
@@ -424,6 +428,128 @@ func _take_rod(i: int, text: String) -> void:
 	elif state == State.FIGHT:
 		text += " – kala koukussa, väsytä!"
 	message.emit(text)
+
+
+## Uistelumoodi: vapa on laskettu telineeseen. Käsivavalla ei silloin heitetä,
+## vaan uistin lasketaan veneen perään.
+func trolling() -> bool:
+	if on_ice:
+		return false
+	for i in rod_count():
+		if _rod_get(i, "in_holder"):
+			return true
+	return false
+
+
+## FPV-uistelu: telinevapa nostetaan ja vastaisku annetaan sen puolen hiiren
+## napilla, jolla vapa näkyy ruudulla
+func strike_by_mouse() -> bool:
+	return trolling() and camera_rig.first_person
+
+
+## Uistelun ohje ruudulle kameran mukaan
+func trolling_hint() -> String:
+	if strike_by_mouse():
+		return "Tärppi: vavan puolen hiiren nappi = nosto ja vastaisku"
+	return "Tärppi: R = ota vapa käteen (FPV-kamerassa (P) vastaisku hiirellä)"
+
+
+## Käsivavan ohje uistelumoodissa
+func let_out_hint() -> String:
+	return "Vasen hiiri pohjassa = laske uistin veneen perään, R = vapa telineeseen"
+
+
+## Telinevavan nosto-ohje: FPV-kamerassa vavan puolen hiiren nappi, muuten R
+func lift_hint(i: int, strike := true) -> String:
+	if not strike_by_mouse():
+		return "R = ota vapa käteen"
+	return "%s hiiri = %s" % ["vasen" if _rod_at_side(true) == i else "oikea", "vastaisku" if strike else "nosta vapa"]
+
+
+## Ohje telinevavalle, jossa on tärppi tai kala (alert_rod)
+func alert_hint() -> String:
+	var i := alert_rod()
+	return "" if i < 0 else lift_hint(i, _rod_get(i, "state") == State.BITE)
+
+
+## Vapa, joka näkyy ruudulla vasemmalla (left) tai oikealla (kärjen paikka kameran suhteen)
+func _rod_at_side(left: bool) -> int:
+	var to_cam := camera_rig.camera.global_transform.affine_inverse()
+	var best := -1
+	var best_x := 0.0
+	for i in rod_count():
+		var x: float = (to_cam * (_rod_get(i, "_tip_world") as Vector3)).x
+		if best < 0 or (x < best_x if left else x > best_x):
+			best = i
+			best_x = x
+	return best
+
+
+## FPV-uistelu: hiiren napin puolella oleva telinevapa käteen. Kun toinen vapa
+## on kädessä, napilla nostetaan vain telinevapa, jossa on tärppi tai kala;
+## muuten nappi ohjaa käsivapaa tavalliseen tapaan (palauttaa false).
+func _mouse_lift(left: bool) -> bool:
+	var i := _rod_at_side(left)
+	if i < 0 or not _rod_get(i, "in_holder"):
+		return false
+	if held >= 0 and not _rod_get(i, "state") in [State.BITE, State.FIGHT]:
+		return false
+	if held >= 0:
+		# Kädet vapaiksi: siima vedessä → telineeseen, muuten veneen pohjalle
+		if state == State.RETRIEVING and not lure_on_land:
+			in_holder = true
+			_bend_vel += 2.0
+			sound_event.emit("oar_catch", rod_tip())
+		elif state == State.READY or state == State.LANDED:
+			state = State.READY
+		else:
+			message.emit("Kädet täynnä – vapa %d odottaa telineessä" % (i + 1))
+			return true
+		held = -1
+	_lift_rod(i)
+	return true
+
+
+## Vapa telineestä käteen, tärpissä samalla vastaisku. Telineestä nostaessa
+## isku on hitaampi kuin kädessä pidetyllä vavalla, mutta veneen vauhti auttaa
+## koukun tarttumisessa.
+func _lift_rod(i: int) -> void:
+	if _rod_get(i, "state") != State.BITE:
+		_take_rod(i, "Vapa %d telineestä käteen" % (i + 1))
+		return
+	_swap_to(i)
+	held = i
+	in_holder = false
+	_bend_vel -= 4.0 # vapa nousee telineestä iskuun
+	message.emit("Vapa %d telineestä – vastaisku!" % (i + 1))
+	if bait() and _bite_timer > BAIT_SINK_TIME:
+		_msg("Liian aikaisin – kala vasta maistelee!")
+		_try_hook(0.3, "Vastaisku!")
+	else:
+		_try_hook(0.6 + 0.3 * clampf(boat.velocity.length(), 0.0, 1.0), "Vastaisku – kala tarttui!")
+
+
+## Uistelumoodi: uistin veneen perään vavan kärjen alle, siimaa lähtee
+## vasen hiiri pohjassa veneen liikkuessa (_retrieve)
+func _let_out() -> void:
+	var tip := rod_tip()
+	var at := Vector2(tip.x, tip.z) - boat.forward() * 1.5
+	if not lake.is_water(at.x, at.y):
+		message.emit("Liian matalaa – souda vesille")
+		return
+	lure_pos = Vector3(at.x, 0.0, at.y)
+	_prev_lure = lure_pos
+	line_out = tip.distance_to(lure_pos) + 0.5
+	state = State.RETRIEVING
+	snagged = false
+	lure_on_land = false
+	sound_event.emit("lure_splash", lure_pos)
+	message.emit("Uistin veneen perässä – pidä vasen hiiri pohjassa ja soutele, niin siimaa lähtee")
+
+
+## Siimaa lähtee: vasen hiiri pohjassa uistelumoodissa käsivavalla
+func _paying_out() -> bool:
+	return _cur == held and trolling() and Input.is_action_pressed("cast") and GameInput.active()
 
 
 ## Viesti vavasta: telineessä olevan vavan viestissä on vavan numero
@@ -477,6 +603,9 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("rod_holder"):
 		_rod_holder_key()
 		return
+	if strike_by_mouse() and (event.is_action_pressed("cast") or event.is_action_pressed("reel")):
+		if _mouse_lift(event.is_action_pressed("cast")):
+			return
 	if held < 0:
 		# Kädet vapaina: vain jarrua voi säätää
 		if event.is_action_pressed("cast"):
@@ -491,6 +620,11 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if on_ice and _ice_input(event):
 		return
+	if event.is_action_pressed("cast") and state == State.READY and trolling():
+		_let_out() # uistelumoodissa ei heitetä
+		return
+	if event.is_action_released("cast") and state == State.RETRIEVING and trolling():
+		message.emit("Siimaa %.0f m – R = vapa telineeseen" % line_out)
 	if event.is_action_pressed("cast"):
 		match state:
 			State.READY:
@@ -812,6 +946,9 @@ func _retrieve(dt: float) -> void:
 		return
 
 	line_out = maxf(0.0, line_out - reel * dt)
+	if _paying_out() and reel == 0.0:
+		# Vapaa kela: siima seuraa uistinta, kun vene soutaa siitä poispäin
+		line_out = maxf(line_out, minf(rod_tip().distance_to(lure_pos) + 0.3, TROLL_MAX_LINE))
 	_constrain_lure()
 	var tip := rod_tip()
 	var moved := Vector2(lure_pos.x - _prev_lure.x, lure_pos.z - _prev_lure.z).length()
@@ -849,6 +986,8 @@ func _start_bite(idx: int) -> void:
 	_fish = population.fish[idx]
 	state = State.BITE
 	_bite_timer = _rng.randf_range(0.6, 1.0)
+	if in_holder:
+		_bite_timer += 0.6 # aikaa tarttua telineessä olevaan vapaan
 	_bend_vel += 3.0 # vavan kärki nykäisee
 	sound_event.emit("bite_tick", rod_tip())
 	voice.emit("bite")
@@ -856,9 +995,9 @@ func _start_bite(idx: int) -> void:
 		# Kala maistelee matoa ensin: koho nykii, vavan kärki värähtää
 		_bite_timer = BAIT_SINK_TIME + _rng.randf_range(0.8, 2.0)
 		_bend_vel -= 2.0
-		_msg("R = ota vapa käteen – kala maistelee matoa" if in_holder else ("Koho nykii... odota, että se uppoaa!" if lure()["kind"] == "bobber" else "Vavan kärki nykii... odota!"))
+		_msg(lift_hint(_cur) + " – kala maistelee matoa" if in_holder else ("Koho nykii... odota, että se uppoaa!" if lure()["kind"] == "bobber" else "Vavan kärki nykii... odota!"))
 	else:
-		_msg("TÄRPPI! R = ota vapa käteen" if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
+		_msg("TÄRPPI! " + lift_hint(_cur) if in_holder else "TÄRPPI! Vastaisku – vasen hiiri!")
 
 
 # --- Hauki seuraa uistinta -----------------------------------------------------
@@ -1152,7 +1291,7 @@ func _bite(dt: float) -> void:
 		if before > BAIT_SINK_TIME and _bite_timer <= BAIT_SINK_TIME:
 			_bend_vel += 4.0
 			sound_event.emit("bite_tick", rod_tip())
-			_msg(("KOHO UPPOSI!" if lure()["kind"] == "bobber" else "SIIMA KIRISTYY!") + (" R = ota vapa käteen" if in_holder else " Vastaisku – vasen hiiri!"))
+			_msg(("KOHO UPPOSI!" if lure()["kind"] == "bobber" else "SIIMA KIRISTYY!") + (" " + lift_hint(_cur) if in_holder else " Vastaisku – vasen hiiri!"))
 		if _reel_speed() > 0.0 and _bite_timer < 0.4:
 			_try_hook(0.45, "Kala tarttui kelatessa!")
 		elif _bite_timer <= 0.0:
@@ -1164,8 +1303,8 @@ func _bite(dt: float) -> void:
 		_try_hook(0.45, "Kala tarttui kelatessa!")
 	elif _bite_timer <= 0.0:
 		if in_holder:
-			# Vetouistelussa veneen vauhti iskee koukun kalaan
-			_try_hook(0.25 + 0.5 * clampf(boat.velocity.length(), 0.0, 1.0), "Kala tarttui! R = ota vapa käteen")
+			# Vetouistelussa veneen vauhti iskee joskus koukun kalaan ilman vastaiskuakin
+			_try_hook(0.1 + 0.3 * clampf(boat.velocity.length(), 0.0, 1.0), "Kala tarttui! " + lift_hint(_cur, false))
 		else:
 			_try_hook(0.15, "Kala koukuttui itse!")
 

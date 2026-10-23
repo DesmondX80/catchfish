@@ -173,7 +173,7 @@ func _physics_process(delta: float) -> void:
 				_check("HUD kehottaa ottamaan vavan", f.alert_rod() == 0)
 				_next()
 			elif st == Fishing.State.RETRIEVING:
-				if _forced >= 8:
+				if _forced >= 20:
 					_check("telinevavan kala ei koskaan tarttunut", false)
 					_finish()
 				else:

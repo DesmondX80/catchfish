@@ -41,6 +41,7 @@ tests=(
 	"tackletest|--fixed-fps 30 -- --day=180 --tackletest"
 	"tackletest-talvi|--fixed-fps 30 -- --day=40 --tackletest"
 	"trolltest|--fixed-fps 30 -- --day=180 --trolltest"
+	"trollstriketest|--fixed-fps 30 -- --day=180 --trollstriketest"
 	"tubtest|--fixed-fps 30 -- --day=180 --tubtest"
 	"tubtest-talvi|--fixed-fps 30 -- --day=40 --tubtest"
 	"voicetest|--fixed-fps 30 -- --day=180 --voicetest"

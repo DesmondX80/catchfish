@@ -127,6 +127,7 @@ GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 ```bash
 godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet
 godot --headless --fixed-fps 30 -- --day=180 --trolltest    # vetouistelu, tunnistus, haavinta
+godot --headless --fixed-fps 30 -- --day=180 --trollstriketest # uistelumoodi, FPV-vastaisku hiirellä
 godot --headless --fixed-fps 30 -- --day=180 --baittest     # onki ja syötit
 godot --headless --fixed-fps 30 -- --day=180 --casttest     # heiton tähtäin
 godot --headless --fixed-fps 30 -- --day=180 --docktest     # törmäys laitureihin
@@ -568,6 +569,18 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
     (peli käyttää jo 4× MSAA:ta), eikä sitä muutettu.
   Julkaistu [v0.47.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.47.1).
 
+- **#79 Vetouistelun vastaisku / vavan nosto, #53 vavan kärjen näkymä – tehty (0.48.0).**
+  Kun vapa lasketaan telineeseen, peli on uistelumoodissa (`Fishing.trolling`)
+  ja kamera vaihtuu FPV:hen (asetusta ei tallenneta), joten vapojen kärjet
+  näkyvät. Uistelumoodissa käsivavalla ei heitetä: vasen hiiri laskee
+  uistimen veneen perään ja pohjassa pidettynä siimaa lähtee veneen
+  liikkuessa (enintään 60 m). FPV:ssä hiiren nappi valitsee vavan sen
+  mukaan, kummalla puolella ruutua vavan kärki näkyy (`_rod_at_side`):
+  telinevapa nousee käteen, ja tärpissä nosto on vastaisku (60–90 %
+  veneen vauhdin mukaan). Kun toinen vapa on kädessä, nappi nostaa vain
+  telinevavan, jossa on tärppi tai kala, ja käsivapa menee telineeseen
+  (siima vedessä) tai veneen pohjalle. Telinevavan tärppi kestää 0,6 s
+  pidempään, ja itsekoukutus harvinaistui (10–40 %). Testi `--trollstriketest`.
 
 ## Huomioita ja avoimia kysymyksiä
 

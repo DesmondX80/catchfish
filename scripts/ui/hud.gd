@@ -229,6 +229,8 @@ func help_text(start_hint := true) -> String:
 		"  F / G        kohon syvyys matalammalle / syvemmälle (ennen heittoa)",
 		"  R            vetouistelu: heitetty vapa telineeseen ja toinen käteen,",
 		"               tai vapa telineestä käteen (ensin se, jossa on tärppi)",
+		"  Uistelu      vapa telineessä: vasen hiiri pohjassa laskee uistimen veneen perään",
+		"               FPV: vasen/oikea hiiri nostaa sen puolen telinevavan, tärpissä vastaisku",
 		"",
 		"PILKKIMINEN (talvella järvi on jäässä)",
 		"  W/A/S/D      kävely (Shift = juoksu)",
@@ -423,7 +425,7 @@ func _process(delta: float) -> void:
 		lure_name = "%s (%d kpl)" % [lure_name, fishing.lure_count()] if fishing.has_lure() else "Ei uistimia – osta kaupasta"
 	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [lure_name, fishing.drag_kg, Fishing.LINE_STRENGTH]
 	if fishing.hands_free():
-		info = "Vavat telineissä – soutele ja odota tärppiä (R = ota vapa)   •   Jarru %.2f kg" % fishing.drag_kg
+		info = "UISTELU – soutele ja odota tärppiä   •   Jarru %.2f kg\n%s" % [fishing.drag_kg, fishing.trolling_hint()]
 	for r in fishing.holder_rods():
 		var st := "siimaa %.0f m, %.1f m syvyydessä" % [r["line"], r["depth"]]
 		if r["state"] == Fishing.State.BITE:
@@ -440,7 +442,9 @@ func _process(delta: float) -> void:
 		_power_bar.get_parent().visible = false
 		_tension_bar.get_parent().visible = false
 		_stamina_bar.get_parent().visible = false
-		_prompt.text = "Tärppi telineessä – R = ota vapa käteen" if fishing.alert_rod() >= 0 else ""
+		var alert := fishing.alert_rod()
+		_prompt.text = "" if alert < 0 else "%s vavassa %d – %s" % [
+			"TÄRPPI" if fishing._rod_get(alert, "state") == Fishing.State.BITE else "Kala koukussa", alert + 1, fishing.alert_hint()]
 		_catch_panel.visible = false
 		return
 	match fishing.state:
@@ -448,7 +452,7 @@ func _process(delta: float) -> void:
 			if fishing.on_ice:
 				info += "\nAvanto edessä – vasen hiiri laskee pilkin" if fishing.at_hole() else "\nKairaa reikä: vasen hiiri pohjassa (kävele W/A/S/D)"
 			else:
-				info += "\nValmiina heittoon"
+				info += "\n" + fishing.let_out_hint() if fishing.trolling() else "\nValmiina heittoon"
 				if fishing.lure()["kind"] == "bobber":
 					info += "   •   kohon syvyys %.1f m (F/G säätää)" % fishing.float_depth
 		Fishing.State.DRILLING:
@@ -487,7 +491,7 @@ func _process(delta: float) -> void:
 
 	_prompt.text = ""
 	if fishing.alert_rod() >= 0:
-		_prompt.text = "Tärppi telineessä – R = ota vapa käteen"
+		_prompt.text = "Tärppi telineessä – " + fishing.alert_hint()
 	if fishing.state == Fishing.State.BITE and fishing.bait() and fishing._bite_timer > Fishing.BAIT_SINK_TIME:
 		_prompt.text = "Kala maistelee matoa – odota..."
 	elif fishing.state == Fishing.State.BITE:

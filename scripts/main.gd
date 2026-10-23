@@ -278,6 +278,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/tackle_test.gd").new())
 	elif "--birdtest" in args:
 		add_child(load("res://tests/bird_test.gd").new())
+	elif "--trollstriketest" in args:
+		add_child(load("res://tests/troll_strike_test.gd").new())
 	elif "--fpvtest" in args:
 		add_child(load("res://tests/fpv_test.gd").new())
 	elif "--booktest" in args:
@@ -324,7 +326,8 @@ func _input(event: InputEvent) -> void:
 		hud.show_message("Äänet pois" if AudioServer.is_bus_mute(bus) else "Äänet päällä")
 	elif event.is_action_pressed("camera_view"):
 		camera_rig.toggle_first_person()
-		hud.show_message("FPV-kamera" if camera_rig.first_person else "Kamera veneen takana")
+		var text := "FPV-kamera" if camera_rig.first_person else "Kamera veneen takana"
+		hud.show_message(text + (" – " + fishing.trolling_hint() if fishing.trolling() else ""))
 	elif event.is_action_pressed("time_speed"):
 		if sky.real_time:
 			hud.show_message("Todellinen aika käytössä – ajan nopeutta ei voi muuttaa")
