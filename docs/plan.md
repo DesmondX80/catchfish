@@ -163,6 +163,12 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 
 ## Työtapa
 
+0. Jokainen tehtävä omaan haaraan ja omaan työkopioon ajantasaisesta mainista,
+   jotta rinnakkaiset agentit eivät sotke toistensa tiedostoja:
+   `git fetch && git worktree add -b claude/<aihe> ../catchfish-<aihe> origin/main`.
+   Pääkansiossa ei vaihdeta haaroja. Uudessa työkopiossa `godot --headless --import`
+   kerran ennen testejä; Windowsin editorissa työkopio avataan omana projektinaan.
+   Releasen jälkeen `git worktree remove ../catchfish-<aihe>`.
 1. Tehtävä Planesta → tila *In Progress*.
 2. Toteutus, testit (uusi ominaisuus saa oman testinsä), README ja F1-ohje.
 3. Versio `project.godot`:iin: uusi ominaisuus nostaa minor-versiota, korjaus patch-versiota.
