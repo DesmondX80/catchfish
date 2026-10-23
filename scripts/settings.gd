@@ -5,6 +5,9 @@ extends Node
 
 const PATH := "user://asetukset.cfg"
 
+## Veden laatu vaihtui (lähivesi rakennetaan uudelleen)
+signal water_quality_changed
+
 ## Valittavat vuodenajat: [nimi, vuoden päivä]
 const SEASONS := [
 	["Kevät (toukokuu)", 145],
@@ -43,6 +46,9 @@ const BUSES := [
 	["Puhe", "Kalastajan puhe", "puhe"],
 ]
 var volumes := {"Master": 1.0, "Taustaäänet": 1.0, "Efektit": 1.0, "Puhe": 1.0}
+## Veden laatu: "korkea" (tarkat aallot) tai "matala" (kevyempi, selaimen oletus)
+const WATER_QUALITIES := [["korkea", "Korkea", "tarkat aallot"], ["matala", "Matala", "kevyempi, selaimelle"]]
+var water_quality := default_water_quality()
 ## Testiajot eivät tallenna asetuksia pelaajan koneelle
 var persist := true
 
@@ -64,6 +70,9 @@ func _ready() -> void:
 		first_person = cfg.get_value("ohjaus", "fpv_kamera", false)
 		for b in BUSES:
 			volumes[b[0]] = clampf(cfg.get_value("aanet", b[2], 1.0), 0.0, 1.0)
+		var quality: String = cfg.get_value("grafiikka", "veden_laatu", default_water_quality())
+		if quality in ["korkea", "matala"]:
+			water_quality = quality
 	# Testiajot eivät käytä pelaajan asetuksia
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--"):
@@ -75,9 +84,28 @@ func _ready() -> void:
 			first_person = false
 			for b in BUSES:
 				volumes[b[0]] = 1.0
+			water_quality = "korkea"
 			persist = false
+	# Testi voi valita veden laadun: --waterquality=matala
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--waterquality="):
+			water_quality = arg.split("=")[1]
 	for bus in volumes:
 		set_volume(bus, volumes[bus])
+
+
+## Työpöydällä Korkea, selaimessa Matala
+static func default_water_quality() -> String:
+	return "matala" if OS.has_feature("web") else "korkea"
+
+
+## Vaihtaa veden laadun heti (myös kesken kalareissun) ja tallentaa sen
+func set_water_quality(quality: String) -> void:
+	if quality == water_quality:
+		return
+	water_quality = quality
+	save()
+	water_quality_changed.emit()
 
 
 func season_day() -> int:
@@ -106,6 +134,11 @@ func set_volume(bus: String, value: float) -> void:
 func save() -> void:
 	if not persist:
 		return
+	config().save(PATH)
+
+
+## Asetukset tallennusmuodossa
+func config() -> ConfigFile:
 	var cfg := ConfigFile.new()
 	cfg.set_value("peli", "todellinen_aika_ja_saa", real_world)
 	cfg.set_value("peli", "vuodenaika", season_index)
@@ -115,4 +148,5 @@ func save() -> void:
 	cfg.set_value("ohjaus", "fpv_kamera", first_person)
 	for b in BUSES:
 		cfg.set_value("aanet", b[2], volumes[b[0]])
-	cfg.save(PATH)
+	cfg.set_value("grafiikka", "veden_laatu", water_quality)
+	return cfg

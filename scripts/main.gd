@@ -135,6 +135,9 @@ func _start_game(start_index: int, career := false) -> void:
 	world = LakeWorld.new()
 	add_child(world)
 	world.build(lake, season)
+	# Aallokko alkaa heti tuulen mukaisena
+	Waves.setup(lake)
+	Waves.reset(weather.wind_base, weather.wind_direction)
 
 	boat = Boat.new()
 	add_child(boat)
@@ -143,6 +146,7 @@ func _start_game(start_index: int, career := false) -> void:
 	camera_rig = CameraRig.new()
 	add_child(camera_rig)
 	camera_rig.setup(boat, lake)
+	world.follow_camera(boat.position) # lähivesi veneen kohdalle jo ennen ensimmäistä ruutua
 
 	var rain := Rain.new()
 	add_child(rain)
@@ -306,6 +310,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/net_test.gd").new())
 	elif "--releasetest" in args:
 		add_child(load("res://tests/release_test.gd").new())
+	elif "--wavetest" in args:
+		add_child(load("res://tests/wave_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
@@ -318,6 +324,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/boat_shots.gd").new())
 			elif arg.begins_with("--fpvshots="):
 				add_child(load("res://tests/fpv_shots.gd").new())
+			elif arg.begins_with("--watershots="):
+				add_child(load("res://tests/water_shots.gd").new())
 			elif arg.begins_with("--foamshots="):
 				add_child(load("res://tests/foam_shots.gd").new())
 			elif arg.begins_with("--shadowshots="):
@@ -392,7 +400,7 @@ func _use_real_world() -> void:
 		weather.apply_real(data, first[0])
 		if first[0]:
 			first[0] = false
-			_wave_strength = -1.0 # aallokko heti tuulen mukaiseksi
+			_wave_reset = true # aallokko heti tuulen mukaiseksi
 			if hud:
 				hud.show_message("Sää: %s (%s klo %s)" % [RealWeather.summary(data), data["source"], data["time"]]))
 	real.failed.connect(func(msg):
@@ -406,29 +414,31 @@ func _use_real_world() -> void:
 	add_child(timer)
 
 
-var _wave_strength := -1.0
+var _wave_reset := false
 
 
 func _process(delta: float) -> void:
 	if not running:
 		return
-	# Aallokko seuraa tuulen perusvoimakkuutta hitaasti (ei puuskia). Aaltojen
-	# suunta asetetaan kerran: suunnan muuttaminen kesken siirtäisi aaltoja
-	# kaukana veneestä holtittomasti.
-	var target := clampf(weather.wind_base / 8.0, 0.0, 1.0)
-	if _wave_strength < 0.0:
-		_wave_strength = target
-		Waves.angle = weather.wind_direction
-	_wave_strength = move_toward(_wave_strength, target, delta * 0.02)
-	Waves.strength = _wave_strength
-	Waves.time = fmod(Waves.time + delta, 3600.0)
-	Waves.apply(world.water_material)
+	# Aallokko seuraa tuulen perusvoimakkuutta pelin ajassa (ei puuskia):
+	# kasvaa noin 10 ja laantuu noin 20 peliminuutissa. Tuulen kääntyessä uusi
+	# aallokko kasvaa uuteen suuntaan ja vanha vaimenee ristiin (Waves.step).
+	if _wave_reset:
+		_wave_reset = false
+		Waves.reset(weather.wind_base, weather.wind_direction)
+	Waves.step(delta, weather.wind_base, weather.wind_direction, weather.gust, sky.time_scale())
+	world.follow_camera(camera_rig.camera.global_position)
+	var waters: Array[ShaderMaterial] = world.water_materials()
+	for mat in waters:
+		Waves.apply(mat)
 	Waves.apply(boat.wake.material)
 	# Veneen sisällä ei piirretä vettä eikä vanaa (jäällä ei venettä)
-	world.water_material.set_shader_parameter("ice", 1.0 if boat.on_ice else 0.0)
-	for mat in [world.water_material, boat.wake.material]:
+	for mat in waters:
+		mat.set_shader_parameter("ice", 1.0 if boat.on_ice else 0.0)
+		mat.set_shader_parameter("sky_color", sky.horizon_color)
+		mat.set_shader_parameter("rain", weather.rain)
+	waters.append(boat.wake.material)
+	for mat in waters:
 		mat.set_shader_parameter("boat_pos", Vector2(1e6, 1e6) if boat.on_ice else boat.pos)
 		mat.set_shader_parameter("boat_yaw", boat.yaw)
 	boat.wake.material.set_shader_parameter("light", sky.daylight())
-	world.water_material.set_shader_parameter("sky_color", sky.horizon_color)
-	world.water_material.set_shader_parameter("rain", weather.rain)

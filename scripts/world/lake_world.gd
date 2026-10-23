@@ -11,7 +11,10 @@ const TREE_VARIANTS := 3 # muunnelmaa lajia kohden, ettei metsä näytä kloonat
 enum TreeKind { PINE, SPRUCE, BIRCH }
 
 var lake: LakeData
-var water_material: ShaderMaterial
+var water_material: ShaderMaterial # kaukainen järviverkko (tasainen)
+var near_material: ShaderMaterial # kameraa seuraava lähivesi (aallot liikuttavat verkkoa)
+var near_water: MeshInstance3D
+var near_step := 0.3 # lähiveden siirtoaskel = verkon tihein verteksiväli (m)
 var season := Season.from_day(165)
 var _plain_summer := true # keskikesällä maaston värejä ei tarvitse muuttaa
 
@@ -114,7 +117,8 @@ func _add_mesh(verts: PackedVector3Array, normals: PackedVector3Array, colors: P
 	return mi
 
 
-## Vesipinta vain järven kohdalle (padon takana oleva matala maa ei saa jäädä veden alle)
+## Vesipinta vain järven kohdalle (padon takana oleva matala maa ei saa jäädä veden alle).
+## Kaukainen järviverkko (4 m) on tasainen; kameran lähellä piirtää lähivesi.
 func _build_water() -> void:
 	water_material = ShaderMaterial.new()
 	water_material.shader = load("res://shaders/water.gdshader")
@@ -123,7 +127,6 @@ func _build_water() -> void:
 		for c0 in range(0, lake.cols, CHUNK):
 			var verts := PackedVector3Array()
 			var normals := PackedVector3Array()
-			var colors := PackedColorArray()
 			var indices := PackedInt32Array()
 			var vertex_index := {}
 			for r in range(r0, mini(r0 + CHUNK, lake.rows)):
@@ -137,14 +140,108 @@ func _build_water() -> void:
 							vertex_index[corner] = verts.size()
 							verts.append(Vector3(lake.origin_x + corner.x * cs, 0.0, lake.origin_z + corner.y * cs))
 							normals.append(Vector3.UP)
-							# Etäisyys rantaan (r = metrit / 500): vaahtopäät vasta selällä
-							var shore := lake.cell_shore_distance(corner.x, corner.y) if lake.cell_is_water(corner.x, corner.y) else 0.0
-							colors.append(Color(clampf(shore / 500.0, 0.0, 1.0), 0.0, 0.0))
 						ids.append(vertex_index[corner])
 					indices.append_array([ids[0], ids[1], ids[2], ids[1], ids[3], ids[2]])
 			if indices.size() > 0:
-				var mi := _add_mesh(verts, normals, colors, indices, water_material)
+				var mi := _add_mesh(verts, normals, PackedColorArray(), indices, water_material)
 				mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	near_material = ShaderMaterial.new()
+	near_material.shader = water_material.shader
+	near_material.set_shader_parameter("is_near", true)
+	# Vesisolut tekstuurina (0/1): lähivesi piirretään vain järven kohdalle
+	var mask := Image.create_from_data(lake.cols, lake.rows, false, Image.FORMAT_R8, lake.water)
+	near_material.set_shader_parameter("water_mask", ImageTexture.create_from_image(mask))
+	near_material.set_shader_parameter("mask_rect", Vector4(lake.origin_x, lake.origin_z, lake.cols * cs, lake.rows * cs))
+	_build_near_water()
+	Settings.water_quality_changed.connect(_build_near_water)
+
+
+## Vesimateriaalit (kaukainen ja lähivesi): yhteiset parametrit asetetaan molemmille
+func water_materials() -> Array[ShaderMaterial]:
+	return [water_material, near_material]
+
+
+## Lähivesi: kameraa seuraava neliöverkko, joka on keskellä tihein ja harvenee
+## reunoja kohti (verteksin paikka R * (a u + (1 - a) u³), u = -1..1).
+## Korkea: 241 × 241 verteksiä, keskellä 0,3 m ja reunalla 2,4 m välein.
+## Matala: 121 × 121 (neljäsosa), keskellä 1 m ja reunalla 4 m välein.
+## UV.x kertoo verteksivälin, jotta varjostin jättää pois aallot, joita verkko
+## ei pysty esittämään.
+const NEAR_RADIUS := 120.0
+
+
+func _build_near_water() -> void:
+	if near_water:
+		remove_child(near_water) # vanha verkko pois heti, ettei vettä ole kahta kerrosta
+		near_water.queue_free()
+	var high := Settings.water_quality == "korkea"
+	var n := 241 if high else 121
+	var a := 0.3 if high else 0.5
+	var du := 2.0 / (n - 1)
+	near_step = NEAR_RADIUS * a * du
+	var coords := PackedFloat32Array()
+	var spacing := PackedFloat32Array()
+	for i in n:
+		var u := -1.0 + i * du
+		coords.append(NEAR_RADIUS * (a * u + (1.0 - a) * u * u * u))
+		spacing.append(NEAR_RADIUS * (a + 3.0 * (1.0 - a) * u * u) * du)
+	var verts := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	verts.resize(n * n)
+	normals.resize(n * n)
+	uvs.resize(n * n)
+	for r in n:
+		for c in n:
+			var k := r * n + c
+			verts[k] = Vector3(coords[c], 0.0, coords[r])
+			normals[k] = Vector3.UP
+			uvs[k] = Vector2(maxf(spacing[c], spacing[r]), 0.0)
+	var indices := PackedInt32Array()
+	indices.resize((n - 1) * (n - 1) * 6)
+	var at := 0
+	for r in n - 1:
+		for c in n - 1:
+			var i := r * n + c
+			indices[at] = i
+			indices[at + 1] = i + 1
+			indices[at + 2] = i + n
+			indices[at + 3] = i + 1
+			indices[at + 4] = i + n + 1
+			indices[at + 5] = i + n
+			at += 6
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = verts
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	mesh.surface_set_material(0, near_material)
+	near_water = MeshInstance3D.new()
+	near_water.mesh = mesh
+	near_water.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	# Aallot nostavat verkkoa: rajauslaatikko korkeammaksi
+	near_water.custom_aabb = AABB(Vector3(-NEAR_RADIUS, -1.0, -NEAR_RADIUS), Vector3(NEAR_RADIUS * 2.0, 2.0, NEAR_RADIUS * 2.0))
+	# Läpikuultavat pinnat piirretään kaukaisimmasta lähimpään: lähivesi ennen
+	# vanaa ja muita veden päällä olevia läpikuultavia pintoja (kuten järviverkko)
+	near_water.sorting_offset = -1000.0
+	add_child(near_water)
+	follow_camera(Vector3(Waves.near_center.x, 0.0, Waves.near_center.y))
+
+
+## Lähivesi kameran kohdalle verkon tiheimmän välin askelin, jotta aallot eivät "ui"
+func follow_camera(camera_pos: Vector3) -> void:
+	var c := Vector2(snappedf(camera_pos.x, near_step), snappedf(camera_pos.z, near_step))
+	near_water.position = Vector3(c.x, 0.0, c.y)
+	Waves.near_center = c
+	Waves.near_radius = NEAR_RADIUS
+
+
+## Lähiveden verteksien määrä (testit)
+func near_vertex_count() -> int:
+	return near_water.mesh.surface_get_array_len(0) if near_water else 0
 
 
 func _water_or_next_to_water(c: int, r: int) -> bool:

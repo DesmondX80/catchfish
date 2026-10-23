@@ -201,7 +201,7 @@ func _process(delta: float) -> void:
 	# Vesi veneen kyljessä: tyynellä pientä liplatusta, tuulen voimistuessa
 	# aallot loiskivat ja pärskyvät. Liikkuva vene voimistaa molempia.
 	var speed := boat.velocity.length()
-	var s := Waves.strength
+	var s := Waves.local_strength(boat.pos) # paikallinen aallokko: suojassa hiljaisempaa
 	var lap := clampf(0.35 + speed * 0.08, 0.0, 0.8) * (1.0 - 0.75 * s)
 	var waves := clampf(s * 1.15 - 0.1, 0.0, 1.0) * (1.0 + speed * 0.05)
 	if boat.on_ice:

@@ -31,6 +31,14 @@ var heights := PackedFloat32Array()
 var water := PackedByteArray()
 var ground := PackedByteArray()
 var shore := PackedByteArray() # uint16 little-endian, metrit rantaviivaan
+## Pyyhkäisymatkat (tools/build_fetch.py): suunta kerrallaan karkeassa ruudukossa,
+## arvo = 255 * sqrt(matka / fetch_max)
+var fetch_planes: Array[PackedByteArray] = []
+var fetch_cols := 0
+var fetch_rows := 0
+var fetch_dirs := 0
+var fetch_cell := 16.0
+var fetch_max := 4096.0
 
 
 static func load_from(dir: String) -> LakeData:
@@ -61,7 +69,52 @@ static func load_from(dir: String) -> LakeData:
 	lake.ground = FileAccess.get_file_as_bytes(dir.path_join("ground.bin"))
 	lake.shore = FileAccess.get_file_as_bytes(dir.path_join("shore.bin"))
 	assert(lake.heights.size() == lake.cols * lake.rows, "heights.bin on väärän kokoinen")
+	lake._load_fetch(dir.path_join("fetch.bin"))
 	return lake
+
+
+func _load_fetch(path: String) -> void:
+	var bytes := FileAccess.get_file_as_bytes(path)
+	if bytes.size() < 16 or bytes.slice(0, 4).get_string_from_ascii() != "FET1":
+		push_warning("fetch.bin puuttuu: aallokko ilman pyyhkäisymatkaa")
+		return
+	fetch_cols = bytes.decode_u16(4)
+	fetch_rows = bytes.decode_u16(6)
+	fetch_dirs = bytes.decode_u16(8)
+	fetch_cell = bytes.decode_u16(10)
+	fetch_max = bytes.decode_u32(12)
+	var n := fetch_cols * fetch_rows
+	assert(bytes.size() == 16 + n * fetch_dirs, "fetch.bin on väärän kokoinen")
+	for d in fetch_dirs:
+		fetch_planes.append(bytes.slice(16 + d * n, 16 + (d + 1) * n))
+
+
+## Pyyhkäisymatka (m) kohdassa x, z, kun tuuli puhaltaa suuntaan direction
+## (rad, 0 = pohjoiseen): interpoloi kahden lähimmän suunnan ja solujen välillä
+func fetch_at(x: float, z: float, direction: float) -> float:
+	if fetch_planes.is_empty():
+		return 0.0
+	var di := wrapf(direction, 0.0, TAU) / (TAU / fetch_dirs)
+	var i0 := floori(di) % fetch_dirs
+	var f := di - floorf(di)
+	return lerpf(_fetch_plane_at(i0, x, z), _fetch_plane_at((i0 + 1) % fetch_dirs, x, z), f)
+
+
+func _fetch_plane_at(plane: int, x: float, z: float) -> float:
+	var data := fetch_planes[plane]
+	var fx := (x - origin_x) / fetch_cell - 0.5
+	var fz := (z - origin_z) / fetch_cell - 0.5
+	var c := floori(fx)
+	var r := floori(fz)
+	var tx := fx - c
+	var tz := fz - r
+	var v := [0.0, 0.0, 0.0, 0.0]
+	for k in 4:
+		var cc := clampi(c + (k & 1), 0, fetch_cols - 1)
+		var rr := clampi(r + (k >> 1), 0, fetch_rows - 1)
+		var e := data[rr * fetch_cols + cc] / 255.0
+		v[k] = fetch_max * e * e
+	return lerpf(lerpf(v[0], v[1], tx), lerpf(v[2], v[3], tx), tz)
 
 
 ## Valitsee aloituspaikan (vene laiturin viereen)

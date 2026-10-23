@@ -11,7 +11,7 @@ uniform float light = 1.0; // vuorokauden valoisuus
 varying vec2 foam_uv;
 
 void vertex() {
-	VERTEX.y = swell_height(VERTEX.xz) + 0.025;
+	VERTEX.y = surface_height(VERTEX.xz) + 0.025;
 	foam_uv = VERTEX.xz;
 }
 

@@ -1825,7 +1825,7 @@ func _bobber_tilt() -> Basis:
 		2.0 * e,
 		Waves.swell_height(p - Vector2(0, e)) - Waves.swell_height(p + Vector2(0, e))).normalized()
 	var t := Waves.time
-	var rock := 0.04 + Waves.strength * 0.22 # rad
+	var rock := 0.04 + Waves.local_strength(p) * 0.22 # rad (paikallinen aallokko)
 	var axis_x := sin(t * 2.9 + p.x * 0.7) * 0.7 + sin(t * 4.3 + p.y) * 0.3
 	var axis_z := sin(t * 2.3 + p.y * 0.7) * 0.7 + sin(t * 3.7 + p.x) * 0.3
 	return Basis(Vector3.RIGHT, axis_x * rock) * Basis(Vector3.BACK, axis_z * rock) * Basis(Quaternion(Vector3.UP, normal))
