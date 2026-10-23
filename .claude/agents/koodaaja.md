@@ -10,8 +10,7 @@ Olet Catchfish-tiimin koodaaja. Peli on kalastussimulaattori Godot 4.7:llä
 
 ## Milloin aloitat
 
-Aloitat vasta, kun työnjohtaja antaa sinulle **Teemun hyväksymän
-suunnitelman**. Siihen asti voit tutustua koodiin, jota suunnitelma koskee.
+Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siihen asti voit tutustua koodiin, jota suunnitelma koskee.
 
 ## Sinun vastuusi
 

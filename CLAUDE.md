@@ -57,38 +57,45 @@ määritelty kansiossa `.claude/agents/`:
 
 | Rooli | Määritys | Tehtävä |
 |---|---|---|
-| Tiimin johtaja | Teemu | Antaa tehtävän, hyväksyy suunnitelman, kokeilee tuloksen, päättää julkaisusta |
-| Työnjohtaja (lead) | pääsessio | Käynnistää tiimin, vie tehtävän vaiheesta toiseen, välittää viestit, julkaisee |
+| Tiimin johtaja | Teemu | Priorisoi tehtävät Planessa, ratkaisee epäselvyydet ja poikkeamat, kokeilee julkaisut |
+| Työnjohtaja (lead) | pääsessio | Ottaa tehtävät työn alle, käynnistää tiimin, vie tehtävän vaiheesta toiseen, hyväksyy suunnitelman, julkaisee |
 | Designer | `designer.md` | Suunnittelee tehtävän: miten ominaisuus toimii ja miltä se näyttää ja kuulostaa |
 | Koodaaja | `koodaaja.md` | Toteuttaa hyväksytyn suunnitelman ja sen testin omassa työkopiossa |
 | Testaaja | `testaaja.md` | Testaa toteutuksen suunnitelmaa vasten ja hyväksyy tai palauttaa sen |
 
 ### Työnkulku
 
+Tiimi toimii itsenäisesti: se ottaa tehtävät työn alle ja vie ne julkaisuun
+asti kysymättä Teemulta. Teemuun otetaan yhteyttä vain, kun jokin on
+epäselvää tai suunnitelmasta pitää poiketa, ja hän sanoo, miten tehdään.
+
 Jokainen tehtävä kulkee nämä vaiheet tässä järjestyksessä:
 
-1. **Tehtävä.** Teemu antaa tehtävän työnjohtajalle (Planen CATCHFISH-N tai
-   vapaa kuvaus). Työnjohtaja luo tiimin (designer, koodaaja, testaaja) ja
-   siirtää tehtävän Planessa tilaan *In Progress*.
+1. **Tehtävä.** Teemu antaa tehtävän, tai työnjohtaja ottaa seuraavan Planen
+   CATCHFISH-tehtävän tilasta *Todo* prioriteettijärjestyksessä (korkein
+   ensin). Työnjohtaja luo tiimin (designer, koodaaja, testaaja) ja siirtää
+   tehtävän Planessa tilaan *In Progress*.
 2. **Suunnittelu.** Designer tutkii koodin ja `docs/plan.md`:n ja kirjoittaa
    suunnitelman (rakenne: `.claude/agents/designer.md`). Avoimet kysymykset
    kerätään suunnitelmaan; designer ei arvaa.
-3. **Hyväksyntä.** Työnjohtaja näyttää suunnitelman ja avoimet kysymykset
-   Teemulle. Toteutus alkaa vasta, kun Teemu on hyväksynyt suunnitelman.
+3. **Hyväksyntä.** Työnjohtaja hyväksyy suunnitelman. Kysymykset, jotka
+   seuraavat suoraan aiemmista päätöksistä tai koodista, työnjohtaja ratkaisee
+   itse ja kirjaa suunnitelmaan. Todelliset linjaukset ja epäselvyydet
+   (pelimekaniikka, ulkoasu, luvut, joita ei voi päätellä) työnjohtaja kysyy
+   Teemulta konkreettisin vaihtoehdoin; toteutus alkaa, kun ne on ratkaistu.
 4. **Toteutus.** Koodaaja toteuttaa hyväksytyn suunnitelman sellaisenaan,
    tallentaa sen haaraansa tiedostoon `docs/suunnitelmat/<tunniste>.md` ja
    kirjoittaa testin. Jos suunnitelmasta pitää poiketa, koodaaja kysyy ensin
-   työnjohtajalta.
+   työnjohtajalta, joka kysyy tarvittaessa Teemulta.
 5. **Testaus.** Testaaja testaa haaran suunnitelman hyväksymiskriteereitä
    vasten. Palautus menee koodaajalle korjattavaksi; yli kaksi
    palautuskierrosta pysäyttää työn ja työnjohtaja kertoo Teemulle.
    Näkyvät muutokset designer tarkistaa kuvakaappauksista ennen hyväksyntää.
-6. **Kokeilu.** Työnjohtaja raportoi Teemulle: mitä muuttui, testaajan
-   raportti ja työkopio, jonka `project.godot` Teemu avaa Windowsin
-   editorissa.
-7. **Julkaisu.** Vasta kun Teemu sanoo "julkaise": versio, Windows-vienti,
-   push, GitHub-release, Planessa *Done*, työkopion poisto ja tiimiläisten
-   sulkeminen.
+6. **Julkaisu.** Kun testaaja on hyväksynyt haaran, työnjohtaja julkaisee sen
+   työtavan kohtien 4–5 mukaan: versio, Windows-vienti, push, GitHub-release,
+   Planessa *Done*, työkopion poisto ja tiimiläisten sulkeminen.
+7. **Raportti.** Työnjohtaja kertoo Teemulle lyhyesti, mitä julkaistiin, ja
+   mitä testaaja jätti käsin kokeiltavaksi. Sitten seuraava tehtävä.
 
 ### Säännöt
 
@@ -99,6 +106,8 @@ Jokainen tehtävä kulkee nämä vaiheet tässä järjestyksessä:
   työkopiossaan.
 - Tiimiläinen, joka ei tiedä jotain, kysyy työnjohtajalta. Työnjohtaja kysyy
   Teemulta eikä arvaa.
+- Työnjohtaja ei välitä Teemulle tiimin välivaiheita, vaan vain
+  epäselvyydet, poikkeamat ja julkaisuraportit.
 - Teemu voi milloin tahansa puhua kenelle tahansa tiimiläiselle suoraan.
 
 ## Testaus
