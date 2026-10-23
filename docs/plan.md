@@ -33,7 +33,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 ### Tehtävänhallinta
 
 Tehtävät ovat Plane Cloudissa, projekti **CATCHFISH**. Tila 23.10.2026:
-41 tehtävää valmiina, 1 työn alla, 33 avoinna (8 Todo, 25 Backlog).
+42 tehtävää valmiina, 33 avoinna (8 Todo, 25 Backlog).
 
 ## Suunnitelma: seuraavat tehtävät
 
@@ -42,9 +42,7 @@ tunnisteita (CATCHFISH-N).
 
 ### Työn alla
 
-| # | Tehtävä |
-|---|---|
-| 48 | Veneen varjo |
+Ei mitään (#48 Veneen varjo tehty 0.45.0:ssa).
 
 ### Kiireelliset ja korkeat
 
@@ -499,6 +497,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ylhäältä aamulla, keskipäivällä ja illalla syvässä ja matalassa vedessä ja
   tarkistaa, että vesi rungon varjopuolella on yli 12 % tummempaa kuin
   aurinkoisella puolella.
+  Julkaistu [v0.45.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.45.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
