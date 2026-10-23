@@ -15,7 +15,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Alue | Ominaisuudet |
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
-| Maailma | MML-aineistosta tehty järvi ja maasto, tuulella vaahtopäiset aallot, metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
+| Maailma | MML-aineistosta tehty järvi ja maasto, aallokko tuulen ja pyyhkäisymatkan mukaan (terävät harjat, suoja rannoilla, puuskalaikut, vaahtopäät), Veden laatu -asetus (Korkea / Matala), metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
 | Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi) omina 3D-malleinaan, valinta kalapakista (L; talvella pilkkirasia), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
@@ -110,7 +110,8 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | `scripts/fishing/nets.gd`, `gill_net.gd`, `net_control.gd` | Verkot: silmäkoot ja saalismalli (`catch_between`), verkon 3D-malli (pyykit, nouseva verkko), lasku ja nosto (N/B), tallennus `Career.nets` |
 | `scripts/fishing/fish_population.gd` | Kalat datana, elinpaikat, tärpin todennäköisyys (`check_lure`) |
 | `scripts/fishing/fish_models.gd` | Kalojen 3D-mallit |
-| `scripts/lake/lake_data.gd` | Järven ruudukot ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
+| `scripts/lake/lake_data.gd` | Järven ruudukot, pyyhkäisymatkat (`fetch_at`, `assets/lake/fetch.bin` tekee `tools/build_fetch.py`) ja laiturien törmäyssuorakulmiot (`docks`, `dock_push`) |
+| `scripts/world/waves.gd`, `shaders/waves.gdshaderinc` | Yhteinen aaltomalli (Gerstner-aallot tuulen ja pyyhkäisymatkan mukaan): vene, koho, pyykit, ankkuri ja vesivarjostin |
 | `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja (malli `assets/characters/`, luut ohjataan `AnglerPoser`-muokkaimella animaation jälkeen), kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
 | `scripts/world/birds.gd` | Taivaan linnut: mallit koodissa, lentotavat, ääntely, kotkan huudahdus |
@@ -151,6 +152,7 @@ godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen ja tuulen äänet (talvi: --day=40)
+godot --headless --fixed-fps 30 -- --day=180 --wavetest     # aallokko: koko, suoja, harjat, kääntyminen, kasvu
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
@@ -158,6 +160,7 @@ godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
+godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] # vesi eri tuulilla ja ruudun aika (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
@@ -636,6 +639,27 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (enintään 25 %). Kotinäkymä näyttää maineen, maksun ja luvan sekä neuvon,
   jos kalastaa ei voi. Testi `--releasetest` (kesä ja talvi).
   Julkaistu [v0.50.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.50.0).
+- **#77 Vesi aidomman näköiseksi – tehty.** Suunnitelma
+  `docs/suunnitelmat/CATCHFISH-77.md`. Aallokko lasketaan joka kohdassa
+  tuulesta ja pyyhkäisymatkasta (JONSWAP: Hs ja huippuaallonpituus).
+  Pyyhkäisymatka 16 tuulensuuntaan 16 m ruudukossa tulee tiedostosta
+  `assets/lake/fetch.bin` (`tools/build_fetch.py`), joten ylätuulen rannat ja
+  saarten suojapuolet ovat tyynempiä. Pinta on 12 Gerstner-aallon summa
+  (0,3–12 m): aallon korkeus riippuu paikallisesta huippuaallonpituudesta,
+  harjat terävöityvät jyrkkyyden mukaan, aaltoryhmät tekevät suurimmista
+  aalloista n. 1,5–2 × Hs ja aaltorintamat mutkittelevat, joten ruutukuviota ei
+  synny. Aallokon tuuli seuraa tuulta pelin ajassa (90 % 10 peliminuutissa,
+  laantuminen 20), ja tuulen kääntyessä yli 20° uusi suuntasarja häivytetään
+  ristiin minuutissa (`Waves.step`). Kameraa seuraava tiheä lähivesi (120 m)
+  liikkuu aaltojen mukana, kaukainen järviverkko on tasainen. Varjostimessa
+  väreet tuulen mukaan, puuskien tummat laikut (`weather.gust`) ja vaahtopäät
+  paikallisen aallokon mukaan murtumana harjalla. Vene, koho, pyykit,
+  ankkuri ja vana seuraavat samaa mallia (`Waves.swell_height`), aaltoäänet ja
+  kohon keinunta paikallista aallokkoa (`Waves.local_strength`). Uusi asetus
+  *Veden laatu*: Korkea (työpöytä) tai Matala (selain; harvempi lähivesi, kaksi
+  pääaaltoa pinnan muodossa, yksi värekerros). Testit `--wavetest` ja
+  `--watershots`; `--foamshots`, `--wavesoundtest`, `--baittest`,
+  `--settingstest` ja `--overlaptest` päivitettiin.
 
 ## Huomioita ja avoimia kysymyksiä
 

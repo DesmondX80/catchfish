@@ -50,9 +50,12 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | F1 | ohje |
 | Esc | tauko (myös ohjeet, kalakirja ja asetukset) |
 
-Hiiren herkkyyden, käänteisen pystyohjauksen ja äänenvoimakkuudet (kaikki äänet,
-taustaäänet, efektit, kalastajan puhe) voi säätää alkuvalikon tai taukovalikon
-kohdasta *Asetukset*. Asetukset tallennetaan koneelle.
+Hiiren herkkyyden, käänteisen pystyohjauksen, veden laadun ja äänenvoimakkuudet
+(kaikki äänet, taustaäänet, efektit, kalastajan puhe) voi säätää alkuvalikon tai
+taukovalikon kohdasta *Asetukset*. Asetukset tallennetaan koneelle. *Veden laatu*
+on Korkea (tarkat aallot, työpöydän oletus) tai Matala (kevyempi lähivesi,
+selaimen oletus); vaihto tulee voimaan heti myös kesken kalareissun, eikä se
+muuta veneen keinuntaa.
 
 Alkuvalikon taustalla on mökin pirtti, jossa takka lepattaa ja pöydän takana
 vanhassa kuvaputki-TV:ssä pyörii kalastusohjelma (veneilijä iltajärvellä, koho
@@ -72,10 +75,20 @@ painuu, hauki hyppää).
   pohjaan ja vääntyy, ja liian monesta osumasta se menee rikki, jolloin
   loppureissu soudetaan. Matalasta varoitetaan, ja vapaalla potkuri ei pyöri.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
-  tuuli vaihtelee ja puuskittelee. Aallokko voimistuu tuulen mukana, ja
-  noin 4 m/s tuulesta alkaen aallonharjat murtuvat selällä (yli 200 m
-  rannasta) vaahtopäiksi, jotka ajelehtivat tuulen mukana ja hajoavat;
-  kovalla tuulella pintaan jää myös tuulen suuntaisia vaahtojuovia.
+  tuuli vaihtelee ja puuskittelee. Aallokon koko riippuu tuulesta ja
+  pyyhkäisymatkasta eli siitä, kuinka pitkän matkan tuuli on puhaltanut
+  veden yli: ylätuulen rannan ja saarten suojassa on tyyntä, selällä
+  lyhyttä, jyrkkää aallokkoa (8 m/s tuulella noin 4 m pitkät ja 0,2 m
+  korkeat aallot, terävät harjat ja leveät pohjat). Aallokko kasvaa tuulen
+  voimistuessa noin 10 ja laantuu noin 20 peliminuutissa, ja tuulen
+  kääntyessä uusi aallokko kasvaa uuteen suuntaan minuutin kuluessa.
+  Heikolla tuulella pinnassa on vain väreilyä, ja tyynellä se on lähes
+  peilityyni. Puuskat näkyvät tuulen mukana kulkevina tummina
+  värelaikkuina. Noin 4 m/s tuulesta alkaen aallonharjat murtuvat selällä
+  ja alatuulen rannan edessä vaahtopäiksi, jotka ajelehtivat tuulen mukana
+  ja hajoavat; kovalla tuulella pintaan jää myös tuulen suuntaisia
+  vaahtojuovia. Vene, koho, verkon pyykit ja ankkuri keinuvat samassa
+  aallokossa, ja aaltojen loiske on suojassa hiljaisempaa kuin selällä.
   Veneen varjo lankeaa vedenpintaan rungosta alkaen auringon mukaan:
   aamulla ja illalla pitkänä, keskipäivällä lähes veneen alla. Ruskeassa
   vedessä pohjan varjo sumenee syvyyden mukaan. Vene, kalastaja, vavat ja
@@ -201,7 +214,13 @@ uudelleen MML:n aineistosta:
 
    ```bash
    python3 tools/build_lake.py --mml data/mml
+   python3 tools/build_fetch.py
    ```
+
+   `build_fetch.py` laskee aallokkoa varten pyyhkäisymatkat
+   (`assets/lake/fetch.bin`): kuinka pitkän matkan tuuli on puhaltanut veden
+   yli kuhunkin kohtaan 16 tuulensuunnasta. Se tarvitsee vain `water.bin`:n,
+   joten se on ajettava uudelleen aina, kun järvi tehdään uudelleen.
 
 Rantaviiva tulee maastotietokannan järvikuviosta ja maasto korkeusmallista.
 Tekoaltaasta ei ole syvyyskarttaa, mutta altaan pohja on vanhaa maastoa, ja

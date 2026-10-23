@@ -26,6 +26,8 @@ const SHOTS := [
 	["13-8ms-alatuulen-ranta", 8.0, 0.0, 3.0, 30.0, "alatuuli"],
 	["14-puuska", 3.0, 3.0, 8.0, 40.0, "selka"],
 	["15-8ms-ylhaalta", 8.0, 0.0, 12.0, 6.0, "selka"],
+	# Vana aallokossa: vene ajaa pohjoiseen, kamera veneen takana ja yläpuolella
+	["16-vana-6ms", 6.0, 0.0, 5.0, 12.0, "vene"],
 ]
 
 var _dir := ""
@@ -99,6 +101,14 @@ func _set_view(shot: Array) -> void:
 	w._gust_target = 0.0
 	var boat: Boat = main.boat
 	boat.velocity = Vector2.ZERO
+	if shot[5] == "vene":
+		boat.yaw = 0.0
+		boat.velocity = Vector2(0.0, -3.0) # 3 m/s pohjoiseen
+		var eye_b := Vector3(boat.pos.x + 3.0, shot[3], boat.pos.y + 8.0)
+		var at_b := Vector3(boat.pos.x, 0.0, boat.pos.y + 4.0)
+		main.camera_rig.shot = Transform3D(Basis.looking_at(at_b - eye_b), eye_b)
+		main.camera_rig.shot_view = true
+		return
 	var from: Vector2 = _places[shot[5]]
 	var eye := Vector3(from.x, shot[3], from.y)
 	var at := Vector3(from.x, 0.0, from.y - shot[4])
@@ -112,8 +122,10 @@ func _process(_delta: float) -> void:
 		_frame += 1
 		if _frame == 1:
 			Waves.reset(shot[1], 0.0) # aallokko heti tuulen mukaiseksi
+			if shot[5] == "vene":
+				main.boat.pos = _places["selka"]
 		_set_view(shot)
-		if _frame > 30:
+		if _frame > (150 if shot[5] == "vene" else 30):
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(_dir.path_join(shot[0] + ".png"))
 			print("kuva %s: vaahtoa %.2f %% kuvan alaosasta" % [shot[0], _white_fraction(img) * 100.0])
