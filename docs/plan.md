@@ -524,6 +524,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vanhan muodon tallennus luetaan tyhjänä ja kirjoitetaan uudessa muodossa.
   Testiajot eivät enää kirjoita saaliskirjaan edes käynnistyessään.
   Tarkistukset `--booktest`issa.
+  Julkaistu [v0.46.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.46.0).
 
 
 ## Huomioita ja avoimia kysymyksiä
