@@ -33,6 +33,10 @@ func _ready() -> void:
 	for f in main.population.fish:
 		f["wary"] = 1.0e9 # tärpit tehdään testissä itse
 	_find_spot()
+	# Kohtalainen tuuli, jotta koho keinuu aallokossa (aallokko riippuu tuulesta ja pyyhkäisymatkasta)
+	main.weather.wind_base = 5.0
+	main.weather._wind_target = 5.0
+	Waves.reset(5.0, main.weather.wind_direction)
 
 
 func _check(name: String, ok: bool) -> void:

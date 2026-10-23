@@ -51,6 +51,7 @@ tests=(
 	"voicetest|--fixed-fps 30 -- --day=180 --voicetest"
 	"wavesoundtest|--fixed-fps 30 -- --day=180 --wavesoundtest"
 	"wavesoundtest-talvi|--fixed-fps 30 -- --day=40 --wavesoundtest"
+	"wavetest|--fixed-fps 30 -- --day=180 --wavetest"
 )
 
 failed=()

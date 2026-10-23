@@ -2,6 +2,8 @@ extends Node
 ## Asetusten testi oikeilla hiiren klikkauksilla ja oikealla verkkohaulla:
 ##   godot -- --settingstest=/polku/kuviin
 ## Säätietojen tulkinta tarkistetaan lisäksi valmiilla esimerkkidatalla.
+## Veden laatu: rivi on asetuksissa, valinta tallentuu ja tulee voimaan heti
+## myös kesken kalareissun (lähiveden verkko harvenee).
 
 var _dir := ""
 var _log: Array[String] = []
@@ -94,6 +96,7 @@ func _process(delta: float) -> void:
 			if _t > 0.3:
 				_check("Asetukset aukesivat", main.menu._settings.visible and not main.menu._main.visible)
 				_check("oletuksena pois päältä", not main.menu._real_toggle.button_pressed)
+				_water_quality_menu_checks()
 				_click(main.menu._real_toggle)
 				_next()
 		2:
@@ -146,7 +149,39 @@ func _process(delta: float) -> void:
 				_check("lähde: " + main.weather.real_source, main.weather.real_source != "")
 				_check("HUD näyttää lämpötilan: " + main.hud._status.text.split("\n")[1], "°C" in main.hud._status.text)
 				_shot("peli-todellinen-saa")
+				_water_quality_game_checks()
 				_done()
+
+
+## Veden laatu alkuvalikon asetuksissa: rivi, oletus Korkea, vaihto tallentuu
+func _water_quality_menu_checks() -> void:
+	var controls: SettingsControls = main.menu._controls
+	var option := controls.water_quality
+	_check("Veden laatu -rivi asetuksissa", option != null and option.is_visible_in_tree() and option.item_count == 2)
+	_check("veden laatu oletuksena Korkea", option.get_item_text(option.selected) == "Korkea" and Settings.water_quality == "korkea")
+	option.select(1)
+	option.item_selected.emit(1)
+	_check("valinta Matala tallentuu asetuksiin", Settings.water_quality == "matala" and Settings.config().get_value("grafiikka", "veden_laatu") == "matala")
+	option.select(0)
+	option.item_selected.emit(0)
+	_check("valinta Korkea tallentuu asetuksiin", Settings.config().get_value("grafiikka", "veden_laatu") == "korkea")
+
+
+## Veden laatu kesken kalareissun (Esc-valikon asetukset): lähivesi rakennetaan heti uudelleen
+func _water_quality_game_checks() -> void:
+	var controls: Array = main.pause_menu.find_children("*", "GridContainer", true, false).filter(func(n): return n is SettingsControls)
+	_check("Esc-valikossa on Veden laatu", controls.size() == 1)
+	if controls.is_empty():
+		return
+	var option: OptionButton = controls[0].water_quality
+	var high: int = main.world.near_vertex_count()
+	option.select(1)
+	option.item_selected.emit(1)
+	var low: int = main.world.near_vertex_count()
+	_check("Matala tulee voimaan heti: lähiveden verteksejä %d -> %d" % [high, low], low > 0 and low < high / 2)
+	option.select(0)
+	option.item_selected.emit(0)
+	_check("Korkea palautuu: %d verteksiä" % main.world.near_vertex_count(), main.world.near_vertex_count() == high)
 
 
 func _move_to(at_viewport: Vector2) -> void:

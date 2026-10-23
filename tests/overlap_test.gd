@@ -7,6 +7,8 @@ extends Node
 ## toisiaan eri verkoissa. Sellaiset pinnat välkkyvät (z-fighting), kun kamera
 ## tai vene liikkuu. Kahden kappaleen liitoskohta, joka jää umpinaisen
 ## laatikon tai sylinterin sisään tai veneen pohjan alle, ei näy eikä välky.
+## Vettä ei piirretä veneen rungon sisälle, eikä kaukaista järviverkkoa
+## lähiveden alueelle (varjostin hylkää ne), joten niitä ei lasketa.
 
 const PLANE_EPS := 0.001 # m
 const MIN_WIDTH := 0.0005 # m: kapeampi yhteinen alue on vain reunojen kosketus
@@ -29,7 +31,7 @@ func _process(_delta: float) -> void:
 	var boat: Boat = main.boat
 	var to_local := boat.hull.global_transform.affine_inverse()
 	var near := AABB(boat.global_position - Vector3.ONE * NEAR_BOAT / 2.0, Vector3.ONE * NEAR_BOAT)
-	var tris: Array = [] # [a, b, c, normaali, d, verkko, kaksipuolinen]
+	var tris: Array = [] # [a, b, c, normaali, d, verkko, kaksipuolinen, vettä]
 	var names: Array[String] = []
 	for mi in _meshes(main):
 		if not (mi.global_transform * mi.get_aabb()).intersects(near):
@@ -37,6 +39,9 @@ func _process(_delta: float) -> void:
 		if mi.mesh is ImmediateMesh or mi.skin != null or mi.get_parent() is Skeleton3D:
 			continue # joka ruudulla piirrettävät ja animoidut verkot
 		var xf := to_local * mi.global_transform
+		var water_mat := mi.get_active_material(0)
+		var is_far_water: bool = water_mat == main.world.water_material
+		var is_water: bool = is_far_water or water_mat == main.world.near_material
 		var id := names.size()
 		names.append(_name(mi))
 		if mi.mesh is BoxMesh:
@@ -60,8 +65,14 @@ func _process(_delta: float) -> void:
 				var n := (b - a).cross(c - a)
 				if n.length() < 1e-7:
 					continue
+				if is_water:
+					var centre := (a + b + c) / 3.0
+					var world := mi.global_transform * (xf.affine_inverse() * centre)
+					var d := (Vector2(world.x, world.z) - Waves.near_center).abs()
+					if is_far_water and maxf(d.x, d.y) < Waves.near_radius:
+						continue
 				n = n.normalized()
-				tris.append([a, b, c, n, n.dot(a), id, two_sided])
+				tris.append([a, b, c, n, n.dot(a), id, two_sided, is_water])
 	# Kolmiot ämpäreihin tason mukaan (suunta etumerkistä riippumatta)
 	var buckets := {}
 	for i in tris.size():
@@ -80,6 +91,10 @@ func _process(_delta: float) -> void:
 		for i in own:
 			for j in others:
 				if j <= i or tris[i][5] == tris[j][5]:
+					continue
+				# Vesi ja rungon sisällä oleva pinta: vettä ei piirretä rungon sisälle
+				if (tris[i][7] and _inside_hull_waterline((tris[j][0] + tris[j][1] + tris[j][2]) / 3.0)) \
+						or (tris[j][7] and _inside_hull_waterline((tris[i][0] + tris[i][1] + tris[i][2]) / 3.0)):
 					continue
 				if _fights(tris[i], tris[j]):
 					var pair := "%s  ↔  %s" % [names[tris[i][5]], names[tris[j][5]]]
@@ -186,6 +201,27 @@ func _area(poly: PackedVector2Array) -> float:
 	for i in poly.size():
 		sum += poly[i].cross(poly[(i + 1) % poly.size()])
 	return absf(sum) * 0.5
+
+
+## Vettä ei piirretä veneen sisälle: sama rungon ääriviiva kuin
+## waves.gdshaderinc:n inside_boat (rungon koordinaateissa)
+func _inside_hull_waterline(pt: Vector3) -> bool:
+	var lx := pt.x
+	var lz := pt.z
+	if lz < -2.15 or lz > 2.18:
+		return false
+	var w: float
+	if lz < -1.8:
+		w = lerpf(0.05, 0.4, (lz + 2.2) / 0.4)
+	elif lz < -1.0:
+		w = lerpf(0.4, 0.68, (lz + 1.8) / 0.8)
+	elif lz < 0.0:
+		w = lerpf(0.68, 0.76, lz + 1.0)
+	elif lz < 1.2:
+		w = lerpf(0.76, 0.72, lz / 1.2)
+	else:
+		w = lerpf(0.72, 0.62, (lz - 1.2) / 1.0)
+	return absf(lx) < w * 0.86 - 0.015
 
 
 ## Onko piste (rungon koordinaateissa) umpinaisen kappaleen sisällä tai veneen

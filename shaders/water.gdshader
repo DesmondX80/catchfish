@@ -197,10 +197,10 @@ float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, 
 			float edge = 0.38 + life * 0.4;
 			float f = smoothstep(edge, edge + 0.12, shape * (0.35 + lace) * 1.15);
 			float core = bend > 0.0 ? 1.0 : exp(bend / 0.3);
-			// Kirkas murtuma vain aallon harjalla ja sen etupuolella, jälkivaahto
-			// jää läpikuultavana myös rinteeseen
-			float bright = core * mix(0.5, 0.95, on_crest) + 0.5 * (1.0 - core);
-			foam = max(foam, f * bright * (1.0 - life * 0.4) * grow);
+			// Murtuma leimahtaa aallon harjalla ja sen etupuolella; jälkivaahto
+			// jää valkoisena ajelehtimaan, vaikka harja kulkee jo edellä
+			float at_crest = mix(1.0, mix(0.35, 1.0, on_crest), 1.0 - smoothstep(0.1, 0.35, life));
+			foam = max(foam, f * mix(0.45, 0.95, core) * at_crest * (1.0 - life * 0.4) * grow);
 		}
 	}
 	// Tuulen suuntaiset vaahtojuovat kovalla tuulella
