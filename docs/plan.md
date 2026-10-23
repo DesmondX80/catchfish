@@ -566,6 +566,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
     0,1°:n askelin (`SkyTime.SUN_STEP`).
   - Kaukaisen metsän välke kameraa käännettäessä on reunojen aliasointia
     (peli käyttää jo 4× MSAA:ta), eikä sitä muutettu.
+  Julkaistu [v0.47.1](https://github.com/DesmondX80/catchfish/releases/tag/v0.47.1).
 
 
 ## Huomioita ja avoimia kysymyksiä
