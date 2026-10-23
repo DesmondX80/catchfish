@@ -1,0 +1,26 @@
+{
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status *)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git fetch *)",
+      "Bash(git worktree *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git rebase *)",
+      "Bash(git checkout *)",
+      "Bash(git push -u origin claude/*)",
+      "Bash(tools/run_tests.sh *)",
+      "Bash(godot *)",
+      "Bash(python3 tools/*)"
+    ],
+    "ask": [
+      "Bash(gh release *)",
+      "Bash(git push origin main*)"
+    ]
+  }
+}
