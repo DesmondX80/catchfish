@@ -57,28 +57,28 @@ määritelty kansiossa `.claude/agents/`:
 
 | Rooli | Määritys | Tehtävä |
 |---|---|---|
-| Tiiminvetäjä (lead) | pääsessio | Ottaa tehtävät Planesta, jakaa ne, sovittaa tiedostoreviirit, julkaisee |
+| Työnjohtaja (lead) | pääsessio | Ottaa tehtävät Planesta, jakaa ne, sovittaa tiedostoreviirit, julkaisee |
 | Koodaaja (2-3 kpl) | `koodaaja.md` | Toteuttaa pelilogiikan ja sen testin omassa työkopiossa |
 | Designer | `designer.md` | Käyttöliittymä, varjostimet, äänimaailma; arvioi kuvakaappauksista |
 | Testaaja | `testaaja.md` | Ajaa testisarjan ja hyväksyy tai palauttaa haaran |
 
-Teemu on tiimin omistaja: hän päättää prioriteetit ja vastaa kysymyksiin, joita
+Teemu on tiimin johtaja: hän päättää prioriteetit ja vastaa kysymyksiin, joita
 koodista tai suunnitelmasta ei löydy.
 
 Säännöt:
 
-- **Vain tiiminvetäjä nostaa versiota, tekee Windows-viennin, julkaisee ja
+- **Vain työnjohtaja nostaa versiota, tekee Windows-viennin, julkaisee ja
   muuttaa Planen tiloja.** Julkaisut tehdään yksi haara kerrallaan työtavan
   kohdan 4 mukaan, jolloin sama versio ei voi mennä kahdesti.
 - Jokainen tiimiläinen työskentelee omassa haarassaan ja työkopiossaan.
-- Tiiminvetäjä jakaa tehtävät niin, ettei kaksi tiimiläistä muokkaa samaa
+- Työnjohtaja jakaa tehtävät niin, ettei kaksi tiimiläistä muokkaa samaa
   tiedostoa yhtä aikaa. Jaetut tiedostot (`scripts/main.gd`, `scenes/main.tscn`,
   `tools/run_tests.sh`, `README.md`) sovitaan viestillä ennen muokkausta.
 - Haara julkaistaan vasta, kun testaaja on hyväksynyt sen. Näkyvät muutokset
   käyvät lisäksi designerin arviossa.
-- Tiimiläinen, joka ei tiedä jotain, kysyy tiiminvetäjältä. Tiiminvetäjä kysyy
+- Tiimiläinen, joka ei tiedä jotain, kysyy työnjohtajalta. Työnjohtaja kysyy
   Teemulta eikä arvaa.
-- Kun tehtävä on valmis, tiiminvetäjä kertoo Teemulle, minkä työkopion
+- Kun tehtävä on valmis, työnjohtaja kertoo Teemulle, minkä työkopion
   `project.godot` hänen pitää avata kokeillakseen.
 
 ## Testaus

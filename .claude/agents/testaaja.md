@@ -25,7 +25,7 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
 
 ## Raportti
 
-Lähetä tekijälle ja tiiminvetäjälle lyhyt raportti:
+Lähetä tekijälle ja työnjohtajalle lyhyt raportti:
 - **Hyväksytty** tai **Palautettu**
 - ajetut testit ja tulos (OK / VIRHE / AIKAKATKAISU)
 - löydökset: tiedosto ja rivi, mitä tapahtuu, miten toistetaan
