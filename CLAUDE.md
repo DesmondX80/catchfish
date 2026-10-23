@@ -33,6 +33,9 @@ edistyminen: `docs/plan.md`.
 
 Katso `docs/plan.md`, osio *Työtapa*. Lyhyesti:
 
+0. **Jokainen uusi tehtävä omaan uuteen haaraan** ajantasaisesta mainista:
+   `git switch main && git pull --ff-only && git switch -c claude/<aihe>`.
+   Älä jatka vanhan tehtävän haarassa.
 1. Tehtävä Planesta (projekti CATCHFISH) → tila *In Progress*.
 2. Toteutus ja testit (uusi ominaisuus saa oman testinsä), README ja F1-ohje ajan tasalle.
 3. Versio `project.godot`:iin: uusi ominaisuus nostaa minor-, korjaus patch-versiota.
