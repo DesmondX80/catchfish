@@ -52,34 +52,54 @@ Katso `docs/plan.md`, osio *Työtapa*. Lyhyesti:
 
 ## Agenttitiimi
 
-Projektia voi tehdä Claude Coden agenttitiimillä (Agent Teams). Roolit on
+Projektia tehdään Claude Coden agenttitiimillä (Agent Teams). Roolit on
 määritelty kansiossa `.claude/agents/`:
 
 | Rooli | Määritys | Tehtävä |
 |---|---|---|
-| Työnjohtaja (lead) | pääsessio | Ottaa tehtävät Planesta, jakaa ne, sovittaa tiedostoreviirit, julkaisee |
-| Koodaaja (2-3 kpl) | `koodaaja.md` | Toteuttaa pelilogiikan ja sen testin omassa työkopiossa |
-| Designer | `designer.md` | Käyttöliittymä, varjostimet, äänimaailma; arvioi kuvakaappauksista |
-| Testaaja | `testaaja.md` | Ajaa testisarjan ja hyväksyy tai palauttaa haaran |
+| Tiimin johtaja | Teemu | Antaa tehtävän, hyväksyy suunnitelman, kokeilee tuloksen, päättää julkaisusta |
+| Työnjohtaja (lead) | pääsessio | Käynnistää tiimin, vie tehtävän vaiheesta toiseen, välittää viestit, julkaisee |
+| Designer | `designer.md` | Suunnittelee tehtävän: miten ominaisuus toimii ja miltä se näyttää ja kuulostaa |
+| Koodaaja | `koodaaja.md` | Toteuttaa hyväksytyn suunnitelman ja sen testin omassa työkopiossa |
+| Testaaja | `testaaja.md` | Testaa toteutuksen suunnitelmaa vasten ja hyväksyy tai palauttaa sen |
 
-Teemu on tiimin johtaja: hän päättää prioriteetit ja vastaa kysymyksiin, joita
-koodista tai suunnitelmasta ei löydy.
+### Työnkulku
 
-Säännöt:
+Jokainen tehtävä kulkee nämä vaiheet tässä järjestyksessä:
+
+1. **Tehtävä.** Teemu antaa tehtävän työnjohtajalle (Planen CATCHFISH-N tai
+   vapaa kuvaus). Työnjohtaja luo tiimin (designer, koodaaja, testaaja) ja
+   siirtää tehtävän Planessa tilaan *In Progress*.
+2. **Suunnittelu.** Designer tutkii koodin ja `docs/plan.md`:n ja kirjoittaa
+   suunnitelman (rakenne: `.claude/agents/designer.md`). Avoimet kysymykset
+   kerätään suunnitelmaan; designer ei arvaa.
+3. **Hyväksyntä.** Työnjohtaja näyttää suunnitelman ja avoimet kysymykset
+   Teemulle. Toteutus alkaa vasta, kun Teemu on hyväksynyt suunnitelman.
+4. **Toteutus.** Koodaaja toteuttaa hyväksytyn suunnitelman sellaisenaan,
+   tallentaa sen haaraansa tiedostoon `docs/suunnitelmat/<tunniste>.md` ja
+   kirjoittaa testin. Jos suunnitelmasta pitää poiketa, koodaaja kysyy ensin
+   työnjohtajalta.
+5. **Testaus.** Testaaja testaa haaran suunnitelman hyväksymiskriteereitä
+   vasten. Palautus menee koodaajalle korjattavaksi; yli kaksi
+   palautuskierrosta pysäyttää työn ja työnjohtaja kertoo Teemulle.
+   Näkyvät muutokset designer tarkistaa kuvakaappauksista ennen hyväksyntää.
+6. **Kokeilu.** Työnjohtaja raportoi Teemulle: mitä muuttui, testaajan
+   raportti ja työkopio, jonka `project.godot` Teemu avaa Windowsin
+   editorissa.
+7. **Julkaisu.** Vasta kun Teemu sanoo "julkaise": versio, Windows-vienti,
+   push, GitHub-release, Planessa *Done*, työkopion poisto ja tiimiläisten
+   sulkeminen.
+
+### Säännöt
 
 - **Vain työnjohtaja nostaa versiota, tekee Windows-viennin, julkaisee ja
   muuttaa Planen tiloja.** Julkaisut tehdään yksi haara kerrallaan työtavan
   kohdan 4 mukaan, jolloin sama versio ei voi mennä kahdesti.
-- Jokainen tiimiläinen työskentelee omassa haarassaan ja työkopiossaan.
-- Työnjohtaja jakaa tehtävät niin, ettei kaksi tiimiläistä muokkaa samaa
-  tiedostoa yhtä aikaa. Jaetut tiedostot (`scripts/main.gd`, `scenes/main.tscn`,
-  `tools/run_tests.sh`, `README.md`) sovitaan viestillä ennen muokkausta.
-- Haara julkaistaan vasta, kun testaaja on hyväksynyt sen. Näkyvät muutokset
-  käyvät lisäksi designerin arviossa.
+- Jokainen koodia muuttava tiimiläinen työskentelee omassa haarassaan ja
+  työkopiossaan.
 - Tiimiläinen, joka ei tiedä jotain, kysyy työnjohtajalta. Työnjohtaja kysyy
   Teemulta eikä arvaa.
-- Kun tehtävä on valmis, työnjohtaja kertoo Teemulle, minkä työkopion
-  `project.godot` hänen pitää avata kokeillakseen.
+- Teemu voi milloin tahansa puhua kenelle tahansa tiimiläiselle suoraan.
 
 ## Testaus
 
