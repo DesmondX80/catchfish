@@ -71,10 +71,15 @@ epäselvää tai suunnitelmasta pitää poiketa, ja hän sanoo, miten tehdään.
 
 Jokainen tehtävä kulkee nämä vaiheet tässä järjestyksessä:
 
+Planen tila kertoo vaiheen: *Suunnittelu* → *Toteutus* (koodaaja aloittaa) →
+*Testaus* (testaaja aloittaa; palautus siirtää takaisin *Toteutus*-tilaan) →
+*Done* (julkaistu). Työnjohtaja vaihtaa tilan heti vaiheen vaihtuessa ja
+kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
+
 1. **Tehtävä.** Teemu antaa tehtävän, tai työnjohtaja ottaa seuraavan Planen
    CATCHFISH-tehtävän tilasta *Todo* prioriteettijärjestyksessä (korkein
    ensin). Työnjohtaja luo tiimin (designer, koodaaja, testaaja) ja siirtää
-   tehtävän Planessa tilaan *In Progress*.
+   tehtävän Planessa tilaan *Suunnittelu*.
 2. **Suunnittelu.** Designer tutkii koodin ja `docs/plan.md`:n ja kirjoittaa
    suunnitelman (rakenne: `.claude/agents/designer.md`). Avoimet kysymykset
    kerätään suunnitelmaan; designer ei arvaa.
