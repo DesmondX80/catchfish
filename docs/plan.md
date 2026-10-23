@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 23.10.2026. Nykyinen versio **0.47.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.47.0)).
+Päivitetty 23.10.2026. Nykyinen versio **0.48.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.48.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -581,6 +581,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   telinevavan, jossa on tärppi tai kala, ja käsivapa menee telineeseen
   (siima vedessä) tai veneen pohjalle. Telinevavan tärppi kestää 0,6 s
   pidempään, ja itsekoukutus harvinaistui (10–40 %). Testi `--trollstriketest`.
+  Julkaistu [v0.48.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.48.0).
 
 ## Huomioita ja avoimia kysymyksiä
 
