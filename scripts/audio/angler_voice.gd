@@ -25,6 +25,7 @@ const LINES := {
 	"hole": "Reikä valmis. Nyt pilkille.",
 	"anchor": "Perkele, ankkuri!",
 	"eagle": "Oho! Merikotka!",
+	"release": "Mene kasvamaan.",
 	"fish_hauki": "Hauki!",
 	"fish_ahven": "Ahven!",
 	"fish_sarki": "Särki!",
@@ -50,6 +51,9 @@ const EVENTS := {
 }
 ## Lajin tunnistus huudetaan aina: se ohittaa tauon ja toistonestot
 const URGENT_PREFIX := "fish_"
+## Nämä tapahtumat sanotaan aina (repliikin tunniste = tapahtuma): vapautus
+## tulee heti saaliskommentin perään, joten se keskeyttää sen
+const URGENT_EVENTS := ["release"]
 const MIN_GAP := 6.0 # s repliikkien välillä
 const REPEAT_GAP := 60.0 # s ennen kuin sama repliikki toistuu
 const QUIET_TIME := 240.0 # s kalastusta ilman tärppiä -> "Ei perhana tule mitään"
@@ -83,7 +87,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, hud_no
 	_player.bus = "Puhe"
 	boat.angler.add_child(_player)
 	_player.position = Vector3(0, 0.9, 0) # pään korkeudella
-	fishing.voice.connect(func(event): say(event, event.begins_with(URGENT_PREFIX)))
+	fishing.voice.connect(func(event): say(event, event.begins_with(URGENT_PREFIX) or event in URGENT_EVENTS))
 	boat.voice.connect(func(event): say(event, true)) # lähtö ankkuri pohjassa huudetaan aina
 	_raining = weather.rain > 0.3
 	get_tree().create_timer(2.5).timeout.connect(func(): say("start"))

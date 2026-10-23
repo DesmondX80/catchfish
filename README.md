@@ -38,6 +38,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | Oikea hiiri | kelaa (Shift = nopeasti) |
 | Välilyönti | nykäisy |
 | E / C | jarru kireämmälle / löysemmälle |
+| Z | saalis haavissa tai jäällä: vapauta kala (uramoodissa maine) |
 | L | kalapakki auki: kamera katsoo pakkia, ja uistin, koho-onki tai pohjaonki valitaan klikkaamalla sen lokeroa (L, Esc tai oikea hiiri sulkee). Talvella pieni pilkkirasia |
 | F / G | kohon syvyys matalammalle / syvemmälle (ennen heittoa) |
 | R | vetouistelu: heitetty vapa telineeseen ja toinen käteen, tai vapa telineestä käteen |
@@ -145,6 +146,25 @@ painuu, hauki hyppää).
   ennätyksiin ja kalakirjaan kuten vapakalat. Uramoodissa verkot ostetaan
   kalastustarvikeliikkeestä, ne jäävät järveen reissujen yli, ja jäiden tullessa
   järveen jääneet verkot menetetään.
+- **Kalan vapautus**: kun saalis on haavissa tai jäällä (saalisikkuna auki),
+  Z päästää kalan takaisin järveen ja vasen hiiri laittaa sen saaviin.
+  Vapautettu kala ei mene saaviin eikä kotiin säilöön, mutta se on
+  kalakirjassa ja ennätyslistassa. Kalastaja sanoo "Mene kasvamaan.".
+  Verkon kaloja ei voi vapauttaa.
+- **Uramoodin kalastonhoitomaksu**: virvelikalastus ja verkot vaativat
+  kalastonhoitomaksun, jonka maksat itse kalastustarvikeliikkeessä:
+  vuosimaksu 47 € (31.12. asti), viikkomaksu 16 € (7 vrk) tai
+  vuorokausimaksu 6 € (ostopäivä). Ilman maksua saa onkia ja pilkkiä, ja
+  järvessä olevan verkon saa nostaa. Uusi ura alkaa 50 eurolla ilman maksua.
+  Maksu tarkistetaan reissun alussa.
+- **Toisen vavan lupa** (uramoodi): toisen siiman lasku veneen perään
+  uistellessa vaatii tekoaltaan luvan (10 €, 31.12. asti) ja voimassa olevan
+  kalastonhoitomaksun.
+- **Maine** (uramoodi): vapautettu kala antaa mainetta 1 pisteen alkavaa
+  kiloa kohden ja 5 lisäpistettä, jos kala on lajinsa iso kala (hauki 5 kg,
+  lahna 2,5 kg, made 1,7 kg, ahven 400 g, särki 300 g, kiiski 60 g). Alle 50 g
+  kalasta ei saa mainetta. Maine nostaa kalojen myyntihintaa 1 % jokaista
+  10 mainetta kohden, enintään 25 %.
 - **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
   repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
   näkyy myös tekstityksenä.

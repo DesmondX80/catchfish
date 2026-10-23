@@ -15,6 +15,8 @@ signal lure_lost(lure_id: String)
 ## Kalastajan repliikin aihe (angler_voice.gd): bite, hooked, lost, snap, snag,
 ## shore, landed, big, small, hole, fish_<laji> (laji tunnistettu)
 signal voice(event: String)
+## Saalis päästettiin takaisin järveen (Z saalisikkunassa)
+signal released(entry: Dictionary)
 
 enum State { READY, CHARGING, FLYING, RETRIEVING, BITE, FIGHT, LANDED, DRILLING, LANDING }
 
@@ -93,6 +95,12 @@ var current_hole := Vector3.INF
 ## Uramoodi: uistinvarasto (id -> kpl). Tyhjä = vapaa kalastus, kaikki uistimet käytössä.
 var inventory: Dictionary = {}
 var limited := false
+## Uramoodi: kalastonhoitomaksu voimassa reissun alussa. Ilman sitä avovedessä
+## vain onget (koho- ja pohjaonki); pilkit käyvät aina.
+var license := true
+## Uramoodi: tekoaltaan lupa toiselle vavalle voimassa reissun alussa. Toinen
+## siima veteen vaatii luvan ja kalastonhoitomaksun (license).
+var rod_permit := true
 const HOLE_AHEAD := 0.75 # avanto kalastajan edessä (m)
 const DRILL_TIME := 3.0 # s
 var _auger: Node3D
@@ -177,9 +185,39 @@ func setup(boat_node: Boat, rig: CameraRig, lake_data: LakeData, fish_pop: FishP
 
 func lures() -> Array:
 	var all: Array = Lures.ICE if on_ice else Lures.LIST
+	if not on_ice and not license:
+		all = all.filter(func(l): return lure_allowed(l["id"]))
 	if not limited:
 		return all
 	return all.filter(func(l): return int(inventory.get(l["id"], 0)) > 0)
+
+
+## Saako välinettä käyttää: ilman kalastonhoitomaksua vain onki ja pilkki
+func lure_allowed(id: String) -> bool:
+	if license or on_ice:
+		return true
+	for l in Lures.LIST:
+		if l["id"] == id:
+			return l["kind"] in ["bobber", "bottom"]
+	return true
+
+
+## Onko varastossa virveliuistimia, joita ei voi käyttää ilman maksua
+func _spinning_blocked() -> bool:
+	if license or on_ice:
+		return false
+	return Lures.LIST.any(func(l): return not lure_allowed(l["id"]) and (not limited or int(inventory.get(l["id"], 0)) > 0))
+
+
+## Toinen siima veteen: mikä puuttuu (tyhjä = sallittu)
+func second_rod_missing() -> String:
+	if not license and not rod_permit:
+		return "kalastonhoitomaksun ja tekoaltaan luvan"
+	if not license:
+		return "kalastonhoitomaksun"
+	if not rod_permit:
+		return "tekoaltaan luvan (10 €)"
+	return ""
 
 
 func has_lure() -> bool:
@@ -575,6 +613,9 @@ func select_lure(id: String) -> String:
 		return "Uistimen voi vaihtaa vain, kun siima on kelattu sisään"
 	var all: Array = Lures.ICE if on_ice else Lures.LIST
 	var l: Dictionary = all.filter(func(x): return x["id"] == id)[0]
+	if not lure_allowed(id):
+		message.emit("Virvelikalastus vaatii kalastonhoitomaksun")
+		return "Virvelikalastus vaatii kalastonhoitomaksun"
 	if limited and int(inventory.get(id, 0)) <= 0:
 		return "%s: ei varastossa – osta kalastustarvikeliikkeestä" % l["name"]
 	if not on_ice and not _lure_free(l):
@@ -600,6 +641,10 @@ func _pick_free_lure() -> bool:
 func _unhandled_input(event: InputEvent) -> void:
 	if not GameInput.active():
 		return
+	if event.is_action_pressed("release_fish"):
+		if state == State.LANDED and held == _cur and not _last_catch.is_empty():
+			_release()
+		return
 	if event.is_action_pressed("rod_holder"):
 		_rod_holder_key()
 		return
@@ -613,7 +658,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		if not (event.is_action_pressed("drag_up", true) or event.is_action_pressed("drag_down", true)):
 			return
 	if event.is_action_pressed("cast") and state == State.READY and not has_lure():
-		message.emit("Ei uistimia – osta lisää kalastustarvikeliikkeestä")
+		message.emit("Virvelikalastus vaatii kalastonhoitomaksun" if _spinning_blocked() else "Ei uistimia – osta lisää kalastustarvikeliikkeestä")
 		return
 	if event.is_action_pressed("cast") and state == State.READY and not on_ice and not _pick_free_lure():
 		message.emit("Uistimet ovat jo toisessa vavassa – osta lisää kalastustarvikeliikkeestä")
@@ -621,6 +666,10 @@ func _unhandled_input(event: InputEvent) -> void:
 	if on_ice and _ice_input(event):
 		return
 	if event.is_action_pressed("cast") and state == State.READY and trolling():
+		var missing := second_rod_missing()
+		if missing != "":
+			message.emit("Toinen vapa vaatii %s – R ottaa telinevavan käteen" % missing)
+			return
 		_let_out() # uistelumoodissa ei heitetä
 		return
 	if event.is_action_released("cast") and state == State.RETRIEVING and trolling():
@@ -2079,6 +2128,20 @@ func net_grips() -> Array:
 ## Kalastaja nojaa eteen haavia ojentaessaan
 func net_lean() -> float:
 	return _landing_net.lean() if state == State.LANDING else 0.0
+
+
+## Z saalisikkunassa: kala takaisin järveen haavista tai jäältä
+func _release() -> void:
+	var entry := _last_catch
+	_last_catch = {}
+	state = State.READY
+	var at := Vector3(current_hole.x, 0.0, current_hole.z)
+	if not on_ice:
+		var side := boat.right()
+		at = Vector3(boat.pos.x + side.x * 0.9, 0.0, boat.pos.y + side.y * 0.9) # veneen vieressä
+	sound_event.emit("fish_splash", at)
+	released.emit(entry)
+	voice.emit("release")
 
 
 func _finish_landing() -> void:

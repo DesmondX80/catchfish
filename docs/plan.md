@@ -25,7 +25,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalat | Altaan kalakanta: ahven, särki, hauki, kiiski, lahna, made. Lajeilla elinpaikka, vuorokausi- ja vuodenaikarytmi, uistin- ja syöttimieltymykset, 3D-mallit. Kalat eivät näy humusvedessä (vain kaikuluotaimessa); laji tunnistetaan vasta, kun kala näkyy veneen lähellä. Hauki voi seurata uistinta veneelle ja iskeä viime hetkellä |
 | Saalis | Kalasaavi veneen pohjalla (Tab: kuva ylhäältä ja painot), ennätyslista, kalan kuva saalisikkunassa, kalakirja (lajin sivu avautuu ensimmäisestä saaliista) |
 | Verkko | Pohjaverkko 30 m kolmella silmäkoolla (22, 35, 50 mm): lasku laidan yli soutaen (N, silmäkoko B), pyytää tunteja, nosto pyykin luota laidan yli (kalat näkyvät verkossa), saalis lajin elinpaikan, rytmien ja silmäkoon mukaan; uramoodissa ostetaan ja jää järveen reissujen yli |
-| Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024) |
+| Uramoodi | Päivät ja kello, rahat, uistinvarasto, kalastustarvikeliike, kalojen säilö ja myynti (Luken sisävesien tuottajahinnat 2024), kalastonhoitomaksu ja toisen vavan lupa, kalan vapautus (Z) ja maine, joka nostaa myyntihintoja |
 | Äänet | Moottori, airo- ja melavedot, aallot (pienet / isot), tuuli (heikko / kova, talvella omat) ja taivaan lintujen huudot oikeista Freesoundin CC0-nauhoituksista (tools/make_recorded_sounds.py); muut syntetisoitu (tools/make_sounds.py): kela, jarru, linnut, sade |
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Asetukset | Hiiren herkkyys, käänteinen pystyohjaus ja äänenvoimakkuudet (kaikki, taustaäänet, efektit, puhe) alku- ja taukovalikossa, tallennetaan koneelle |
@@ -618,6 +618,23 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Kertakalastuksessa verkkoja on kolme kutakin silmäkokoa. Verkot näkyvät
   kartalla (K) oransseina viivoina. Testi `--nettest` (kesä ja talvi).
   Julkaistu [v0.49.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.49.0).
+- **#24 Uramoodi: kalastonhoitomaksu ja kalan vapautus – tehty.** Suunnitelma
+  `docs/suunnitelmat/CATCHFISH-24.md`. Uramoodissa virvelikalastus ja verkon
+  lasku vaativat kalastonhoitomaksun, jonka pelaaja maksaa liikkeessä:
+  vuosimaksu 47 € (31.12. asti), viikkomaksu 16 € (7 vrk) tai vuorokausimaksu
+  6 € (ostopäivä) (`Career.fee_until`). Päällekkäisessä maksussa voimassa jää
+  myöhempi päättymispäivä. Ilman maksua avovedessä käyvät vain onget ja jäällä
+  pilkit (`Fishing.license`), ja verkon nosto on sallittu. Toisen siiman lasku
+  uistellessa vaatii tekoaltaan luvan (10 €, 31.12. asti,
+  `Career.rod_permit_until`) ja maksun (`Fishing.rod_permit`). Oikeudet
+  tarkistetaan reissun alussa. Aloitusrahat ovat 50 € (ennen 20 €), eikä uusi
+  ura ala maksettuna. Z vapauttaa haavissa tai jäällä olevan kalan
+  (`Fishing.released`): kala lähtee saavista, kalakirja pysyy ennallaan ja
+  kalastaja sanoo "Mene kasvamaan.". Uramoodissa vapautus antaa mainetta
+  (`Career.release_fame`: 1 piste alkavaa kiloa kohden, iso kala +5, alle 50 g
+  ei mitään), ja maine nostaa myyntihintoja 1 % jokaista 10 mainetta kohden
+  (enintään 25 %). Kotinäkymä näyttää maineen, maksun ja luvan sekä neuvon,
+  jos kalastaa ei voi. Testi `--releasetest` (kesä ja talvi).
 
 ## Huomioita ja avoimia kysymyksiä
 

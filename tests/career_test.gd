@@ -1,7 +1,7 @@
 extends Node
 ## Uramoodin testi oikeilla hiiren klikkauksilla: godot -- --careertest=/kansio
-## Uusi ura → uistimen osto → kalareissu (saalis + menetetty uistin) → kotiin →
-## kalojen myynti → nukkuminen yli puolenyön (päivä vaihtuu).
+## Uusi ura (ei kalastonhoitomaksua) → uistimen osto → vuorokausimaksu → kalareissu (saalis + menetetty uistin) → kotiin →
+## kalojen myynti → nukkuminen yli puolenyön (päivä vaihtuu, vuorokausimaksu päättyy).
 
 var _dir := ""
 var _log: Array[String] = []
@@ -80,7 +80,8 @@ func _process(delta: float) -> void:
 		1:
 			var t := _texts()
 			_check("uran kotinäkymä: päivä 1, maanantai", "Päivä 1 – maanantai 1.6." in t)
-			_check("aloitusrahat 20 €", "Rahaa: 20,00 €" in t)
+			_check("aloitusrahat 50 €", "Rahaa: 50,00 €" in t)
+			_check("ei kalastonhoitomaksua: tila ja neuvo näkyvät", not Career.fee_valid() and "Kalastonhoitomaksu: ei maksettu – vain onki ja pilkki sallittu" in t and "maksa se kalastustarvikeliikkeessä" in t)
 			_shot("u1-koti")
 			_click(_button("Kalastustarvikeliike"))
 			_next()
@@ -88,10 +89,19 @@ func _process(delta: float) -> void:
 			_click(_button("Osta", 0)) # ensimmäinen rivi: lusikka
 			_next()
 		3:
-			_check("lusikka ostettu: 14 € jäljellä, 3 kpl", is_equal_approx(Career.money, 14.0) and Career.lures.get("lusikka", 0) == 3)
+			_check("lusikka ostettu: 44 € jäljellä, 3 kpl", is_equal_approx(Career.money, 44.0) and Career.lures.get("lusikka", 0) == 3)
+			_check("vuosimaksu (47 €) pois käytöstä 44 eurolla", _button("Maksa", 0) != null and _button("Maksa", 0).disabled)
+			_click(_button("Maksa", 2)) # vuorokausimaksu 6 €
+			_step = 30
+			_t = 0.0
+		30:
+			_check("vuorokausimaksu maksettu: 38 € jäljellä", is_equal_approx(Career.money, 38.0) and Career.fee_valid())
+			_check("vuosimaksun Maksa pois käytöstä", _button("Maksa", 0).disabled)
+			_check("liikkeessä: voimassa 1.6. asti", "Voimassa: 1.6. asti" in _texts() and "Kalastonhoitomaksu maksettu: voimassa 1.6. asti" in _texts())
 			_shot("u2-kauppa")
 			_click(_button("Takaisin"))
-			_next()
+			_step = 4
+			_t = 0.0
 		4:
 			_click(_button("Lähde kalalle"))
 			_next()
@@ -121,6 +131,7 @@ func _process(delta: float) -> void:
 			if not (m.running if "running" in m else false):
 				return
 			_check("kalareissu uramoodissa klo 07:00", Career.active and m.fishing.limited and m.sky.clock_text() == "07:00")
+			_check("maksu voimassa: virveliuistimet käyvät (lusikka)", m.fishing.license and m.fishing.lure()["id"] == "lusikka")
 			# Saalis: väsytetty kala haaviin
 			var f: Fishing = m.fishing
 			f._fish_index = 0
@@ -185,6 +196,7 @@ func _process(delta: float) -> void:
 		16:
 			var t := _texts()
 			_check("nukuttiin yli puolenyön: päivä 2, tiistai klo 00:30", Career.day == 2 and Career.weekday() == "tiistai" and Career.clock_text() == "00:30" and "Päivä 2 – tiistai" in t)
+			_check("vuorokausimaksu päättyi", not Career.fee_valid() and "Kalastonhoitomaksu: ei maksettu" in t)
 			_shot("u6-uusi-paiva")
 			for l in _log:
 				print(l)

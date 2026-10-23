@@ -239,6 +239,7 @@ func help_text(start_hint := true) -> String:
 		"  P            kamera veneen takana / FPV kalastajan silmistä",
 		"  Vasen hiiri  pidä pohjassa = heittovoima (rengas näyttää osumapisteen), päästä = heitto",
 		"               tärpätessä vastaisku, väsytyksen lopussa haavinta",
+		"  Z            saalis haavissa tai jäällä: vapauta kala (uramoodissa maine)",
 		"  Oikea hiiri  kelaa (Shift = nopeasti)",
 		"  Välilyönti   nykäisy (jigi, lippa)",
 		"  E / C        jarru kireämmälle / löysemmälle",
@@ -315,7 +316,11 @@ func _on_caught(entry: Dictionary, record: bool) -> void:
 		text = "UUSI ENNÄTYS!\n" + text
 	if FishBook.count(entry["species"]) == 1:
 		text = "UUSI LAJI KALAKIRJAAN!\n" + text
-	text += "\n\nVasen hiiri: jatka kalastusta"
+	var release := "Z: vapauta kala"
+	var fame := Career.release_fame(entry["species"], entry["weight"]) if Career.active else 0
+	if fame > 0:
+		release += " (+%d mainetta)" % fame
+	text += "\n\nVasen hiiri: kala saaviin   •   " + release
 	_catch_label.text = text
 	_catch_picture.show_species(entry["species"])
 	_catch_panel.visible = true
@@ -370,6 +375,9 @@ func _log_text() -> String:
 	lines.append("")
 	lines.append("Yhteensä %d kalaa, %s kg" % [trip.size(), _fi(kg)])
 	if Career.active:
+		var released: int = get_parent().released_count
+		if released > 0:
+			lines.append("Tällä reissulla vapautettu: %d kalaa, maine +%d" % [released, get_parent().released_fame])
 		lines.append("Saalis viedään kotiin säilöön (Esc → Mene kotiin)")
 	else:
 		lines.append("")

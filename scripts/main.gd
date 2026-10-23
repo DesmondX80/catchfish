@@ -73,6 +73,9 @@ func _on_start_selected(index: int) -> void:
 
 ## Kalareissun saalis saavissa (uramoodissa viedään kotiin säilöön)
 var trip_catch: Array = []
+## Tällä reissulla vapautetut kalat ja niistä saatu maine (uramoodi)
+var released_count := 0
+var released_fame := 0
 var tub: CatchTub
 var voice: AnglerVoice
 var birds: Birds
@@ -156,6 +159,7 @@ func _start_game(start_index: int, career := false) -> void:
 	fishing.setup(boat, camera_rig, lake, population, weather, sky)
 	boat.angler.setup(boat, fishing)
 	fishing.caught.connect(func(entry, _record): trip_catch.append(entry))
+	fishing.released.connect(_on_released)
 
 	tub = CatchTub.new()
 	add_child(tub)
@@ -191,15 +195,16 @@ func _start_game(start_index: int, career := false) -> void:
 	nets.message.connect(hud.show_message)
 	nets.summary.connect(hud.show_net_summary)
 	hud.show_message("Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]])
+	var no_fee := "\nKalastonhoitomaksu maksamatta – vain onki ja pilkki" if career and not Career.fee_valid() else ""
 	if boat.on_ice:
-		hud.show_message("Järvi on jäässä – pilkille! Kairaa reikä pitämällä vasenta hiirtä pohjassa")
+		hud.show_message("Järvi on jäässä – pilkille! Kairaa reikä pitämällä vasenta hiirtä pohjassa" + no_fee)
 	else:
 		var welcome := "Tervetuloa: %s – %s" % [lake.name, lake.starts[start_index]["name"]]
 		if season.name != "kesä":
 			welcome += " (%s)" % season.name
 		# Vuodenajan vihje: kutu, helle tai syysyönti
 		var hint := Species.season_hint(sky.day_of_year)
-		hud.show_message(welcome + ("\n" + hint if hint != "" else ""))
+		hud.show_message(welcome + ("\n" + hint if hint != "" else "") + no_fee)
 
 	pause_menu = PauseMenu.new()
 	add_child(pause_menu)
@@ -207,6 +212,9 @@ func _start_game(start_index: int, career := false) -> void:
 	pause_menu.resumed.connect(func(): hud.set_paused_view(false))
 	if career:
 		fishing.limited = true
+		# Maksu ja lupa tarkistetaan reissun alussa: reissu jatkuu puolenyön yli entisillä oikeuksilla
+		fishing.license = Career.fee_valid()
+		fishing.rod_permit = Career.rod_permit_valid()
 		fishing.inventory = Career.lures # sama sanakirja: menetetyt uistimet vähenevät urasta
 		fishing.lure_index = 0
 		pause_menu.going_home.connect(func():
@@ -296,6 +304,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/book_test.gd").new())
 	elif "--nettest" in args:
 		add_child(load("res://tests/net_test.gd").new())
+	elif "--releasetest" in args:
+		add_child(load("res://tests/release_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
@@ -316,6 +326,23 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/jitter_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):
 				add_child(load("res://tests/audio_preview.gd").new())
+
+
+## Kala vapautettiin: pois saaviista, uramoodissa mainetta
+func _on_released(entry: Dictionary) -> void:
+	for i in range(trip_catch.size() - 1, -1, -1):
+		if is_same(trip_catch[i], entry):
+			trip_catch.remove_at(i)
+			break
+	var text := "%s %s kg vapautettu" % [entry["name"], ("%.2f" % entry["weight"]).replace(".", ",")]
+	if Career.active:
+		var fame := Career.release_fame(entry["species"], entry["weight"])
+		released_count += 1
+		released_fame += fame
+		if fame > 0:
+			Career.add_fame(fame)
+			text += " – maine +%d (yhteensä %d)" % [fame, Career.fame]
+	hud.show_message(text)
 
 
 func _input(event: InputEvent) -> void:

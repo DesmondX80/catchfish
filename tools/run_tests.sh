@@ -36,6 +36,8 @@ tests=(
 	"piketest|--fixed-fps 30 -- --day=180 --piketest"
 	"pressuretest|-- --day=180 --pressuretest"
 	"proptest|--fixed-fps 30 -- --day=180 --proptest"
+	"releasetest|--fixed-fps 30 -- --day=180 --releasetest"
+	"releasetest-talvi|--fixed-fps 30 -- --day=40 --releasetest"
 	"seasonfishtest|-- --day=180 --seasonfishtest"
 	"sonartest|--fixed-fps 30 -- --day=180 --sonartest"
 	"speciestest|-- --speciestest"

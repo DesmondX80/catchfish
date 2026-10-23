@@ -36,6 +36,7 @@ LINES = {
     "hole": "Reikä valmis. Nyt pilkille.",
     "anchor": "Perkele, ankkuri!",
     "eagle": "Oho! Merikotka!",
+    "release": "Mene kasvamaan.",
     # Lajin tunnistus veneen lähellä
     "fish_hauki": "Hauki!",
     "fish_ahven": "Ahven!",

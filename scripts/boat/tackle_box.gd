@@ -164,7 +164,9 @@ func _update_label() -> void:
 		text = l["name"]
 		if fishing.limited:
 			text += "  (%d kpl)" % int(fishing.inventory.get(hovered, 0))
-		if hovered == fishing.lure()["id"]:
+		if not fishing.lure_allowed(hovered):
+			text += "  – vaatii kalastonhoitomaksun" # virveliuistin uramoodissa ilman maksua
+		elif hovered == fishing.lure()["id"]:
 			text += "  – vavassa nyt"
 	_label.text = text
 

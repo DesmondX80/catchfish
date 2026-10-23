@@ -151,6 +151,8 @@ func _blocked() -> String:
 
 func start_laying() -> bool:
 	var why := _blocked()
+	if not fishing.license:
+		why = "Verkkokalastus vaatii kalastonhoitomaksun" # nosto on sallittu ilman maksua
 	var n := selected_net()
 	var p := stern()
 	if why == "" and count(n["id"]) <= 0:
