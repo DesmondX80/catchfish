@@ -4,6 +4,7 @@ name: Testit
 
 on:
   push:
+    branches: ['**'] # ei tageista: release-tagin commit on jo testattu mainissa
   pull_request:
   workflow_dispatch:
 
