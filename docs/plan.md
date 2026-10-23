@@ -98,7 +98,6 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | 58 | FPS-laskuri | Backlog |
 | 72 | Kaikuluotaimen asetukset | Backlog |
 | 73 | Englanninkielinen versio | Backlog |
-| 74 | Automaattitestit GitHub Actionsiin | Backlog |
 | 75 | Selainversion suorituskyky | Backlog |
 
 ## Arkkitehtuuri lyhyesti
@@ -123,7 +122,10 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 ## Testaus
 
-Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita):
+Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
+GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
+(`.github/workflows/tests.yml`); samat testit paikallisesti:
+`tools/run_tests.sh /polku/godotiin [testin_nimi...]`.
 
 ```bash
 godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet
@@ -504,6 +506,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   tarkistaa, että vesi rungon varjopuolella on yli 12 % tummempaa kuin
   aurinkoisella puolella.
   Julkaistu [v0.45.0](https://github.com/DesmondX80/catchfish/releases/tag/v0.45.0).
+- **#74 Automaattitestit GitHub Actionsiin – tehty (0.45.1).** Workflow
+  `tests.yml` ajaa 27 ikkunatonta testiä (`tools/run_tests.sh`, aikaraja 10 min
+  testiä kohti) jokaisesta pushista ja PR:stä noin 5 minuutissa; ikkunaa
+  vaativat testit (input, pause, menu, settings, career, timepick, tv) ajetaan
+  käsin. Samalla korjattiin kaksi epävakaata testiä: `--speciestest` ajoi
+  talvikokeet kesän lajitiedoilla (0.30.0:sta lähtien välimuistiin laskettu
+  `update_traits()` jäi kutsumatta talven vaihtuessa) ja koho-ongen
+  särkikalaraja laskettiin 25 %:iin, koska osuus vaihtelee kalakannan
+  arvonnan mukaan 29–34 %; `--voicetest` kaatui noin joka 17. ajolla, kun
+  oikea kala tai merikotka huusi väliin (kalat ovat nyt testissä varovaisia
+  eikä lintuja tule).
 
 
 ## Huomioita ja avoimia kysymyksiä
