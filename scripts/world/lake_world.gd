@@ -162,9 +162,10 @@ func water_materials() -> Array[ShaderMaterial]:
 
 
 ## Lähivesi: kameraa seuraava neliöverkko, joka on keskellä tihein ja harvenee
-## reunoja kohti (verteksin paikka R * (a u + (1 - a) u³), u = -1..1).
-## Korkea: 241 × 241 verteksiä, keskellä 0,3 m ja reunalla 2,4 m välein.
-## Matala: 121 × 121 (neljäsosa), keskellä 1 m ja reunalla 4 m välein.
+## reunoja kohti (verteksin paikka R * (a u + (1 - a) u^5), u = -1..1), jotta
+## kaukana ei ole pikseliä pienempiä kolmioita.
+## Korkea: 161 × 161 verteksiä, keskellä 0,3 m ja reunalla 6 m välein.
+## Matala: 81 × 81 (neljäsosa), keskellä 1 m ja reunalla 11 m välein.
 ## UV.x kertoo verteksivälin, jotta varjostin jättää pois aallot, joita verkko
 ## ei pysty esittämään.
 const NEAR_RADIUS := 120.0
@@ -175,16 +176,16 @@ func _build_near_water() -> void:
 		remove_child(near_water) # vanha verkko pois heti, ettei vettä ole kahta kerrosta
 		near_water.queue_free()
 	var high := Settings.water_quality == "korkea"
-	var n := 241 if high else 121
-	var a := 0.3 if high else 0.5
+	var n := 161 if high else 81
+	var a := 0.2 if high else 0.33
 	var du := 2.0 / (n - 1)
 	near_step = NEAR_RADIUS * a * du
 	var coords := PackedFloat32Array()
 	var spacing := PackedFloat32Array()
 	for i in n:
 		var u := -1.0 + i * du
-		coords.append(NEAR_RADIUS * (a * u + (1.0 - a) * u * u * u))
-		spacing.append(NEAR_RADIUS * (a + 3.0 * (1.0 - a) * u * u) * du)
+		coords.append(NEAR_RADIUS * (a * u + (1.0 - a) * pow(u, 5.0)))
+		spacing.append(NEAR_RADIUS * (a + 5.0 * (1.0 - a) * pow(u, 4.0)) * du)
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()

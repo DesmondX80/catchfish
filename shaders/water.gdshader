@@ -25,10 +25,17 @@ uniform bool is_near = false; // lähivesi (true) vai kaukainen järviverkko
 // Lähivesi piirretään vain järven kohdalle: 1 = vettä (4 m solut)
 uniform sampler2D water_mask : filter_linear, repeat_disable;
 uniform vec4 mask_rect = vec4(0.0, 0.0, 1.0, 1.0);
+// Satunnaisluvut 256 × 256 (kohina ja vaahtopäiden ruutujen arvonta): tekstuurista
+// halvemmin kuin laskemalla
+uniform sampler2D noise_tex : filter_linear, repeat_enable;
+// Väreiden suuntavektorit suuntasarjoittain (lasketaan koodissa)
+uniform vec2 ripple_dir_a[12];
+uniform vec2 ripple_dir_b[12];
 
 varying vec3 world_pos;
 varying vec2 rest_pos; // pinnan kohta ennen aaltojen siirtymää
 varying vec4 sea; // paikallinen aallokko: (Hs, L) kummallekin suuntasarjalle
+varying vec4 sea_cq; // amplitudikerroin ja terävyys (c, q) kummallekin suuntasarjalle
 varying float spec_f0; // pinnan heijastavuus kohtisuoraan (Godotin kaava 0,16 * SPECULAR²)
 varying float scatter_weight; // veden sisältä tulevan valon osuus (ei heijastusta eikä vaahtoa)
 
@@ -59,21 +66,17 @@ vec2 rain_ripples(vec2 p) {
 	return slope;
 }
 
+// Arvokohina 0–1 (jakso 256): yksi tekstuurinluku, solujen välillä pehmeä käyrä
 float vnoise(vec2 p) {
 	vec2 i = floor(p);
 	vec2 f = fract(p);
 	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(rhash(i), rhash(i + vec2(1.0, 0.0)), f.x),
-		mix(rhash(i + vec2(0.0, 1.0)), rhash(i + vec2(1.0, 1.0)), f.x), f.y);
+	return textureLod(noise_tex, (i + f + 0.5) / 256.0, 0.0).r;
 }
 
-// Jaksollinen arvokohina (jakso 256): puuskalaikkujen siirtymä kiertää ilman hyppäystä
-float pnoise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	return mix(mix(rhash(mod(i, 256.0)), rhash(mod(i + vec2(1.0, 0.0), 256.0)), f.x),
-		mix(rhash(mod(i + vec2(0.0, 1.0), 256.0)), rhash(mod(i + vec2(1.0, 1.0), 256.0)), f.x), f.y);
+// Ruudun c satunnaisluku 0–1 (k valitsee eri luvun samalle ruudulle)
+float chash(vec2 c, float k) {
+	return texelFetch(noise_tex, ivec2(mod(c + vec2(k * 37.0, k * 91.0), 256.0)), 0).r;
 }
 
 // Puuskat: tuulen mukana tuulta hitaammin kulkevat kymmenien metrien laikut
@@ -83,9 +86,9 @@ float gust_patches(vec2 p) {
 		return 0.0;
 	}
 	vec2 q = (p - gust_offset) / 28.0;
-	float n = pnoise(q);
+	float n = vnoise(q);
 	if (quality == 1) {
-		n = n * 0.6 + pnoise(q * 2.0 + 17.0) * 0.28 + pnoise(q * 4.0 + 3.0) * 0.12;
+		n = n * 0.6 + vnoise(q * 2.0 + 17.0) * 0.28 + vnoise(q * 4.0 + 3.0) * 0.12;
 	}
 	float cover = smoothstep(0.3, 3.0, gust) * 0.25;
 	return smoothstep(0.68 - cover, 0.8 - cover, n) * smoothstep(0.2, 1.2, gust);
@@ -95,31 +98,39 @@ float gust_patches(vec2 p) {
 // (pinta-jännitys mukana nopeudessa). Kerros 1: 6–26 cm, kerros 2: 1–5 cm.
 // Voimakkuus vaihtelee laikuittain, joten säännöllistä kuviota ei synny.
 const int RIPPLES = 12;
-// aallonpituus (m), suunta suhteessa tuuleen (rad), vaihe
+// aallonpituus (m), kulmataajuus (rad/s, pintajännitys mukana), vaihe; suunnat
+// suhteessa tuuleen ovat waves.gd:n RIPPLE_OFFSETS
 const vec3 RIPPLE_DATA[RIPPLES] = vec3[](
-	vec3(0.26, 0.3, 0.0), vec3(0.19, -0.8, 2.3), vec3(0.145, 0.9, 4.1),
-	vec3(0.11, -0.2, 1.2), vec3(0.083, 0.6, 5.3), vec3(0.064, -1.0, 3.4),
-	vec3(0.049, 0.0, 0.8), vec3(0.038, 1.1, 2.9), vec3(0.029, -0.5, 5.0),
-	vec3(0.022, 0.8, 1.7), vec3(0.017, -0.9, 3.9), vec3(0.013, 0.4, 0.4)
+	vec3(0.26, 15.4309, 0.0), vec3(0.19, 18.0855, 2.3), vec3(0.145, 20.7632, 4.1),
+	vec3(0.11, 23.9612, 1.2), vec3(0.083, 27.8340, 5.3), vec3(0.064, 32.1421, 3.4),
+	vec3(0.049, 37.6024, 0.8), vec3(0.038, 44.2332, 2.9), vec3(0.029, 53.6477, 5.0),
+	vec3(0.022, 67.2725, 1.7), vec3(0.017, 85.8016, 3.9), vec3(0.013, 114.4390, 0.4)
 );
 
-vec2 ripple_slope(vec2 p, float footprint, float angle, float amount) {
+vec2 ripple_slope(vec2 p, float footprint, int set, float amount) {
 	vec2 slope = vec2(0.0);
-	int count = quality == 1 ? RIPPLES : RIPPLES / 2;
-	float patch1 = 0.35 + 0.65 * vnoise(p * 0.45 + vec2(wave_time * 0.11, 0.0));
-	float patch2 = 0.25 + 0.75 * vnoise(p * 1.3 + vec2(0.0, wave_time * 0.17));
+	// Vain kerrokset, jotka näkyvät tällä etäisyydellä (aallonpituus > 3 pikseliä)
+	if (amount <= 0.001 || footprint > 0.26 * 0.3) {
+		return slope;
+	}
+	bool high = quality == 1;
+	int count = high && footprint < 0.049 * 0.3 ? RIPPLES : RIPPLES / 2;
+	// Väreiden aaltorintamat mutkittelevat: ei säännöllistä ristikkoa
+	vec2 q = high ? p + vec2(vnoise(p * 0.8), vnoise(p * 0.8 + 5.2)) * 0.6 : p;
+	// Matala: yksi yhteinen laikkukohina kaikille väreille
+	float shared_patch = high ? 0.0 : vnoise(p * 0.6 + wave_time * 0.08);
 	for (int i = 0; i < count; i++) {
 		float len = RIPPLE_DATA[i].x;
 		float aa = 1.0 - smoothstep(len * 0.08, len * 0.3, footprint);
 		if (aa <= 0.0) {
 			continue;
 		}
-		float k = TAU / len;
-		float omega = sqrt(GRAVITY * k + 7.4e-5 * k * k * k);
-		float a = angle + RIPPLE_DATA[i].y;
-		vec2 d = vec2(sin(a), -cos(a));
-		float steep = (i < 6 ? 0.1 * patch1 : 0.07 * patch2) * amount;
-		slope += d * steep * aa * cos(dot(p, d) * k - omega * wave_time + RIPPLE_DATA[i].z);
+		// Jokaisen väreen voimakkuus vaihtelee omina laikkuinaan
+		float fi = float(i);
+		float patch = high ? vnoise(p * (0.5 + 0.13 * fi) + vec2(fi * 17.0, fi * 31.0) + wave_time * 0.08) : shared_patch;
+		vec2 d = set == 0 ? ripple_dir_a[i] : ripple_dir_b[i];
+		float steep = (i < 6 ? 0.09 : 0.06) * patch * patch * 1.6 * amount;
+		slope += d * steep * aa * cos(dot(q, d) * (TAU / len) - RIPPLE_DATA[i].y * wave_time + RIPPLE_DATA[i].z);
 	}
 	return slope;
 }
@@ -131,14 +142,14 @@ vec2 ripple_slope(vec2 p, float footprint, float angle, float amount) {
 // pintaan jää lisäksi tuulen suuntaisia vaahtojuovia. Määrä riippuu
 // paikallisesta aallokosta (strength: 1 = 8 m/s tuuli 2 km selällä), joten
 // ylätuulen rannan suojassa vaahtopäitä ei ole. Murtuva harja osuu aallon
-// harjalle ja sen etupuolelle (crest: pinnan korkeus -1..1).
+// harjalle ja sen etupuolelle (crest: pinnan korkeus -1..1, front: kaltevuus
+// alas tuulen suuntaan, > 0 harjan etupuolella).
 // Palauttaa peittävyyden 0–1.
-float whitecaps(vec2 p, float footprint, float strength, float angle, float crest) {
+float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, float front) {
 	float amount = clamp((strength - 0.45) / 0.55, 0.0, 1.0);
 	if (amount <= 0.0) {
 		return 0.0;
 	}
-	vec2 dir = vec2(sin(angle), -cos(angle));
 	vec2 q = vec2(dot(p, vec2(-dir.y, dir.x)), dot(p, dir)); // x poikki tuulen, y tuulen mukaan
 	// Vaahtopäät ajelehtivat tuulen mukana
 	vec2 m = q - vec2(0.0, 1.2 * wave_time);
@@ -146,22 +157,22 @@ float whitecaps(vec2 p, float footprint, float strength, float angle, float cres
 	vec2 base_cell = floor(m / CELL);
 	// Pitsimäinen rakenne, venynyt tuulen suuntaan
 	float lace = vnoise(m * vec2(2.5, 1.2)) * 0.55 + vnoise(m * vec2(9.0, 5.0)) * 0.3 + vnoise(m * 23.0) * 0.15;
-	float on_crest = smoothstep(-0.15, 0.45, crest);
+	float on_crest = smoothstep(0.05, 0.5, crest) * smoothstep(-0.25, 0.15, front);
 	float foam = 0.0;
 	// Vaahtopää voi ulottua naapuriruutuun, joten katsotaan ympäröivät ruudut
 	for (int i = -1; i <= 1; i++) {
 		for (int j = -1; j <= 1; j++) {
 			vec2 cell = base_cell + vec2(float(i), float(j));
-			float period = 5.0 + rhash(cell + 3.3) * 4.0;
-			float t = wave_time / period + rhash(cell + 7.7);
+			float period = 5.0 + chash(cell, 1.0) * 4.0;
+			float t = wave_time / period + chash(cell, 2.0);
 			float life = fract(t);
-			vec2 seed = cell + floor(t) * 13.1; // joka kierroksella uusi paikka ja koko
-			if (rhash(seed + 1.9) > amount * 0.75 + 0.05) {
+			vec2 seed = cell + floor(t) * vec2(13.0, 7.0); // joka kierroksella uusi paikka ja koko
+			if (chash(seed, 3.0) > amount * 0.75 + 0.05) {
 				continue;
 			}
-			vec2 center = (cell + vec2(rhash(seed), rhash(seed + 4.1))) * CELL;
+			vec2 center = (cell + vec2(chash(seed, 4.0), chash(seed, 5.0))) * CELL;
 			vec2 d = m - center;
-			float half_len = (0.6 + rhash(seed + 2.6) * 1.2) * (0.7 + amount * 0.5);
+			float half_len = (0.6 + chash(seed, 6.0) * 1.2) * (0.7 + amount * 0.5);
 			float grow = smoothstep(0.0, 0.12, life);
 			// Harjan suuntainen viiru: terävä etureuna, vaahto jää taakse leviämään
 			float across = d.x / (half_len * (0.4 + 0.6 * grow) * (1.0 + life * 0.3));
@@ -177,9 +188,10 @@ float whitecaps(vec2 p, float footprint, float strength, float angle, float cres
 			float edge = 0.38 + life * 0.4;
 			float f = smoothstep(edge, edge + 0.12, shape * (0.35 + lace) * 1.15);
 			float core = bend > 0.0 ? 1.0 : exp(bend / 0.3);
-			// Kirkas murtuma vain aallon harjalla, jälkivaahto jää myös rinteeseen
-			float bright = mix(0.45, 0.95, core * on_crest);
-			foam = max(foam, f * bright * (1.0 - life * 0.4) * grow * mix(0.35, 1.0, max(on_crest, 1.0 - core)));
+			// Kirkas murtuma vain aallon harjalla ja sen etupuolella, jälkivaahto
+			// jää läpikuultavana myös rinteeseen
+			float bright = core * mix(0.5, 0.95, on_crest) + 0.5 * (1.0 - core);
+			foam = max(foam, f * bright * (1.0 - life * 0.4) * grow);
 		}
 	}
 	// Tuulen suuntaiset vaahtojuovat kovalla tuulella
@@ -199,11 +211,12 @@ void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	rest_pos = wp.xz;
 	sea = local_sea(wp.xz);
+	sea_cq = sea_scales(sea);
 	world_pos = wp;
 	if (is_near && ice < 0.5) {
 		// Lähivesi liikkuu aaltojen mukana (UV.x = verteksiväli metreinä);
 		// verkossa on vain siirtymä, joten maailman ja mallin akselit ovat samat
-		vec3 d = wave_displacement(wp.xz, sea, UV.x);
+		vec3 d = wave_displacement(wp.xz, sea, sea_cq, UV.x);
 		VERTEX += d;
 		world_pos += d;
 	}
@@ -229,10 +242,14 @@ void fragment() {
 	// Kuinka monta metriä yksi pikseli kattaa tässä kohdassa
 	float footprint = length(fwidth(p));
 	vec3 nsum = vec3(0.0);
-	vec2 elev = vec2(0.0);
-	set_surface(p, set_angle.x, set_weight.x, sea.x, sea.y, footprint, nsum, elev);
-	set_surface(p, set_angle.y, set_weight.y, sea.z, sea.w, footprint, nsum, elev);
+	vec3 elev = vec3(0.0);
+	float lost = 0.0;
+	set_surface(p, 0, set_weight.x, sea.y, sea_cq.x, sea_cq.y, footprint, nsum, elev, lost);
+	set_surface(p, 1, set_weight.y, sea.w, sea_cq.z, sea_cq.w, footprint, nsum, elev, lost);
+	// Aallon harja ja etupuoli vaahtopäille: korkeus -1..1 ja kaltevuus tuulen suuntaan
 	float crest = elev.y > 0.0 ? elev.x / elev.y : 0.0;
+	vec2 wind_dir = vec2(sin(set_angle.x), -cos(set_angle.x));
+	float front = elev.z > 0.0 ? -dot(nsum.xz, wind_dir) / elev.z : 0.0;
 	// Paikallinen aallokko 0–1 (1 = 8 m/s tuuli 2 km selällä)
 	float hs = length(vec2(sea.x * set_weight.x, sea.z * set_weight.y));
 	float strength = hs / 0.183;
@@ -240,9 +257,9 @@ void fragment() {
 	float gm = gust_patches(p);
 	float shelter = smoothstep(0.05, 0.3, max(sea.y * step(0.001, set_weight.x), sea.w * step(0.001, set_weight.y)));
 	float ripple_amount = smoothstep(0.5, 4.0, ripple_wind * mix(0.35, 1.0, shelter) + gm * (gust * 1.5 + 1.0));
-	vec2 slope = ripple_slope(p, footprint, set_angle.x, ripple_amount) * set_weight.x * set_weight.x;
+	vec2 slope = ripple_slope(p, footprint, 0, ripple_amount) * set_weight.x * set_weight.x;
 	if (set_weight.y > 0.0) {
-		slope += ripple_slope(p, footprint, set_angle.y, ripple_amount) * set_weight.y * set_weight.y;
+		slope += ripple_slope(p, footprint, 1, ripple_amount) * set_weight.y * set_weight.y;
 	}
 	if (rain > 0.01) {
 		float near_rain = 1.0 - smoothstep(10.0, 40.0, length(world_pos - CAMERA_POSITION_WORLD));
@@ -258,16 +275,18 @@ void fragment() {
 	// Puuskalaikut ovat tummempia ja himmeämpiä
 	ALBEDO *= 1.0 - 0.3 * gm;
 	// Karheus kasvaa etäisyyden mukaan: kaukana kimallus sulautuu tasaiseksi
-	ROUGHNESS = clamp(0.18 + footprint * 0.4 + min(strength, 1.5) * 0.08 + gm * 0.15, 0.18, 0.6);
+	// Kaukana häivytettyjen aaltojen kaltevuus muuttuu karheudeksi: pinta ei muutu peiliksi
+	ROUGHNESS = clamp(0.18 + footprint * 0.4 + min(strength, 1.5) * 0.08 + gm * 0.15 + sqrt(lost) * 1.5
+			+ ripple_amount * 0.1 * smoothstep(0.005, 0.08, footprint), 0.18, 0.6);
 	METALLIC = 0.0;
 	SPECULAR = 0.4;
 	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa
 	ALPHA = mix(0.55, 0.97, fresnel);
 	scatter_weight = 1.0 - fresnel;
 	if (ice < 0.5) {
-		float foam = whitecaps(p, footprint, strength, set_angle.x, crest) * set_weight.x * set_weight.x;
+		float foam = whitecaps(p, footprint, strength, wind_dir, crest, front) * set_weight.x * set_weight.x;
 		if (set_weight.y > 0.0) {
-			foam += whitecaps(p, footprint, strength, set_angle.y, crest) * set_weight.y * set_weight.y;
+			foam += whitecaps(p, footprint, strength, vec2(sin(set_angle.y), -cos(set_angle.y)), crest, front) * set_weight.y * set_weight.y;
 		}
 		scatter_weight *= 1.0 - foam;
 		ALBEDO = mix(ALBEDO, foam_color, foam);
