@@ -316,9 +316,9 @@ Ei muutosta (jää ja lumi kuten nyt).
 - [ ] Välkettä ei tule kaukana eikä kameran liikkuessa (`--flicker`,
       `--jittershots`).
 - [ ] Talvella jää ja lumi näkyvät kuten ennen (`--icetest`).
-- [ ] Korkealla ruudun aika kasvaa työpöydällä enintään noin 1 ms mainiin
-      verrattuna (`--watershots`, sama kuvakulma). Matala on selvästi
-      Korkeaa kevyempi.
+- [ ] Ruudun aika mainiin verrattuna (`--watershots`, sama kuvakulma):
+      Korkea noin +1–2 ms ja Matala noin +1,5 ms (Radeon 740M); nykytila
+      hyväksytty (Teemu).
 - [ ] Asetuksissa (alkuvalikko ja Esc-valikko) on Veden laatu
       Korkea/Matala. Valinta tulee voimaan heti ja säilyy uudelleenkäynnistyksen
       yli. Työpöydän oletus on Korkea ja selaimen Matala.
@@ -355,6 +355,8 @@ Ei muutosta (jää ja lumi kuten nyt).
 - Aaltoryhmät (verhokäyrä) ja mutkittelevat aaltorintamat (vaiheen
   poikkeutus) lisätään, jotta suurimmat aallot ovat n. 1,5–2 × Hs eikä
   ruutukuviota synny (työnjohtaja).
+- Suorituskyky: Korkea noin +1–2 ms, Matala noin +1,5 ms (740M), hyväksytty
+  nykytila (Teemu).
 
 ## Avoimet kysymykset Teemulle
 Ei avoimia kysymyksiä.
