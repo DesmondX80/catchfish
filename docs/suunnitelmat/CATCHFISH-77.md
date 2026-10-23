@@ -342,6 +342,19 @@ Ei muutosta (jää ja lumi kuten nyt).
 - Veden väri ennallaan (Teemu).
 - Aallokon kasvu pelin ajassa: noin 10 min kasvu ja 20 min laantuminen
   (Teemu).
+- Rantaetäisyystekstuuria (`shore.bin` varjostimelle) ei tehdä:
+  vaahtopäät riippuvat pyyhkäisymatkasta, ja lähivesi rajataan
+  `water.bin`-maskilla (työnjohtaja).
+- Pyyhkäisymatka välitetään varjostimelle 16 erillisenä R8-tekstuurina
+  (suuntasarjalle kaksi lähintä suuntaa ja sekoitus) RG8-atlaksen sijaan,
+  jottei tuulen kääntyminen aiheuta laskentanykäystä (työnjohtaja).
+- Matalalla myös pikselivarjostin on kevyempi: pääaaltojen lyhyiden aaltojen
+  häntä ja väreiden laikkukohina jäävät pois normaaleista (työnjohtaja).
+- Ristihäivytys tuulen kääntyessä kestää 60 s oikeaa aikaa (ei peliaikaa),
+  jottei ajan nopeutus x60 tee siitä sekunnin hyppäystä (työnjohtaja).
+- Aaltoryhmät (verhokäyrä) ja mutkittelevat aaltorintamat (vaiheen
+  poikkeutus) lisätään, jotta suurimmat aallot ovat n. 1,5–2 × Hs eikä
+  ruutukuviota synny (työnjohtaja).
 
 ## Avoimet kysymykset Teemulle
 Ei avoimia kysymyksiä.

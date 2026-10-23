@@ -154,15 +154,20 @@ float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, 
 	// Vaahtopäät ajelehtivat tuulen mukana
 	vec2 m = q - vec2(0.0, 1.2 * wave_time);
 	const float CELL = 6.0;
-	vec2 base_cell = floor(m / CELL);
-	// Pitsimäinen rakenne, venynyt tuulen suuntaan
-	float lace = vnoise(m * vec2(2.5, 1.2)) * 0.55 + vnoise(m * vec2(9.0, 5.0)) * 0.3 + vnoise(m * 23.0) * 0.15;
+	// Vaahtopää ulottuu keskipisteestään enintään 2,85 m sivuille, 0,3 m eteen ja
+	// 4 m taakse, joten tarvitaan vain ne enintään 2 × 2 ruutua, joihin sen
+	// keskipiste voi osua
+	vec2 cell_lo = floor((m - vec2(2.85, 0.3)) / CELL);
+	vec2 cell_hi = floor((m + vec2(2.85, 4.0)) / CELL);
+	float lace = -1.0; // lasketaan vasta, kun vaahtopää osuu kohtaan
 	float on_crest = smoothstep(0.05, 0.5, crest) * smoothstep(-0.25, 0.15, front);
 	float foam = 0.0;
-	// Vaahtopää voi ulottua naapuriruutuun, joten katsotaan ympäröivät ruudut
-	for (int i = -1; i <= 1; i++) {
-		for (int j = -1; j <= 1; j++) {
-			vec2 cell = base_cell + vec2(float(i), float(j));
+	for (int i = 0; i <= 1; i++) {
+		for (int j = 0; j <= 1; j++) {
+			vec2 cell = cell_lo + vec2(float(i), float(j));
+			if (cell.x > cell_hi.x || cell.y > cell_hi.y) {
+				continue;
+			}
 			float period = 5.0 + chash(cell, 1.0) * 4.0;
 			float t = wave_time / period + chash(cell, 2.0);
 			float life = fract(t);
@@ -178,6 +183,10 @@ float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, 
 			float across = d.x / (half_len * (0.4 + 0.6 * grow) * (1.0 + life * 0.3));
 			if (abs(across) > 1.0 || d.y > 0.3 || d.y < -4.0) {
 				continue;
+			}
+			if (lace < 0.0) {
+				// Pitsimäinen rakenne, venynyt tuulen suuntaan
+				lace = vnoise(m * vec2(2.5, 1.2)) * 0.55 + vnoise(m * vec2(9.0, 5.0)) * 0.3 + vnoise(m * 23.0) * 0.15;
 			}
 			float back = 0.2 + life * 1.6;
 			// Harjan kaartuma: reunat jäävät keskeltä jälkeen ja ohenevat
