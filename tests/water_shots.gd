@@ -4,9 +4,11 @@ extends Node
 ## Kuvat järvestä eri tuulilla selällä FPV- ja kolmannen persoonan korkeudelta,
 ## ylätuulen ja alatuulen rannassa, puuskassa ja ylhäältä. Tuuli puhaltaa
 ## pohjoiseen, ja kamera katsoo sen mukana poispäin keskipäivän auringosta
-## (kuten --foamshots). Lopuksi mitataan keskimääräinen ruudun aika 300
+## (kuten --foamshots). Lopuksi aloitusnäkymä laiturista (aloituspaikka 0,
+## kapea lahti) pelin kameralla eri tuulilla pelin alkutuulen suunnasta. Lopuksi mitataan keskimääräinen ruudun aika 300
 ## ruudun ajalta samasta kuvakulmasta (8 m/s, kolmas persoona).
 ## --watershots-timing: vain ruudun aika, ei kuvia.
+## --watershots-only=01,17,19: vain nämä kuvat (numerot), ei ruudun aikaa.
 
 const TIMING_FRAMES := 300
 const SHOTS := [
@@ -28,6 +30,11 @@ const SHOTS := [
 	["15-8ms-ylhaalta", 8.0, 0.0, 12.0, 6.0, "selka"],
 	# Vana aallokossa: vene ajaa pohjoiseen, kamera veneen takana ja yläpuolella
 	["16-vana-6ms", 6.0, 0.0, 5.0, 12.0, "vene"],
+	["17-laituri-0.5ms", 0.5, 0.0, 0.0, 0.0, "laituri"],
+	["18-laituri-2ms", 2.0, 0.0, 0.0, 0.0, "laituri"],
+	["19-laituri-3ms", 3.0, 0.0, 0.0, 0.0, "laituri"],
+	["20-laituri-5ms", 5.0, 0.0, 0.0, 0.0, "laituri"],
+	["21-laituri-8ms", 8.0, 0.0, 0.0, 0.0, "laituri"],
 ]
 
 var _dir := ""
@@ -38,6 +45,10 @@ var _places := {}
 var _timing_start := 0
 var _gpu_total := 0.0
 var _gpu_frames := PackedFloat32Array()
+var _only: PackedStringArray = []
+var _start := Vector2.ZERO
+var _start_yaw := 0.0
+var _start_dir := 0.0
 
 
 func _ready() -> void:
@@ -45,6 +56,8 @@ func _ready() -> void:
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--watershots="):
 			_dir = arg.split("=")[1]
+		elif arg.begins_with("--watershots-only="):
+			_only = arg.split("=")[1].split(",")
 		elif arg == "--watershots-timing":
 			_index = SHOTS.size()
 		elif arg.begins_with("--watershots-scale="):
@@ -56,6 +69,9 @@ func _ready() -> void:
 	main.hud.set_paused_view(false)
 	main.hud.visible = false
 	main.weather.set_kind(Weather.Kind.CLEAR, true)
+	_start = main.boat.pos
+	_start_yaw = main.boat.yaw
+	_start_dir = main.weather.wind_direction
 	_find_places()
 	main.boat.pos = _places["selka"] + Vector2(40.0, 10.0) # vene sivussa, ei varjoa kuvaan
 	print("veden laatu: %s" % Settings.water_quality)
@@ -96,11 +112,14 @@ func _set_view(shot: Array) -> void:
 	var w: Weather = main.weather
 	w.wind_base = shot[1]
 	w._wind_target = shot[1]
-	w.wind_direction = 0.0
+	w.wind_direction = _start_dir if shot[5] == "laituri" else 0.0
 	w.gust = shot[2]
 	w._gust_target = 0.0
 	var boat: Boat = main.boat
 	boat.velocity = Vector2.ZERO
+	if shot[5] == "laituri":
+		main.camera_rig.shot_view = false # pelin oma kamera veneen takana
+		return
 	if shot[5] == "vene":
 		boat.yaw = 0.0
 		boat.velocity = Vector2(0.0, -3.0) # 3 m/s pohjoiseen
@@ -117,15 +136,23 @@ func _set_view(shot: Array) -> void:
 
 
 func _process(_delta: float) -> void:
+	while not _only.is_empty() and _index < SHOTS.size() and not _only.has(String(SHOTS[_index][0]).left(2)):
+		_index += 1
+	if not _only.is_empty() and _index >= SHOTS.size():
+		get_tree().quit()
+		return
 	if _index < SHOTS.size():
 		var shot: Array = SHOTS[_index]
 		_frame += 1
 		if _frame == 1:
-			Waves.reset(shot[1], 0.0) # aallokko heti tuulen mukaiseksi
+			Waves.reset(shot[1], _start_dir if shot[5] == "laituri" else 0.0) # aallokko heti tuulen mukaiseksi
 			if shot[5] == "vene":
 				main.boat.pos = _places["selka"]
+			elif shot[5] == "laituri":
+				main.boat.pos = _start
+				main.boat.yaw = _start_yaw
 		_set_view(shot)
-		if _frame > (150 if shot[5] == "vene" else 30):
+		if _frame > (150 if shot[5] == "vene" else 45 if shot[5] == "laituri" else 30):
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(_dir.path_join(shot[0] + ".png"))
 			print("kuva %s: vaahtoa %.2f %% kuvan alaosasta" % [shot[0], _white_fraction(img) * 100.0])

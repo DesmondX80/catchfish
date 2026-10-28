@@ -3,7 +3,8 @@ extends Node
 ## Aallokon koko tuulen ja pyyhkäisymatkan mukaan (JONSWAP-taulukko ±30 %),
 ## ylätuulen rannan ja saaren suoja, terävät harjat ja leveät pohjat, tuulen
 ## kääntyminen ilman hyppäystä, kasvu ja laantuminen pelin ajassa, sama
-## keinunta molemmilla laatutasoilla ja fetch.bin samassa ruudukossa kuin water.bin.
+## keinunta molemmilla laatutasoilla, fetch.bin samassa ruudukossa kuin water.bin
+## ja laiturin kapeassa lahdessa (aloituspaikka 0) elävä pinta 3 m/s tuulella.
 ## Mittaukset tehdään aaltomallilla (Waves) suoraan, ruutuja ei tarvita.
 
 const WIND_DIR := 0.0 # tuuli puhaltaa pohjoiseen
@@ -30,6 +31,7 @@ func _ready() -> void:
 	lake = main.lake
 	_check("pelin alussa aallokko heti tuulen mukainen (%.1f m/s)" % Waves.wind, absf(Waves.wind - minf(main.weather.wind_base, Waves.MAX_WIND)) < 0.01)
 	Waves.near_radius = INF # mitataan koko järveltä (lähiveden reuna ei häivytä)
+	var dock: Vector2 = main.boat.pos # aloituspaikka 0: laituri kapeassa lahdessa
 	_fetch_file_checks()
 	_table_checks()
 	var open := _find_point(1900.0, 2300.0)
@@ -41,6 +43,8 @@ func _ready() -> void:
 	_turn_check(open)
 	_growth_checks(open)
 	_quality_check(open)
+	_ripple_checks(open)
+	_dock_checks(dock)
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
@@ -99,21 +103,27 @@ func _find_point(lo: float, hi: float) -> Vector2:
 	return Vector2.ZERO
 
 
-## Merkitsevä aallonkorkeus pinnasta mitattuna: 4 × korkeuden keskihajonta
-func _measure_hs(p: Vector2, seconds := 240.0) -> float:
-	var sum := 0.0
-	var sum2 := 0.0
-	var n := 0
-	var t := 0.0
-	while t < seconds:
-		Waves.time = 1000.0 + t
-		var h := Waves.swell_height(p)
-		sum += h
-		sum2 += h * h
-		n += 1
-		t += 0.07
-	var mean := sum / n
-	return 4.0 * sqrt(maxf(sum2 / n - mean * mean, 0.0))
+## Merkitsevä aallonkorkeus pinnasta mitattuna: 4 × korkeuden keskihajonta.
+## Aallot ovat lyhytharjaisia (korkeus vaihtelee harjan suunnassa), joten
+## mitataan 3 × 3 pisteessä (spacing m välein) ja lasketaan keskimääräinen varianssi.
+func _measure_hs(p: Vector2, seconds := 240.0, spacing := 2.3) -> float:
+	var variance := 0.0
+	for i in 9:
+		var q := p + Vector2(i % 3 - 1, i / 3 - 1) * spacing
+		var sum := 0.0
+		var sum2 := 0.0
+		var n := 0
+		var t := 0.0
+		while t < seconds / 3.0:
+			Waves.time = 1000.0 + t + i * 97.0
+			var h := Waves.swell_height(q)
+			sum += h
+			sum2 += h * h
+			n += 1
+			t += 0.07
+		var mean := sum / n
+		variance += maxf(sum2 / n - mean * mean, 0.0) / 9.0
+	return 4.0 * sqrt(variance)
 
 
 ## Pisin aalto, jolla on eniten korkeutta kohdassa p
@@ -149,21 +159,24 @@ func _measured_checks(open: Vector2, shore: Vector2) -> void:
 		if u == 8.0:
 			_check("8 m/s: ylätuulen ranta alle 50 %% selän aallokosta (%.0f %%)" % (hs_shore / hs_open * 100.0), hs_shore < hs_open * 0.5)
 			_check("8 m/s: aaltoääni ja kohon keinunta suojassa pienempi (%.2f < %.2f)" % [Waves.local_strength(shore), Waves.local_strength(open)], Waves.local_strength(shore) < Waves.local_strength(open) * 0.6)
-			# Suurimmat yksittäiset aallot (nollan ylityksestä seuraavaan, harjasta pohjaan)
+			# Suurimmat yksittäiset aallot (nollan ylityksestä seuraavaan, harjasta
+			# pohjaan) samoissa 3 × 3 pisteessä kuin Hs
 			var biggest := 0.0
-			var hi := -INF
-			var lo := INF
-			var prev := 0.0
-			for i in 12000:
-				Waves.time = 2000.0 + i * 0.07
-				var h := Waves.swell_height(open)
-				if prev < 0.0 and h >= 0.0:
-					biggest = maxf(biggest, hi - lo)
-					hi = -INF
-					lo = INF
-				hi = maxf(hi, h)
-				lo = minf(lo, h)
-				prev = h
+			for k in 9:
+				var q := open + Vector2(k % 3 - 1, k / 3 - 1) * 2.3
+				var hi := -INF
+				var lo := INF
+				var prev := 0.0
+				for i in 1400:
+					Waves.time = 2000.0 + i * 0.07 + k * 97.0
+					var h := Waves.swell_height(q)
+					if prev < 0.0 and h >= 0.0:
+						biggest = maxf(biggest, hi - lo)
+						hi = -INF
+						lo = INF
+					hi = maxf(hi, h)
+					lo = minf(lo, h)
+					prev = h
 			crest_ratio = biggest / hs_open
 			_check("8 m/s selällä: suurimmat aallot noin 1,5–2 × Hs (%.2f × Hs)" % crest_ratio, crest_ratio > 1.35 and crest_ratio < 2.2)
 
@@ -305,3 +318,36 @@ func _quality_check(open: Vector2) -> void:
 	var low := Waves.swell_height(open)
 	Settings.water_quality = before
 	_check("swell_height sama molemmilla laatutasoilla (%.4f / %.4f m)" % [high, low], high == low)
+
+
+## Väreet riippuvat tuulesta: selvästi 2 m/s alkaen, alle 1 m/s lähes peili
+func _ripple_checks(open: Vector2) -> void:
+	var f := Waves.set_fetch(0, open)
+	_check("väreet 2 m/s selällä selvät (%.2f)" % Waves.ripple_amount(2.0, f), Waves.ripple_amount(2.0, f) >= 0.45)
+	_check("väreet 0,8 m/s lähes poissa (%.2f)" % Waves.ripple_amount(0.8, f), Waves.ripple_amount(0.8, f) < 0.1)
+	_check("suoja heikentää väreitä vain rannan ensimmäisillä metreillä (5 m: %.2f, 25 m: %.2f)" % [Waves.ripple_amount(3.0, 5.0), Waves.ripple_amount(3.0, 25.0)],
+		Waves.ripple_amount(3.0, 5.0) < Waves.ripple_amount(3.0, 25.0) * 0.7 and is_equal_approx(Waves.ripple_amount(3.0, 25.0), Waves.ripple_amount(3.0, 2000.0)))
+
+
+## Laiturissa (aloituspaikka 0, kapea lahti, pyyhkäisymatka 6–42 m) pinta ei ole
+## tasainen 3 m/s tuulella mistään suunnasta: aallot liikuttavat pintaa ja väreet näkyvät
+func _dock_checks(dock: Vector2) -> void:
+	for d in 4:
+		var dir := d * PI / 2.0
+		Waves.reset(3.0, dir)
+		var fetch := Waves.set_fetch(0, dock)
+		var hs := _measure_hs(dock, 30.0, 0.7)
+		# Pinnan kaltevuus tuulen suunnassa (5 cm välein)
+		var wind := Vector2(sin(dir), -cos(dir))
+		var slope2 := 0.0
+		var n := 0
+		for k in 40:
+			Waves.time = 700.0 + k * 0.37
+			var a := Waves.swell_height(dock + wind * (k * 0.13))
+			var b := Waves.swell_height(dock + wind * (k * 0.13 + 0.05))
+			slope2 += pow((b - a) / 0.05, 2.0)
+			n += 1
+		var slope := sqrt(slope2 / n)
+		var ripples := Waves.ripple_amount(3.0, fetch)
+		_check("laituri 3 m/s suuntaan %d°: pyyhkäisymatka %.0f m, Hs %.3f m, kaltevuus %.3f, väreet %.2f" % [roundi(rad_to_deg(dir)), fetch, hs, slope, ripples],
+			hs > 0.001 and slope > 0.01 and ripples >= 0.35)
