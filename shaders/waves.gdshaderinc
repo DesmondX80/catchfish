@@ -38,6 +38,9 @@ const float GROUP_LEN[2] = float[](23.0, 37.0);
 const float GROUP_SHARE[2] = float[](0.6, 0.4);
 const float GROUP_DEPTH = 0.7;
 const float WARP_AMOUNT = 1.6;
+const float PATCH_AMOUNT = 0.6;
+const float PATCH_NORM = 0.920575;
+const float MIN_PEAK = 0.4;
 const float BAND = 0.5596;
 const float TAIL = 0.35;
 const float SCALE = 1.0;
@@ -62,19 +65,28 @@ float fetch_enc(sampler2D t0, sampler2D t1, float m, vec2 p) {
 	return mix(textureLod(t0, uv, 0.0).r, textureLod(t1, uv, 0.0).r, m);
 }
 
-// Kummankin suuntasarjan aallokko kohdassa p: (Hs A, L A, Hs B, L B)
-vec4 local_sea(vec2 p) {
+// Kummankin suuntasarjan aallokko kohdassa p: (Hs A, L A, Hs B, L B);
+// fetch_m: pyyhkäisymatkat (m) kummallekin suuntasarjalle
+vec4 local_sea_fetch(vec2 p, out vec2 fetch_m) {
 	vec2 a = vec2(0.0, 1.0);
 	vec2 b = vec2(0.0, 1.0);
+	fetch_m = vec2(0.0);
 	if (set_weight.x > 0.0) {
 		float e = fetch_enc(fetch_a0, fetch_a1, fetch_mix.x, p);
-		a = sea_state(wave_wind, FETCH_MAX * e * e);
+		fetch_m.x = FETCH_MAX * e * e;
+		a = sea_state(wave_wind, fetch_m.x);
 	}
 	if (set_weight.y > 0.0) {
 		float e = fetch_enc(fetch_b0, fetch_b1, fetch_mix.y, p);
-		b = sea_state(wave_wind, FETCH_MAX * e * e);
+		fetch_m.y = FETCH_MAX * e * e;
+		b = sea_state(wave_wind, fetch_m.y);
 	}
 	return vec4(a, b);
+}
+
+vec4 local_sea(vec2 p) {
+	vec2 f;
+	return local_sea_fetch(p, f);
 }
 
 // Aallon j osuus paikallisesta aallokosta (ennen normitusta); loglp = ln L, inv_lp = 1 / L
@@ -93,6 +105,18 @@ vec3 warp_phase(int j, vec2 x0) {
 	return WARP_AMOUNT * vec3(sin(a1) + sin(a2), w.xy * cos(a1) + w.zw * cos(a2));
 }
 
+// Aallon korkeuden vaihtelu: harja katkeaa pätkiksi (waves.gd wave_patch)
+float wave_patch(int j, vec2 x0, vec2 dir, float k) {
+	return (1.0 + PATCH_AMOUNT * sin(k * (dot(x0, vec2(-dir.y, dir.x)) * 0.37 + dot(x0, dir) * 0.11) + float(j) * 2.3)) * PATCH_NORM;
+}
+
+// wave_patch ja sen kaltevuus: (arvo, d/dx, d/dz)
+vec3 wave_patch_grad(int j, vec2 x0, vec2 dir, float k) {
+	vec2 g = k * (vec2(-dir.y, dir.x) * 0.37 + dir * 0.11);
+	float arg = dot(x0, g) + float(j) * 2.3;
+	return PATCH_NORM * vec3(1.0 + PATCH_AMOUNT * sin(arg), g * (PATCH_AMOUNT * cos(arg)));
+}
+
 vec2 wave_dir(int s, int j) {
 	return s == 0 ? wave_dir_a[j] : wave_dir_b[j];
 }
@@ -102,6 +126,7 @@ vec2 set_scale(float hs, float lp) {
 	if (hs <= 0.0) {
 		return vec2(0.0);
 	}
+	lp = max(lp, MIN_PEAK);
 	float loglp = log(lp);
 	float inv_lp = 1.0 / lp;
 	float norm = 0.0;
@@ -151,6 +176,7 @@ vec3 set_displacement(vec2 x0, int s, float weight, float lp, float c, float q, 
 		return d;
 	}
 	float env = group_envelope(x0, s);
+	lp = max(lp, MIN_PEAK);
 	float loglp = log(lp);
 	float inv_lp = 1.0 / lp;
 	ivec2 range = wave_range(loglp);
@@ -167,7 +193,7 @@ vec3 set_displacement(vec2 x0, int s, float weight, float lp, float c, float q, 
 		vec2 dir = wave_dir(s, j);
 		float th = TAU / len * dot(x0, dir) - wave_phase[j] + warp_phase(j, x0).x;
 		// Ryhmä muuttaa vain korkeutta: vaakasiirto ja harjan terävyys eivät kasva silmukalle
-		d.y += a * env * sin(th);
+		d.y += a * env * wave_patch(j, x0, dir, TAU / len) * sin(th);
 		d.xz += dir * (q * a * cos(th));
 	}
 	return d;
@@ -200,12 +226,14 @@ float surface_height(vec2 p) {
 // Suuntasarjan s osuus pinnan normaaliin ja korkeuteen. Aalto häivytetään, kun se
 // on näytöllä muutaman pikselin kokoinen – muuten kaukaiset laineet välkkyvät.
 // n: (Σ dx k a cos, Σ q k a sin, Σ dz k a cos), elev: (Σ a sin, Σ a, Σ k a),
-// lost: häivytettyjen aaltojen kaltevuuden varianssi (karheudeksi)
-void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float footprint, inout vec3 n, inout vec3 elev, inout float lost) {
+// lost: häivytettyjen aaltojen kaltevuuden varianssi (karheudeksi).
+// short_boost: lyhimpien aaltojen kaltevuuden korostus (Matala, väreiden tilalla)
+void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float footprint, float short_boost, inout vec3 n, inout vec3 elev, inout float lost) {
 	if (weight <= 0.0 || c <= 0.0) {
 		return;
 	}
 	float env = group_envelope(x0, s);
+	lp = max(lp, MIN_PEAK);
 	float loglp = log(lp);
 	float inv_lp = 1.0 / lp;
 	ivec2 range = wave_range(loglp);
@@ -231,10 +259,13 @@ void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float
 		vec3 warp = warp_phase(j, x0);
 		float th = k * dot(x0, dir) - wave_phase[j] + warp.x;
 		float sn = sin(th);
-		// Kaltevuus: aaltovektori ja mutkittelun kaltevuus
-		n.xz += (dir * k + warp.yz) * (a * env * aa * cos(th));
+		vec3 pg = wave_patch_grad(j, x0, dir, k);
+		float ae = a * env * pg.x;
+		float boost = 1.0 + short_boost * smoothstep(1.5, 0.4, len);
+		// Kaltevuus: aaltovektori, mutkittelun kaltevuus ja harjan katkeilu
+		n.xz += ((dir * k + warp.yz) * (ae * aa * cos(th)) + pg.yz * (a * env * aa * sn)) * boost;
 		n.y += q * k * a * aa * sn;
-		elev.x += a * env * sn * aa;
+		elev.x += ae * sn * aa;
 	}
 }
 

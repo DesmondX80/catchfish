@@ -28,14 +28,14 @@ uniform vec4 mask_rect = vec4(0.0, 0.0, 1.0, 1.0);
 // Satunnaisluvut 256 × 256 (kohina ja vaahtopäiden ruutujen arvonta): tekstuurista
 // halvemmin kuin laskemalla
 uniform sampler2D noise_tex : filter_linear, repeat_enable;
-// Väreiden suuntavektorit suuntasarjoittain (lasketaan koodissa)
-uniform vec2 ripple_dir_a[12];
-uniform vec2 ripple_dir_b[12];
+// Väreiden kaltevuuskuvio (tools/build_ripples.py): x tuulen suuntaan, y poikki
+uniform sampler2D ripple_tex : filter_linear_mipmap_anisotropic, repeat_enable;
 
 varying vec3 world_pos;
 varying vec2 rest_pos; // pinnan kohta ennen aaltojen siirtymää
 varying vec4 sea; // paikallinen aallokko: (Hs, L) kummallekin suuntasarjalle
 varying vec4 sea_cq; // amplitudikerroin ja terävyys (c, q) kummallekin suuntasarjalle
+varying vec2 sea_fetch; // pyyhkäisymatka (m) kummallekin suuntasarjalle
 varying float spec_f0; // pinnan heijastavuus kohtisuoraan (Godotin kaava 0,16 * SPECULAR²)
 varying float scatter_weight; // veden sisältä tulevan valon osuus (ei heijastusta eikä vaahtoa)
 
@@ -79,147 +79,180 @@ float chash(vec2 c, float k) {
 	return texelFetch(noise_tex, ivec2(mod(c + vec2(k * 37.0, k * 91.0), 256.0)), 0).r;
 }
 
+// Kohinan koordinaatit käännettynä, jottei kohinaruudukon suunta näy
+vec2 rot_noise(vec2 p, float a) {
+	return vec2(p.x * cos(a) - p.y * sin(a), p.x * sin(a) + p.y * cos(a));
+}
+
 // Puuskat: tuulen mukana tuulta hitaammin kulkevat kymmenien metrien laikut
-// ("kissankäpälät"), joissa väreet ovat tiheämpiä. 0–1.
+// ("kissankäpälät"), joissa väreet ovat tiheämpiä. Pehmeät, pyöreähköt reunat. 0–1.
 float gust_patches(vec2 p) {
 	if (gust < 0.2) {
 		return 0.0;
 	}
-	vec2 q = (p - gust_offset) / 28.0;
-	float n = vnoise(q);
+	vec2 q = rot_noise(p - gust_offset, 0.61) / 28.0;
+	// Kohinan vääristys pyöristää ruudukon kulmat
+	q += vec2(vnoise(q * 0.7 + 3.1), vnoise(q * 0.7 + 8.7)) * 0.8;
+	float n = vnoise(q) * 0.7 + vnoise(rot_noise(q, 1.1) * 2.1 + 17.0) * 0.3;
 	if (quality == 1) {
-		n = n * 0.6 + vnoise(q * 2.0 + 17.0) * 0.28 + vnoise(q * 4.0 + 3.0) * 0.12;
+		n = n * 0.85 + vnoise(rot_noise(q, 2.3) * 4.3 + 3.0) * 0.15;
 	}
 	float cover = smoothstep(0.3, 3.0, gust) * 0.25;
-	return smoothstep(0.68 - cover, 0.8 - cover, n) * smoothstep(0.2, 1.2, gust);
+	return smoothstep(0.55 - cover, 0.82 - cover, n) * smoothstep(0.2, 1.2, gust);
 }
 
-// Väreet: lyhyitä aaltoja satunnaisiin suuntiin tuulen ympärillä
-// (pinta-jännitys mukana nopeudessa). Kerros 1: 6–26 cm, kerros 2: 1–5 cm.
-// Voimakkuus vaihtelee laikuittain, joten säännöllistä kuviota ei synny.
-const int RIPPLES = 12;
-// aallonpituus (m), kulmataajuus (rad/s, pintajännitys mukana), vaihe; suunnat
-// suhteessa tuuleen ovat waves.gd:n RIPPLE_OFFSETS
-const vec3 RIPPLE_DATA[RIPPLES] = vec3[](
-	vec3(0.26, 15.4309, 0.0), vec3(0.19, 18.0855, 2.3), vec3(0.145, 20.7632, 4.1),
-	vec3(0.11, 23.9612, 1.2), vec3(0.083, 27.8340, 5.3), vec3(0.064, 32.1421, 3.4),
-	vec3(0.049, 37.6024, 0.8), vec3(0.038, 44.2332, 2.9), vec3(0.029, 53.6477, 5.0),
-	vec3(0.022, 67.2725, 1.7), vec3(0.017, 85.8016, 3.9), vec3(0.013, 114.4390, 0.4)
+// Väreet (Korkea): saumaton kuvio satojen lyhyiden aaltojen summasta
+// (suunnat ±60° tuulesta, pituudet jatkuvalta väliltä, ks. build_ripples.py).
+// Kuviota käytetään kolmessa mittakaavassa ja kulmassa, ja se liikkuu tuulen
+// mukana eri nopeuksilla. Kaksi karkeinta kerrosta vuorottelevat laikuittain
+// (ei summana), joten kuvion toistoa ei erota. Voimakkuus vaihtelee
+// laikuittain matalataajuisen kohinan mukaan. Mipmapit sulauttavat kaukaiset
+// väreet tasaisiksi (ei välkettä).
+const float RIPPLE_RANGE = 3.0; // build_ripples.py RANGE
+// Kerrokset: ruudun koko (m), kulma tuulesta (rad), nopeus (m/s), voimakkuus
+const vec4 RIPPLE_LAYER[3] = vec4[](
+	vec4(6.0, 0.0, 0.32, 0.06), vec4(3.7, 0.47, 0.26, 0.06), vec4(1.05, -0.33, 0.2, 0.03)
 );
 
-vec2 ripple_slope(vec2 p, float footprint, int set, float amount) {
+// Kerroksen i kaltevuus maailman koordinaateissa
+vec2 ripple_layer(int i, vec2 p, vec2 dpdx, vec2 dpdy, float base_ang) {
+	vec4 layer = RIPPLE_LAYER[i];
+	float ang = base_ang + layer.y;
+	vec2 ax = vec2(cos(ang), sin(ang)); // kuvion x (aaltojen kulkusuunta)
+	vec2 ay = vec2(-ax.y, ax.x);
+	vec2 uv = vec2(dot(p, ax) - layer.z * wave_time, dot(p, ay)) / layer.x + vec2(0.31, 0.57) * float(i);
+	vec2 gx = vec2(dot(dpdx, ax), dot(dpdx, ay)) / layer.x;
+	vec2 gy = vec2(dot(dpdy, ax), dot(dpdy, ay)) / layer.x;
+	vec2 s = (textureGrad(ripple_tex, uv, gx, gy).rg * 2.0 - 1.0) * RIPPLE_RANGE;
+	return (ax * s.x + ay * s.y) * layer.w;
+}
+
+vec2 ripple_slope(vec2 p, vec2 dpdx, vec2 dpdy, float footprint, vec2 wind_dir, float amount) {
 	vec2 slope = vec2(0.0);
-	// Vain kerrokset, jotka näkyvät tällä etäisyydellä (aallonpituus > 3 pikseliä)
-	if (amount <= 0.001 || footprint > 0.26 * 0.3) {
+	if (amount <= 0.001 || footprint > RIPPLE_LAYER[0].x / 25.0) {
 		return slope;
 	}
-	bool high = quality == 1;
-	int count = high && footprint < 0.049 * 0.3 ? RIPPLES : RIPPLES / 2;
-	// Väreiden aaltorintamat mutkittelevat: ei säännöllistä ristikkoa
-	vec2 q = high ? p + vec2(vnoise(p * 0.8), vnoise(p * 0.8 + 5.2)) * 0.6 : p;
-	// Matala: yksi yhteinen laikkukohina kaikille väreille
-	float shared_patch = high ? 0.0 : vnoise(p * 0.6 + wave_time * 0.08);
-	for (int i = 0; i < count; i++) {
-		float len = RIPPLE_DATA[i].x;
-		float aa = 1.0 - smoothstep(len * 0.08, len * 0.3, footprint);
-		if (aa <= 0.0) {
-			continue;
-		}
-		// Jokaisen väreen voimakkuus vaihtelee omina laikkuinaan
-		float fi = float(i);
-		float patch = high ? vnoise(p * (0.5 + 0.13 * fi) + vec2(fi * 17.0, fi * 31.0) + wave_time * 0.08) : shared_patch;
-		vec2 d = set == 0 ? ripple_dir_a[i] : ripple_dir_b[i];
-		float steep = (i < 6 ? 0.09 : 0.06) * patch * patch * 1.6 * amount;
-		slope += d * steep * aa * cos(dot(q, d) * (TAU / len) - RIPPLE_DATA[i].y * wave_time + RIPPLE_DATA[i].z);
+	// Laikut: voimakkuus 0,3–1,7-kertainen, laikut ajelehtivat tuulen mukana
+	vec2 drift = wind_dir * wave_time * 0.4;
+	vec2 pq = rot_noise(p - drift, 0.37);
+	float patch_a = 0.3 + 1.4 * (vnoise(pq / 7.0) * 0.65 + vnoise(rot_noise(pq, 1.3) / 2.9 + 5.0) * 0.35);
+	float patch_b = 0.3 + 1.4 * vnoise(rot_noise(pq, 2.1) / 3.7 + 11.0);
+	float base_ang = atan(wind_dir.y, wind_dir.x);
+	// Karkeat kerrokset vuorottelevat laikuittain; painot normitettu, jottei
+	// voimakkuus notkahda välissä
+	float w = smoothstep(0.25, 0.75, vnoise(rot_noise(p, 1.9) / 5.5 + 23.0));
+	float aa = 1.0 - smoothstep(RIPPLE_LAYER[0].x / 60.0, RIPPLE_LAYER[0].x / 25.0, footprint);
+	vec2 coarse = vec2(0.0);
+	if (w > 0.0) {
+		coarse += ripple_layer(0, p, dpdx, dpdy, base_ang) * w;
 	}
-	return slope;
+	if (w < 1.0) {
+		coarse += ripple_layer(1, p, dpdx, dpdy, base_ang) * (1.0 - w);
+	}
+	slope = coarse * (aa * patch_a / sqrt(w * w + (1.0 - w) * (1.0 - w)));
+	float aa_fine = 1.0 - smoothstep(RIPPLE_LAYER[2].x / 60.0, RIPPLE_LAYER[2].x / 25.0, footprint);
+	if (aa_fine > 0.0) {
+		slope += ripple_layer(2, p, dpdx, dpdy, base_ang) * (aa_fine * patch_b);
+	}
+	return slope * amount;
 }
 
 // Vaahtopäät: tuulen voimistuessa (n. 4 m/s alkaen selällä) aallonharjat
 // murtuvat valkoisiksi. Jokaisessa tuulen mukana kulkevassa 6 m ruudussa voi
-// syntyä vaahtopää, joka leimahtaa kirkkaaksi harjan suuntaiseksi viiruksi, jää
-// jälkeensä leviäväksi ja harvenevaksi vaahdoksi ja katoaa. Kovalla tuulella
-// pintaan jää lisäksi tuulen suuntaisia vaahtojuovia. Määrä riippuu
-// paikallisesta aallokosta (strength: 1 = 8 m/s tuuli 2 km selällä), joten
-// ylätuulen rannan suojassa vaahtopäitä ei ole. Murtuva harja osuu aallon
-// harjalle ja sen etupuolelle (crest: pinnan korkeus -1..1, front: kaltevuus
-// alas tuulen suuntaan, > 0 harjan etupuolella).
-// Palauttaa peittävyyden 0–1.
+// syntyä erikokoinen vaahtopää, joka leimahtaa harjan suuntaiseksi viiruksi,
+// jää leviäväksi ja harvenevaksi pitsiksi ja katoaa. Vaahto on sidottu aallon
+// harjaan ja sen etupuolelle (crest: pinnan korkeus -1..1, front: kaltevuus alas
+// tuulen suuntaan, > 0 harjan etupuolella): pohjissa sitä ei ole. Reunat ovat
+// pehmeät ja läpikuultavat. Kovalla tuulella pintaan jää lisäksi katkonaisia,
+// mutkittelevia vaahtojuovia. Määrä riippuu paikallisesta aallokosta
+// (strength: 1 = 8 m/s tuuli 2 km selällä), joten ylätuulen rannan suojassa
+// vaahtopäitä ei ole. Palauttaa peittävyyden 0–1.
 float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, float front) {
 	float amount = clamp((strength - 0.45) / 0.55, 0.0, 1.0);
 	if (amount <= 0.0) {
 		return 0.0;
 	}
 	vec2 q = vec2(dot(p, vec2(-dir.y, dir.x)), dot(p, dir)); // x poikki tuulen, y tuulen mukaan
-	// Vaahtopäät ajelehtivat tuulen mukana
-	vec2 m = q - vec2(0.0, 1.2 * wave_time);
-	const float CELL = 6.0;
-	// Vaahtopää ulottuu keskipisteestään enintään 2,85 m sivuille, 0,3 m eteen ja
-	// 4 m taakse, joten tarvitaan vain ne enintään 2 × 2 ruutua, joihin sen
-	// keskipiste voi osua
-	vec2 cell_lo = floor((m - vec2(2.85, 0.3)) / CELL);
-	vec2 cell_hi = floor((m + vec2(2.85, 4.0)) / CELL);
-	float lace = -1.0; // lasketaan vasta, kun vaahtopää osuu kohtaan
-	float on_crest = smoothstep(0.05, 0.5, crest) * smoothstep(-0.25, 0.15, front);
-	float foam = 0.0;
-	for (int i = 0; i <= 1; i++) {
-		for (int j = 0; j <= 1; j++) {
-			vec2 cell = cell_lo + vec2(float(i), float(j));
-			if (cell.x > cell_hi.x || cell.y > cell_hi.y) {
-				continue;
-			}
-			float period = 5.0 + chash(cell, 1.0) * 4.0;
-			float t = wave_time / period + chash(cell, 2.0);
-			float life = fract(t);
-			vec2 seed = cell + floor(t) * vec2(13.0, 7.0); // joka kierroksella uusi paikka ja koko
-			if (chash(seed, 3.0) > amount * 0.75 + 0.05) {
-				continue;
-			}
-			vec2 center = (cell + vec2(chash(seed, 4.0), chash(seed, 5.0))) * CELL;
-			vec2 d = m - center;
-			float half_len = (0.6 + chash(seed, 6.0) * 1.2) * (0.7 + amount * 0.5);
-			float grow = smoothstep(0.0, 0.12, life);
-			// Harjan suuntainen viiru: terävä etureuna, vaahto jää taakse leviämään
-			float across = d.x / (half_len * (0.4 + 0.6 * grow) * (1.0 + life * 0.3));
-			if (abs(across) > 1.0 || d.y > 0.3 || d.y < -4.0) {
-				continue;
-			}
-			if (lace < 0.0) {
-				// Pitsimäinen rakenne, venynyt tuulen suuntaan
-				lace = vnoise(m * vec2(2.5, 1.2)) * 0.55 + vnoise(m * vec2(9.0, 5.0)) * 0.3 + vnoise(m * 23.0) * 0.15;
-			}
-			float back = 0.2 + life * 1.6;
-			// Harjan kaartuma: reunat jäävät keskeltä jälkeen ja ohenevat
-			float bend = d.y + across * across * 0.35;
-			float along = bend > 0.0 ? exp(-bend * bend * 60.0) : exp(bend / back);
-			float shape = along * (1.0 - smoothstep(0.55, 1.0, abs(across)));
-			// Murtuva harja on kirkas, jälkeen jäävä vaahto läpikuultavaa ja harvenevaa
-			float edge = 0.38 + life * 0.4;
-			float f = smoothstep(edge, edge + 0.12, shape * (0.35 + lace) * 1.15);
-			float core = bend > 0.0 ? 1.0 : exp(bend / 0.3);
-			// Murtuma leimahtaa aallon harjalla ja sen etupuolella; jälkivaahto
-			// jää valkoisena ajelehtimaan, vaikka harja kulkee jo edellä
-			float at_crest = mix(1.0, mix(0.35, 1.0, on_crest), 1.0 - smoothstep(0.1, 0.35, life));
-			foam = max(foam, f * mix(0.45, 0.95, core) * at_crest * (1.0 - life * 0.4) * grow);
-		}
-	}
-	// Tuulen suuntaiset vaahtojuovat kovalla tuulella
-	float streak_amount = clamp((strength - 0.85) / 0.15, 0.0, 1.0);
-	if (streak_amount > 0.0) {
-		vec2 s = q - vec2(0.0, 0.6 * wave_time);
-		float lane = vnoise(vec2(s.x * 0.9, s.y * 0.04));
-		float bits = vnoise(s * vec2(5.0, 0.7)) * 0.7 + vnoise(s * 14.0) * 0.3;
-		foam = max(foam, smoothstep(0.78, 0.95, lane) * smoothstep(0.45, 0.85, bits) * 0.22 * streak_amount);
-	}
+	// Kirkas vaahto on harjalla ja sen etupuolella: pohjissa ja tasaisella ei vaahtoa
+	float crest_band = smoothstep(0.05, 0.35, crest) * smoothstep(-0.3, 0.2, front);
 	// Kaukana yksityiskohdat sulautuvat keskimääräiseksi vaalennukseksi
 	float far = smoothstep(0.08, 0.5, footprint);
+	float foam = 0.0;
+	if (crest > -0.25 && far < 1.0) {
+		// Murtuma-alueet ajelehtivat tuulen mukana; harja kulkee niiden läpi
+		vec2 m = q - vec2(0.0, 1.2 * wave_time);
+		const float CELL = 6.0;
+		// Murtuma-alue ulottuu keskipisteestään enintään 2,85 m sivuille ja 2,1 m
+		// eteen ja taakse, joten tarvitaan vain ne enintään 2 × 2 ruutua, joihin sen
+		// keskipiste voi osua
+		vec2 cell_lo = floor((m - vec2(2.85, 2.1)) / CELL);
+		vec2 cell_hi = floor((m + vec2(2.85, 2.1)) / CELL);
+		float lace = -1.0; // lasketaan vasta, kun murtuma-alue osuu kohtaan
+		for (int i = 0; i <= 1; i++) {
+			for (int j = 0; j <= 1; j++) {
+				vec2 cell = cell_lo + vec2(float(i), float(j));
+				if (cell.x > cell_hi.x || cell.y > cell_hi.y) {
+					continue;
+				}
+				float period = 5.0 + chash(cell, 1.0) * 4.0;
+				float t = wave_time / period + chash(cell, 2.0);
+				float life = fract(t);
+				vec2 seed = cell + floor(t) * vec2(13.0, 7.0); // joka kierroksella uusi paikka ja koko
+				if (chash(seed, 3.0) > amount * 0.95 + 0.05) {
+					continue;
+				}
+				vec2 center = (cell + vec2(chash(seed, 4.0), chash(seed, 5.0))) * CELL;
+				vec2 d = m - center;
+				// Koot vaihtelevat: enimmäkseen pieniä, joskus pitkä murtuma
+				float size = chash(seed, 6.0);
+				float half_len = (0.35 + size * size * 2.0) * (0.7 + amount * 0.5);
+				float grow = smoothstep(0.0, 0.12, life);
+				// Harjan suuntainen soikio
+				vec2 e = vec2(d.x / (half_len * (0.5 + 0.5 * grow)), d.y / (0.6 + half_len * 0.5));
+				float r2 = dot(e, e);
+				if (r2 > 1.0) {
+					continue;
+				}
+				if (lace < 0.0) {
+					// Pitsimäinen rakenne, venynyt tuulen suuntaan
+					vec2 lm = rot_noise(m, 0.2);
+					lace = vnoise(lm * vec2(2.5, 1.2)) * 0.55 + vnoise(lm * vec2(9.0, 5.0)) * 0.3 + vnoise(lm * 23.0) * 0.15;
+				}
+				// Pehmeä, rikkonainen reuna
+				float region = 1.0 - smoothstep(0.1, 1.0, r2 + (lace - 0.5) * 0.6);
+				// Murtuma leimahtaa kirkkaana harjalla ja haalistuu; läpikuultava
+				// pitsi jää harjan taakse
+				float fresh = crest_band * mix(1.0, 0.45, smoothstep(0.1, 0.6, life));
+				float trail = 0.45 * smoothstep(-0.25, 0.2, crest) * smoothstep(0.1, 0.4, life);
+				float v = region * (fresh + trail) * (1.0 - life) * grow;
+				// Pitsi rikkoo vaahdon: tiheässä vaahdossa pieniä reikiä, reunoilla
+				// vain irrallisia, läpikuultavia läikkiä
+				foam = max(foam, smoothstep(0.08, 0.45, v * (0.2 + lace)));
+			}
+		}
+	}
+	// Tuulen suuntaiset vaahtojuovat kovalla tuulella: mutkittelevat, katkeilevat
+	// ja haalistuvat
+	float streak_amount = clamp((strength - 0.85) / 0.15, 0.0, 1.0);
+	if (streak_amount > 0.0 && far < 1.0) {
+		vec2 s = q - vec2(0.0, 0.6 * wave_time);
+		// Juova mutkittelee kahdessa mittakaavassa ja katkeilee muutaman metrin pätkiksi
+		float x = s.x + (vnoise(vec2(s.y * 0.045, s.x * 0.02) + 3.1) - 0.5) * 9.0
+				+ (vnoise(vec2(s.y * 0.17, s.x * 0.05) + 9.7) - 0.5) * 2.6;
+		float lane = vnoise(vec2(x * 0.37, s.y * 0.05)) * 0.6 + vnoise(vec2(x * 0.83 + 7.3, s.y * 0.09 + 1.7)) * 0.4;
+		float pieces = smoothstep(0.4, 0.75, vnoise(vec2(x * 0.21 + 4.4, s.y * 0.3)));
+		float bits = vnoise(rot_noise(s, 0.3) * vec2(5.0, 0.9)) * 0.7 + vnoise(s * 14.0) * 0.3;
+		foam = max(foam, smoothstep(0.66, 0.82, lane) * pieces * smoothstep(0.4, 0.8, bits) * 0.13 * streak_amount);
+	}
 	return mix(foam, amount * 0.05 + streak_amount * 0.02, far);
 }
 
 void vertex() {
 	vec3 wp = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xyz;
 	rest_pos = wp.xz;
-	sea = local_sea(wp.xz);
+	vec2 fetch_m;
+	sea = local_sea_fetch(wp.xz, fetch_m);
+	sea_fetch = fetch_m;
 	sea_cq = sea_scales(sea);
 	world_pos = wp;
 	if (is_near && ice < 0.5) {
@@ -249,12 +282,26 @@ void fragment() {
 		discard;
 	}
 	// Kuinka monta metriä yksi pikseli kattaa tässä kohdassa
-	float footprint = length(fwidth(p));
+	vec2 dpdx = dFdx(p);
+	vec2 dpdy = dFdy(p);
+	float footprint = length(abs(dpdx) + abs(dpdy));
+	// Väreet syntyvät tuulesta jo muutaman metrin pyyhkäisymatkalla: selvästi
+	// 2 m/s alkaen, alle 1 m/s pinta on lähes peili. Suoja heikentää niitä vain
+	// ylätuulen rannan ensimmäisillä 10–20 metrillä. Puuskalaikuissa tiheämmät.
+	// Sama kaava kuin waves.gd ripple_amount.
+	float gm = gust_patches(p);
+	float fetch_now = (sea_fetch.x * set_weight.x + sea_fetch.y * set_weight.y) / max(set_weight.x + set_weight.y, 0.001);
+	float shelter = mix(0.45, 1.0, smoothstep(1.0, 15.0, fetch_now));
+	float ripple_wind_now = ripple_wind + gm * (gust * 1.5 + 1.0);
+	float ripple_amount = (smoothstep(0.6, 2.2, ripple_wind_now) * 0.55 + smoothstep(2.2, 7.0, ripple_wind_now) * 0.45) * shelter;
+	// Matalalla väreitä ei piirretä: lyhimpien aaltojen (alle 1,5 m) kaltevuutta
+	// korostetaan väreiden tilalla, jottei pinta ole kapeassa lahdessa peili
+	float short_boost = quality == 0 ? ripple_amount * 1.5 : 0.0;
 	vec3 nsum = vec3(0.0);
 	vec3 elev = vec3(0.0);
 	float lost = 0.0;
-	set_surface(p, 0, set_weight.x, sea.y, sea_cq.x, sea_cq.y, footprint, nsum, elev, lost);
-	set_surface(p, 1, set_weight.y, sea.w, sea_cq.z, sea_cq.w, footprint, nsum, elev, lost);
+	set_surface(p, 0, set_weight.x, sea.y, sea_cq.x, sea_cq.y, footprint, short_boost, nsum, elev, lost);
+	set_surface(p, 1, set_weight.y, sea.w, sea_cq.z, sea_cq.w, footprint, short_boost, nsum, elev, lost);
 	// Aallon harja ja etupuoli vaahtopäille: korkeus -1..1 ja kaltevuus tuulen suuntaan
 	float crest = elev.y > 0.0 ? elev.x / elev.y : 0.0;
 	vec2 wind_dir = vec2(sin(set_angle.x), -cos(set_angle.x));
@@ -262,13 +309,12 @@ void fragment() {
 	// Paikallinen aallokko 0–1 (1 = 8 m/s tuuli 2 km selällä)
 	float hs = length(vec2(sea.x * set_weight.x, sea.z * set_weight.y));
 	float strength = hs / 0.183;
-	// Väreet: tuulen mukaan, ylätuulen rannan suojassa heikommat, puuskalaikuissa tiheämmät
-	float gm = gust_patches(p);
-	float shelter = smoothstep(0.05, 0.3, max(sea.y * step(0.001, set_weight.x), sea.w * step(0.001, set_weight.y)));
-	float ripple_amount = smoothstep(0.5, 4.0, ripple_wind * mix(0.35, 1.0, shelter) + gm * (gust * 1.5 + 1.0));
-	vec2 slope = ripple_slope(p, footprint, 0, ripple_amount) * set_weight.x * set_weight.x;
-	if (set_weight.y > 0.0) {
-		slope += ripple_slope(p, footprint, 1, ripple_amount) * set_weight.y * set_weight.y;
+	vec2 slope = vec2(0.0);
+	if (quality == 1) {
+		slope = ripple_slope(p, dpdx, dpdy, footprint, wind_dir, ripple_amount) * set_weight.x * set_weight.x;
+		if (set_weight.y > 0.0) {
+			slope += ripple_slope(p, dpdx, dpdy, footprint, vec2(sin(set_angle.y), -cos(set_angle.y)), ripple_amount) * set_weight.y * set_weight.y;
+		}
 	}
 	if (rain > 0.01) {
 		float near_rain = 1.0 - smoothstep(10.0, 40.0, length(world_pos - CAMERA_POSITION_WORLD));
@@ -285,8 +331,17 @@ void fragment() {
 	ALBEDO *= 1.0 - 0.3 * gm;
 	// Karheus kasvaa etäisyyden mukaan: kaukana kimallus sulautuu tasaiseksi
 	// Kaukana häivytettyjen aaltojen kaltevuus muuttuu karheudeksi: pinta ei muutu peiliksi
-	ROUGHNESS = clamp(0.18 + footprint * 0.4 + min(strength, 1.5) * 0.08 + gm * 0.15 + sqrt(lost) * 1.5
-			+ ripple_amount * 0.1 * smoothstep(0.005, 0.08, footprint), 0.18, 0.6);
+	// Kaukana väreiden kaltevuus muuttuu karheudeksi. Matalalla väreitä ei piirretä:
+	// niiden tilalla karheus vaihtelee tuulen mukana ajelehtivina laikkuina, jolloin
+	// kimallus ja taivaan heijastus elävät
+	float ripple_rough = ripple_amount * 0.1 * smoothstep(0.005, 0.08, footprint);
+	if (quality == 0) {
+		vec2 lq = rot_noise(p - wind_dir * wave_time * 0.5, 0.37);
+		float live = vnoise(lq / 2.3) * 0.6 + vnoise(rot_noise(lq, 1.7) / 0.9 + 7.0) * 0.4;
+		ripple_rough = max(ripple_rough, ripple_amount * (0.04 + 0.22 * live * live));
+	}
+	ROUGHNESS = clamp(0.18 + footprint * 0.1 + min(strength, 1.5) * 0.08 + gm * 0.15 + sqrt(lost) * 1.5
+			+ ripple_rough, 0.18, 0.6);
 	METALLIC = 0.0;
 	SPECULAR = 0.4;
 	// Jyrkästi alas katsottaessa pinnan läpi näkee (ruskea humusvesi), loivassa kulmassa pinta heijastaa

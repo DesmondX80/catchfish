@@ -32,13 +32,18 @@ const GROUP_OFFSETS: Array[float] = [0.15, -0.2]
 const GROUP_SHARES: Array[float] = [0.6, 0.4]
 const GROUP_PHASES: Array[float] = [0.5, 2.0]
 const GROUP_DEPTH := 0.7
-## Väreiden suunnat suhteessa tuuleen (rad), water.gdshader RIPPLE_DATA
-const RIPPLE_OFFSETS: Array[float] = [0.3, -0.8, 0.9, -0.2, 0.6, -1.0, 0.0, 1.1, -0.5, 0.8, -0.9, 0.4]
 const GROUP_SPEED := 1.25 # m/s
 ## Aaltorintamat mutkittelevat: jokaisen aallon vaihetta poikkeutetaan kahdella
-## hitaalla, kiinteällä aallolla (30–100 m), jottei aaltojen summasta synny
-## säännöllistä ruutukuviota
+## hitaalla, kiinteällä aallolla (n. 3 ja 5 aallonpituutta), ja aallon korkeus
+## vaihtelee laikuittain, jottei aaltojen summasta synny säännöllistä
+## ruutu- tai kangaskuviota
 const WARP_AMOUNT := 1.6 # rad
+const PATCH_AMOUNT := 0.6 # korkeuden vaihtelu ±60 % harjan suunnassa (lyhytharjaiset aallot)
+const PATCH_NORM := 0.920575 # 1 / sqrt(1 + PATCH_AMOUNT² / 2): Hs ennallaan
+## Lyhyin huippuaallonpituus aaltojen jakaumalle (m). Kapeassa lahdessa
+## huippuaallonpituus on alle lyhimmän aallon (0,3 m): aallokon korkeus on
+## silti todellinen, mutta se jakautuu lyhimmille aalloille.
+const MIN_PEAK := 0.4
 const BAND := 0.5596 # ln(1,75): aallot 0,57–1,75 × huippuaallonpituus
 const TAIL := 0.35 # lyhyiden aaltojen häntä huipun alapuolella
 const SCALE := 1.0 # säätövakio kaikille suureille (Hs ja L)
@@ -75,6 +80,8 @@ static var lake: LakeData
 static var _fetch_textures: Array[ImageTexture] = []
 ## Satunnaisluvut varjostimen kohinalle (256 × 256)
 static var _noise_texture: ImageTexture
+## Väreiden kaltevuuskuvio (tools/build_ripples.py)
+static var _ripple_texture: ImageTexture
 static var _k := PackedFloat32Array()
 static var _omega := PackedFloat32Array()
 static var _phase := PackedFloat32Array()
@@ -98,10 +105,25 @@ static func setup(lake_data: LakeData) -> void:
 		for i in bytes.size():
 			bytes[i] = rng.randi() % 256
 		_noise_texture = ImageTexture.create_from_image(Image.create_from_data(256, 256, false, Image.FORMAT_R8, bytes))
+	if _ripple_texture == null:
+		_ripple_texture = _load_ripples("res://assets/lake/ripples.bin")
+
+
+## Väreiden kaltevuuskuvio RG8-tekstuuriksi mipmapeilla (kaukana väreet sulautuvat)
+static func _load_ripples(path: String) -> ImageTexture:
+	var f := FileAccess.open(path, FileAccess.READ)
+	if f == null or f.get_buffer(4).get_string_from_ascii() != "RIP1":
+		push_error("ripples.bin puuttuu: aja tools/build_ripples.py")
+		return null
+	var w := f.get_16()
+	var h := f.get_16()
+	var img := Image.create_from_data(w, h, false, Image.FORMAT_RG8, f.get_buffer(w * h * 2))
+	img.generate_mipmaps()
+	return ImageTexture.create_from_image(img)
 
 
 static func _init_tables() -> void:
-	if _k.size() == COMPONENTS:
+	if _k.size() == COMPONENTS + 2:
 		return
 	# Aaltojen jälkeen kaksi aaltoryhmien verhokäyrää
 	_k.resize(COMPONENTS + 2)
@@ -117,8 +139,8 @@ static func _init_tables() -> void:
 	for j in COMPONENTS:
 		var a1 := j * 2.39996 # kultainen kulma: suunnat hajallaan
 		var a2 := a1 + 1.9
-		var k1 := TAU / (31.0 + 5.3 * j)
-		var k2 := TAU / (47.0 + 4.1 * j)
+		var k1 := TAU / (LENGTHS[j] * 3.3 + 1.0)
+		var k2 := TAU / (LENGTHS[j] * 5.1 + 1.6)
 		_warp.append(Vector4(cos(a1) * k1, sin(a1) * k1, cos(a2) * k2, sin(a2) * k2))
 
 
@@ -126,6 +148,13 @@ static func _init_tables() -> void:
 static func warp_phase(j: int, x0: Vector2) -> float:
 	var w := _warp[j]
 	return WARP_AMOUNT * (sin(x0.x * w.x + x0.y * w.y) + sin(x0.x * w.z + x0.y * w.w + j * 1.7))
+
+
+## Aallon j korkeuden vaihtelu kohdassa x0 (keskimäärin 1 neliöllisesti): harja
+## katkeaa n. 2,7 aallonpituuden pätkiksi, kuten oikeassa tuuliaallokossa
+static func wave_patch(j: int, x0: Vector2, dir: Vector2) -> float:
+	var along := x0.x * -dir.y + x0.y * dir.x
+	return (1.0 + PATCH_AMOUNT * sin(_k[j] * (along * 0.37 + x0.dot(dir) * 0.11) + j * 2.3)) * PATCH_NORM
 
 
 ## Aaltojen vaiheet ajanhetkellä time (64-bittisenä, ei hyppäystä tunnin välein)
@@ -184,6 +213,14 @@ static func sea_state(u: float, fetch_m: float) -> Vector2:
 	return Vector2(hs, maxf(lp * SCALE, 0.05))
 
 
+## Väreiden voimakkuus 0–1 (sama kaava kuin water.gdshader): väreet syntyvät
+## tuulesta jo muutaman metrin pyyhkäisymatkalla, selvästi 2 m/s alkaen, ja
+## suoja heikentää niitä vain ylätuulen rannan ensimmäisillä 10–20 metrillä
+static func ripple_amount(u: float, fetch_m: float) -> float:
+	var shelter := lerpf(0.45, 1.0, smoothstep(1.0, 15.0, fetch_m))
+	return (smoothstep(0.6, 2.2, u) * 0.55 + smoothstep(2.2, 7.0, u) * 0.45) * shelter
+
+
 ## Pyyhkäisymatka (m) suuntasarjalle s kohdassa p, kuten varjostin sen näkee
 ## (bilineaarinen 16 m:n ruudukossa, kahden lähimmän suunnan välillä)
 static func set_fetch(s: int, p: Vector2) -> float:
@@ -239,8 +276,9 @@ static func _components(p: Vector2) -> Array:
 		var ka := 0.0
 		var w := PackedFloat32Array()
 		w.resize(COMPONENTS)
+		var lp := maxf(sea.y, MIN_PEAK)
 		for j in COMPONENTS:
-			w[j] = _weight(LENGTHS[j], sea.y)
+			w[j] = _weight(LENGTHS[j], lp)
 			norm += w[j] * w[j]
 			ka += _k[j] * w[j]
 		if norm < 1e-6:
@@ -248,7 +286,7 @@ static func _components(p: Vector2) -> Array:
 		var root := sqrt(norm)
 		var c := sea.x * 0.35355339 / root * smoothstep(0.0, 0.3, root)
 		# Terävyys jyrkkyyden mukaan: heikolla tuulella pyöreähköt, kovalla terävät harjat
-		var sharp := clampf((sea.x / sea.y - 0.02) * 20.0, 0.0, MAX_SHARP)
+		var sharp := clampf((sea.x / lp - 0.02) * 20.0, 0.0, MAX_SHARP)
 		var q := sharp / maxf(ka * c, 1e-6) / wsum
 		for j in COMPONENTS:
 			if w[j] <= 0.0:
@@ -284,7 +322,7 @@ static func _displacement(x0: Vector2, comps: Array, phase: PackedFloat32Array) 
 		var dir: Vector2 = c[1]
 		var th := _k[j] * x0.dot(dir) - phase[j] + warp_phase(j, x0)
 		# Ryhmä muuttaa vain korkeutta: vaakasiirto ja harjan terävyys eivät kasva silmukalle
-		d.y += c[2] * env[c[4]] * sin(th)
+		d.y += c[2] * env[c[4]] * wave_patch(j, x0, dir) * sin(th)
 		var h: float = c[3] * cos(th)
 		d.x += dir.x * h
 		d.z += dir.y * h
@@ -338,11 +376,7 @@ static func apply(material: ShaderMaterial) -> void:
 			dirs.append(Vector2(sin(set_angle[s] + OFFSETS[j]), -cos(set_angle[s] + OFFSETS[j])))
 		for g in 2:
 			dirs.append(Vector2(sin(set_angle[s] + GROUP_OFFSETS[g]), -cos(set_angle[s] + GROUP_OFFSETS[g])))
-		var ripples := PackedVector2Array()
-		for r in RIPPLE_OFFSETS:
-			ripples.append(Vector2(sin(set_angle[s] + r), -cos(set_angle[s] + r)))
 		material.set_shader_parameter("wave_dir_%s" % ["a", "b"][s], dirs)
-		material.set_shader_parameter("ripple_dir_%s" % ["a", "b"][s], ripples)
 	material.set_shader_parameter("wave_warp", _warp)
 	material.set_shader_parameter("wave_phase", _phases())
 	material.set_shader_parameter("wave_time", fmod(time, 3600.0))
@@ -355,6 +389,7 @@ static func apply(material: ShaderMaterial) -> void:
 	if lake == null or _fetch_textures.is_empty():
 		return
 	material.set_shader_parameter("noise_tex", _noise_texture)
+	material.set_shader_parameter("ripple_tex", _ripple_texture)
 	material.set_shader_parameter("fetch_rect", Vector4(lake.origin_x, lake.origin_z, lake.fetch_cols * lake.fetch_cell, lake.fetch_rows * lake.fetch_cell))
 	var mix := Vector2.ZERO
 	for s in 2:
