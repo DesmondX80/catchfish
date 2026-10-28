@@ -119,6 +119,11 @@ func _set_view(shot: Array) -> void:
 	boat.velocity = Vector2.ZERO
 	if shot[5] == "laituri":
 		main.camera_rig.shot_view = false # pelin oma kamera veneen takana
+		# Pelin aloitusasento (hiiri ei saa kääntää kameraa kesken kuvien)
+		main.camera_rig.first_person = false
+		main.camera_rig.pitch = 0.32
+		main.camera_rig.distance = 8.0
+		main.camera_rig.yaw = boat.yaw
 		return
 	if shot[5] == "vene":
 		boat.yaw = 0.0
