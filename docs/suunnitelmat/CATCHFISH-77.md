@@ -95,8 +95,13 @@ Tavoitearvot:
   pintaa veneen lähellä myös muodoltaan.
 - Lyhyet aallot ja alle metrin väreet tuovat pintaan epäsäännöllisyyttä.
   Säännöllistä ruutukuviota ei näy.
-- Väreet seuraavat tuulta: heikolla tuulella vain hento väre, ja
-  tyynellä (alle 1 m/s) pinta on lähes peilityyni.
+- Väreet seuraavat tuulta: ne näkyvät selvästi 2 m/s:sta alkaen, heikommalla
+  tuulella vain hento väre, ja tyynellä (alle 1 m/s) pinta on lähes peilityyni.
+  Väreet ja lyhyet tuuliaallot syntyvät jo muutaman metrin pyyhkäisymatkalla:
+  suoja heikentää niitä vain ylätuulen rannan ensimmäisillä noin 10–20
+  metrillä. Laiturin kapeassa lahdessa 3 m/s tuulella pinta väreilee selvästi.
+- Aallot ja väreet ovat satunnaisia muodostumia, joiden pääsuunta tulee
+  tuulesta: ei toistuvia rivejä, renkaita, ruutuja eikä symmetriaa.
 
 ### 3. Tuulen suunta ja puuskat
 - **Tuulen kääntyminen.** Kun tuuli kääntyy yli noin 20°, uusi aallokko
@@ -141,12 +146,13 @@ Ei muutosta (jää ja lumi kuten nyt).
   samassa asetusruudukossa kuin hiiren herkkyys ja äänet (`SettingsControls`),
   eli alkuvalikon *Asetukset* ja Esc-valikon *Asetukset*.
   - **Korkea:** koko suunnitelma. Lähivesi on tiheä (noin 0,25–0,5 m
-    keskellä), kaikki pääaallot liikuttavat pintaa, väreitä on
-    kahdessa kerroksessa, ja puuskalaikut ovat yksityiskohtaiset. Tämä on
+    keskellä), kaikki pääaallot liikuttavat pintaa, väreet piirretään, ja
+    puuskalaikut ovat yksityiskohtaiset. Tämä on
     työpöytäversion oletus.
   - **Matala:** kevyt lähivesi. Verkossa on noin neljäsosa Korkean
-    vertekseistä (noin 1 m keskellä), pintaa liikuttaa 2 pääaaltoa, väreitä on
-    yksi kerros, ja puuskalaikut ovat yksinkertaisempaa kohinaa. Vaahtopäät
+    vertekseistä (noin 1 m keskellä), pintaa liikuttaa 2 pääaaltoa, väreitä ei
+    piirretä (niiden tilalla pinnan karheus vaihtelee tuulen mukana
+    ajelehtivina laikkuina), ja puuskalaikut ovat yksinkertaisempaa kohinaa. Vaahtopäät
     ja pyyhkäisymatkan vaikutus ovat samat. Tämä on selainversion oletus
     (`OS.has_feature("web")`).
 - **Pelattavuus ei riipu laadusta.** Veneen, kohon, pyykkien ja ankkurin
@@ -239,8 +245,8 @@ Ei muutosta (jää ja lumi kuten nyt).
    - Tyynellä väreet pienenevät (kuviota ei ole).
    - `wake.gdshader` käyttää samaa siirtymää.
    - Laatutaso välitetään varjostimille uniformina (esim. `quality` 0/1).
-     Matalalla jätetään pois toinen värekerros ja yksityiskohtaiset
-     puuskalaikut, ja pinnan siirtymään käytetään 2 pääaaltoa.
+     Matalalla jätetään pois väreet (tilalle karheuden vaihtelu) ja
+     yksityiskohtaiset puuskalaikut, ja pinnan siirtymään käytetään 2 pääaaltoa.
      Vaihtoehtoisesti tehdään kaksi varjostinvarianttia, jos uniform-haara
      on Compatibility-renderöijässä hitaampi. Koodaaja mittaa.
 6. **Asetus:**
@@ -317,8 +323,12 @@ Ei muutosta (jää ja lumi kuten nyt).
       `--jittershots`).
 - [ ] Talvella jää ja lumi näkyvät kuten ennen (`--icetest`).
 - [ ] Ruudun aika mainiin verrattuna (`--watershots`, sama kuvakulma):
-      Korkea noin +1–2 ms ja Matala noin +1,5 ms (Radeon 740M); nykytila
-      hyväksytty (Teemu).
+      Korkea noin +1–2 ms (Radeon 740M). Matalalla väreet jäävät pois ja
+      tilalle tulee karheus (vaihtoehto c, Teemu); Matalan ruudun aika
+      mitataan uudelleen ja raportoidaan.
+- [ ] Laiturissa (aloituspaikka 0) 3 m/s tuulella pinta väreilee selvästi
+      ja näkyy pienenä lyhyenä aallokkona, ei peilinä, molemmilla
+      laatutasoilla (`--wavetest`, `--watershots` kuvat 17–21).
 - [ ] Asetuksissa (alkuvalikko ja Esc-valikko) on Veden laatu
       Korkea/Matala. Valinta tulee voimaan heti ja säilyy uudelleenkäynnistyksen
       yli. Työpöydän oletus on Korkea ja selaimen Matala.
@@ -355,8 +365,24 @@ Ei muutosta (jää ja lumi kuten nyt).
 - Aaltoryhmät (verhokäyrä) ja mutkittelevat aaltorintamat (vaiheen
   poikkeutus) lisätään, jotta suurimmat aallot ovat n. 1,5–2 × Hs eikä
   ruutukuviota synny (työnjohtaja).
-- Suorituskyky: Korkea noin +1–2 ms, Matala noin +1,5 ms (740M), hyväksytty
-  nykytila (Teemu).
+- Suorituskyky: vaihtoehto c (Teemu). Matalalta väreet pois kokonaan ja
+  tilalle karheus; Korkea pitää väreet. Matalan pinnan pitää silti näyttää
+  laiturissa elävältä (lyhyet Gerstner-aallot ja karheuden vaihtelu).
+  Matalan ruudun aika mitataan uudelleen. (Aiempi kirjaus "Korkea +1–2 ms,
+  Matala +1,5 ms, nykytila hyväksytty" oli virheellinen.)
+- Aallokon koko suojassa: todelliset koot (Teemu). Suojassa ei käytetä
+  keinotekoista vähimmäisaallokkoa, eikä alkutuulta muuteta. Laiturissa 3 m/s
+  tuulella pinnan pitää kuitenkin väreillä selvästi ja näkyä pienenä lyhyenä
+  aallokkona, ei peilinä.
+- Lyhyet tuuliaallot ja väreet riippuvat tuulesta. Suoja heikentää niitä vain
+  ylätuulen rannan ensimmäisillä noin 10–20 metrillä. Väreet näkyvät selvästi
+  2 m/s:sta alkaen (Teemu).
+- Aallot eivät saa olla symmetrisiä tai säännöllisiä, vaan satunnaisia
+  muodostumia, joiden pääsuunta tulee tuulesta (Teemu).
+- Kun paikallinen huippuaallonpituus on alle lyhimmän Gerstner-aallon
+  (kapea lahti), aallokon todellinen korkeus jaetaan lyhimmille aalloille
+  (huippuaallonpituus vähintään 0,4 m jakaumassa); muuten pinta olisi täysin
+  tasainen (virheen 1 korjaus, työnjohtajan tehtävänanto).
 
 ## Avoimet kysymykset Teemulle
 Ei avoimia kysymyksiä.

@@ -53,8 +53,8 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 Hiiren herkkyyden, käänteisen pystyohjauksen, veden laadun ja äänenvoimakkuudet
 (kaikki äänet, taustaäänet, efektit, kalastajan puhe) voi säätää alkuvalikon tai
 taukovalikon kohdasta *Asetukset*. Asetukset tallennetaan koneelle. *Veden laatu*
-on Korkea (tarkat aallot, työpöydän oletus) tai Matala (kevyempi lähivesi,
-selaimen oletus); vaihto tulee voimaan heti myös kesken kalareissun, eikä se
+on Korkea (tarkat aallot ja väreet, työpöydän oletus) tai Matala (kevyempi
+lähivesi, väreiden tilalla pinnan karheus, selaimen oletus); vaihto tulee voimaan heti myös kesken kalareissun, eikä se
 muuta veneen keinuntaa.
 
 Alkuvalikon taustalla on mökin pirtti, jossa takka lepattaa ja pöydän takana
@@ -82,8 +82,11 @@ painuu, hauki hyppää).
   korkeat aallot, terävät harjat ja leveät pohjat). Aallokko kasvaa tuulen
   voimistuessa noin 10 ja laantuu noin 20 peliminuutissa, ja tuulen
   kääntyessä uusi aallokko kasvaa uuteen suuntaan minuutin kuluessa.
-  Heikolla tuulella pinnassa on vain väreilyä, ja tyynellä se on lähes
-  peilityyni. Puuskat näkyvät tuulen mukana kulkevina tummina
+  Väreet syntyvät tuulesta jo muutaman metrin matkalla: ne näkyvät selvästi
+  2 m/s tuulesta alkaen myös kapeissa lahdissa, ja vain ylätuulen rannan
+  ensimmäisillä metreillä ne ovat heikompia. Tyynellä pinta on lähes
+  peilityyni. Aallot ja väreet ovat epäsäännöllisiä, lyhytharjaisia
+  muodostumia tuulen suunnassa. Puuskat näkyvät tuulen mukana kulkevina tummina
   värelaikkuina. Noin 4 m/s tuulesta alkaen aallonharjat murtuvat selällä
   ja alatuulen rannan edessä vaahtopäiksi, jotka ajelehtivat tuulen mukana
   ja hajoavat; kovalla tuulella pintaan jää myös tuulen suuntaisia

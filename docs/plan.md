@@ -160,7 +160,7 @@ godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
-godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] # vesi eri tuulilla ja ruudun aika (ikkuna)
+godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] [--watershots-only=01,19] # vesi eri tuulilla, laituri ja ruudun aika (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
@@ -647,17 +647,24 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   saarten suojapuolet ovat tyynempiä. Pinta on 12 Gerstner-aallon summa
   (0,3–12 m): aallon korkeus riippuu paikallisesta huippuaallonpituudesta,
   harjat terävöityvät jyrkkyyden mukaan, aaltoryhmät tekevät suurimmista
-  aalloista n. 1,5–2 × Hs ja aaltorintamat mutkittelevat, joten ruutukuviota ei
-  synny. Aallokon tuuli seuraa tuulta pelin ajassa (90 % 10 peliminuutissa,
+  aalloista n. 1,5–2 × Hs, aaltorintamat mutkittelevat ja harjat katkeilevat
+  pätkiksi, joten ruutukuviota ei synny. Kapeassa lahdessa (huippuaallonpituus
+  alle 0,4 m) todellinen aallonkorkeus jaetaan lyhimmille aalloille. Aallokon tuuli seuraa tuulta pelin ajassa (90 % 10 peliminuutissa,
   laantuminen 20), ja tuulen kääntyessä yli 20° uusi suuntasarja häivytetään
   ristiin minuutissa (`Waves.step`). Kameraa seuraava tiheä lähivesi (120 m)
   liikkuu aaltojen mukana, kaukainen järviverkko on tasainen. Varjostimessa
-  väreet tuulen mukaan, puuskien tummat laikut (`weather.gust`) ja vaahtopäät
-  paikallisen aallokon mukaan murtumana harjalla. Vene, koho, pyykit,
+  väreet tuulen mukaan saumattomasta kuviosta (`tools/build_ripples.py` →
+  `assets/lake/ripples.bin`: satoja aaltoja ±60° tuulesta, kolme mittakaavaa,
+  laikuittainen voimakkuus; suoja heikentää niitä vain ylätuulen rannan
+  ensimmäisillä metreillä, `Waves.ripple_amount`), puuskien tummat pehmeät
+  laikut (`weather.gust`) ja vaahtopäät paikallisen aallokon mukaan harjalla
+  ja sen etupuolella (pehmeät reunat, läpikuultava jälkivaahto, mutkittelevat
+  katkonaiset juovat). Vene, koho, pyykit,
   ankkuri ja vana seuraavat samaa mallia (`Waves.swell_height`), aaltoäänet ja
   kohon keinunta paikallista aallokkoa (`Waves.local_strength`). Uusi asetus
   *Veden laatu*: Korkea (työpöytä) tai Matala (selain; harvempi lähivesi, kaksi
-  pääaaltoa pinnan muodossa, yksi värekerros). Testit `--wavetest` ja
+  pääaaltoa pinnan muodossa, ei väreitä vaan tuulen mukana ajelehtiva
+  karheuden vaihtelu). Testit `--wavetest` ja
   `--watershots`; `--foamshots`, `--wavesoundtest`, `--baittest`,
   `--settingstest` ja `--overlaptest` päivitettiin.
 
