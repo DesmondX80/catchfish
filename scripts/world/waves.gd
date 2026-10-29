@@ -31,7 +31,7 @@ const GROUP_LENGTHS: Array[float] = [23.0, 37.0]
 const GROUP_OFFSETS: Array[float] = [0.15, -0.2]
 const GROUP_SHARES: Array[float] = [0.6, 0.4]
 const GROUP_PHASES: Array[float] = [0.5, 2.0]
-const GROUP_DEPTH := 0.7
+const GROUP_DEPTH := 0.4
 const GROUP_SPEED := 1.25 # m/s
 ## Aaltorintamat mutkittelevat: jokaisen aallon vaihetta poikkeutetaan kahdella
 ## hitaalla, kiinteällä aallolla (n. 3 ja 5 aallonpituutta), ja aallon korkeus
@@ -217,7 +217,7 @@ static func sea_state(u: float, fetch_m: float) -> Vector2:
 ## tuulesta jo muutaman metrin pyyhkäisymatkalla, selvästi 2 m/s alkaen, ja
 ## suoja heikentää niitä vain ylätuulen rannan ensimmäisillä 10–20 metrillä
 static func ripple_amount(u: float, fetch_m: float) -> float:
-	var shelter := lerpf(0.45, 1.0, smoothstep(1.0, 15.0, fetch_m))
+	var shelter := lerpf(0.7, 1.0, smoothstep(1.0, 15.0, fetch_m))
 	return (smoothstep(0.6, 2.2, u) * 0.55 + smoothstep(2.2, 7.0, u) * 0.45) * shelter
 
 

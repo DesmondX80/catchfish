@@ -35,6 +35,9 @@ const SHOTS := [
 	["19-laituri-3ms", 3.0, 0.0, 0.0, 0.0, "laituri"],
 	["20-laituri-5ms", 5.0, 0.0, 0.0, 0.0, "laituri"],
 	["21-laituri-8ms", 8.0, 0.0, 0.0, 0.0, "laituri"],
+	# Tuuli puhaltaa 225° suuntaan: laiturin kohdalla pyyhkäisymatka vain muutamia metrejä
+	["22-laituri-2ms-225", 2.0, 0.0, 0.0, 0.0, "laituri225"],
+	["23-laituri-3ms-225", 3.0, 0.0, 0.0, 0.0, "laituri225"],
 ]
 
 var _dir := ""
@@ -107,17 +110,28 @@ func _find_places() -> void:
 		print("%s: (%.0f, %.0f), pyyhkäisymatka %.0f m, rantaan %.0f m" % [k, p.x, p.y, lake.fetch_at(p.x, p.y, 0.0), lake.shore_distance(p.x, p.y)])
 
 
+## Tuulen suunta (johon tuuli puhaltaa): laiturissa pelin alkutuuli tai 225°,
+## muualla pohjoiseen
+func _wind_dir(shot: Array) -> float:
+	match shot[5]:
+		"laituri":
+			return _start_dir
+		"laituri225":
+			return deg_to_rad(225.0)
+	return 0.0
+
+
 func _set_view(shot: Array) -> void:
 	main.sky.minutes = 12.0 * 60.0
 	var w: Weather = main.weather
 	w.wind_base = shot[1]
 	w._wind_target = shot[1]
-	w.wind_direction = _start_dir if shot[5] == "laituri" else 0.0
+	w.wind_direction = _wind_dir(shot)
 	w.gust = shot[2]
 	w._gust_target = 0.0
 	var boat: Boat = main.boat
 	boat.velocity = Vector2.ZERO
-	if shot[5] == "laituri":
+	if String(shot[5]).begins_with("laituri"):
 		main.camera_rig.shot_view = false # pelin oma kamera veneen takana
 		# Pelin aloitusasento (hiiri ei saa kääntää kameraa kesken kuvien)
 		main.camera_rig.first_person = false
@@ -150,14 +164,14 @@ func _process(_delta: float) -> void:
 		var shot: Array = SHOTS[_index]
 		_frame += 1
 		if _frame == 1:
-			Waves.reset(shot[1], _start_dir if shot[5] == "laituri" else 0.0) # aallokko heti tuulen mukaiseksi
+			Waves.reset(shot[1], _wind_dir(shot)) # aallokko heti tuulen mukaiseksi
 			if shot[5] == "vene":
 				main.boat.pos = _places["selka"]
-			elif shot[5] == "laituri":
+			elif String(shot[5]).begins_with("laituri"):
 				main.boat.pos = _start
 				main.boat.yaw = _start_yaw
 		_set_view(shot)
-		if _frame > (150 if shot[5] == "vene" else 45 if shot[5] == "laituri" else 30):
+		if _frame > (150 if shot[5] == "vene" else 45 if String(shot[5]).begins_with("laituri") else 30):
 			var img := get_viewport().get_texture().get_image()
 			img.save_png(_dir.path_join(shot[0] + ".png"))
 			print("kuva %s: vaahtoa %.2f %% kuvan alaosasta" % [shot[0], _white_fraction(img) * 100.0])

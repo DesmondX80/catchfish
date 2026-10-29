@@ -295,7 +295,7 @@ void fragment() {
 	// Sama kaava kuin waves.gd ripple_amount.
 	float gm = gust_patches(p, footprint);
 	float fetch_now = (sea_fetch.x * set_weight.x + sea_fetch.y * set_weight.y) / max(set_weight.x + set_weight.y, 0.001);
-	float shelter = mix(0.45, 1.0, smoothstep(1.0, 15.0, fetch_now));
+	float shelter = mix(0.7, 1.0, smoothstep(1.0, 15.0, fetch_now));
 	float ripple_wind_now = ripple_wind + gm * (gust * 1.5 + 1.0);
 	float ripple_amount = (smoothstep(0.6, 2.2, ripple_wind_now) * 0.55 + smoothstep(2.2, 7.0, ripple_wind_now) * 0.45) * shelter;
 	// Lyhimpien aaltojen (alle 1,5 m) kaltevuutta korostetaan tuulen mukaan, jotta

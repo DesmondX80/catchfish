@@ -384,5 +384,18 @@ Ei muutosta (jää ja lumi kuten nyt).
   (huippuaallonpituus vähintään 0,4 m jakaumassa); muuten pinta olisi täysin
   tasainen (virheen 1 korjaus, työnjohtajan tehtävänanto).
 
+- Laiturissa pinnan pitää väreillä selvästi 2–3 m/s tuulella kaikista
+  suunnista (Teemun linjaus, testaajan löydös): väreiden suoja-kerroin on
+  vähintään 0,7 (ennen 0,45) ylätuulen rannan ensimmäisillä metreillä.
+  Aaltojen todelliset korkeudet ennallaan. `--wavetest` tarkistaa laiturin
+  16 suunnasta 2 ja 3 m/s tuulella (työnjohtaja).
+- Suurimmat aallot enintään 2 × Hs: aaltoryhmien verhokäyrän syvyys 0,4
+  (ennen 0,7), koska lyhytharjaisuus (harjan katkeilu) kasvattaa jo itsessään
+  yksittäisiä aaltoja. Selällä 8 m/s tuulella mitattu 1,97 × Hs (työnjohtaja).
+- Ylätuulen rannan lyhyt aallokko ja väreet vaihtelevat tuulen mukana
+  ajelehtivina 3–12 m laikkuina, ja Korkeallakin lyhimpien aaltojen
+  kaltevuutta korostetaan tuulen mukaan, jotta lähivesi väreilee myös
+  jyrkästi alas katsottaessa (designerin palautus 2).
+
 ## Avoimet kysymykset Teemulle
 Ei avoimia kysymyksiä.

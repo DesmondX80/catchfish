@@ -36,7 +36,7 @@ const float WAVE_LOG[WAVES] = float[](-1.203973, -0.867501, -0.531028, -0.194556
 // Aaltoryhmät (verhokäyrä), kuten waves.gd
 const float GROUP_LEN[2] = float[](23.0, 37.0);
 const float GROUP_SHARE[2] = float[](0.6, 0.4);
-const float GROUP_DEPTH = 0.7;
+const float GROUP_DEPTH = 0.4;
 const float WARP_AMOUNT = 1.6;
 const float PATCH_AMOUNT = 0.6;
 const float PATCH_NORM = 0.920575;

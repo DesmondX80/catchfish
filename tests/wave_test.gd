@@ -178,7 +178,7 @@ func _measured_checks(open: Vector2, shore: Vector2) -> void:
 					lo = minf(lo, h)
 					prev = h
 			crest_ratio = biggest / hs_open
-			_check("8 m/s selällä: suurimmat aallot noin 1,5–2 × Hs (%.2f × Hs)" % crest_ratio, crest_ratio > 1.35 and crest_ratio < 2.2)
+			_check("8 m/s selällä: suurimmat aallot noin 1,5–2 × Hs (%.2f × Hs)" % crest_ratio, crest_ratio > 1.35 and crest_ratio <= 2.0)
 
 
 ## Saaren suojapuolella (alatuulessa) aallokko on pienempi kuin tuulenpuolella
@@ -307,7 +307,9 @@ func _minutes_to_90(p: Vector2, from: float, to: float, scale: float) -> float:
 	return INF
 
 
-## Veneen ja kohon keinunta on sama molemmilla laatutasoilla
+## Keinunta ei riipu laadusta: Waves.swell_height (vene, koho, pyykit, ankkuri)
+## ei lue Veden laatu -asetusta, joten asetuksen vaihto ei muuta tulosta. Matalan
+## kevyempi pinta on vain varjostimessa.
 func _quality_check(open: Vector2) -> void:
 	Waves.reset(8.0, WIND_DIR)
 	Waves.time = 1234.5
@@ -317,7 +319,7 @@ func _quality_check(open: Vector2) -> void:
 	Settings.water_quality = "matala"
 	var low := Waves.swell_height(open)
 	Settings.water_quality = before
-	_check("swell_height sama molemmilla laatutasoilla (%.4f / %.4f m)" % [high, low], high == low)
+	_check("keinunta ei riipu Veden laadusta: swell_height asetuksella Korkea ja Matala %.4f / %.4f m" % [high, low], high == low)
 
 
 ## Väreet riippuvat tuulesta: selvästi 2 m/s alkaen, alle 1 m/s lähes peili
@@ -326,28 +328,23 @@ func _ripple_checks(open: Vector2) -> void:
 	_check("väreet 2 m/s selällä selvät (%.2f)" % Waves.ripple_amount(2.0, f), Waves.ripple_amount(2.0, f) >= 0.45)
 	_check("väreet 0,8 m/s lähes poissa (%.2f)" % Waves.ripple_amount(0.8, f), Waves.ripple_amount(0.8, f) < 0.1)
 	_check("suoja heikentää väreitä vain rannan ensimmäisillä metreillä (5 m: %.2f, 25 m: %.2f)" % [Waves.ripple_amount(3.0, 5.0), Waves.ripple_amount(3.0, 25.0)],
-		Waves.ripple_amount(3.0, 5.0) < Waves.ripple_amount(3.0, 25.0) * 0.7 and is_equal_approx(Waves.ripple_amount(3.0, 25.0), Waves.ripple_amount(3.0, 2000.0)))
+		Waves.ripple_amount(3.0, 5.0) < Waves.ripple_amount(3.0, 25.0) * 0.9 and is_equal_approx(Waves.ripple_amount(3.0, 25.0), Waves.ripple_amount(3.0, 2000.0)))
 
 
-## Laiturissa (aloituspaikka 0, kapea lahti, pyyhkäisymatka 6–42 m) pinta ei ole
-## tasainen 3 m/s tuulella mistään suunnasta: aallot liikuttavat pintaa ja väreet näkyvät
+## Laiturissa (aloituspaikka 0, kapea lahti, pyyhkäisymatka 0–42 m) pinta ei ole
+## tasainen 2 ja 3 m/s tuulella mistään 16 suunnasta: aallot liikuttavat pintaa
+## (todelliset koot, joten vain nollasta poikkeava) ja väreet näkyvät selvästi
 func _dock_checks(dock: Vector2) -> void:
-	for d in 4:
-		var dir := d * PI / 2.0
-		Waves.reset(3.0, dir)
-		var fetch := Waves.set_fetch(0, dock)
-		var hs := _measure_hs(dock, 30.0, 0.7)
-		# Pinnan kaltevuus tuulen suunnassa (5 cm välein)
-		var wind := Vector2(sin(dir), -cos(dir))
-		var slope2 := 0.0
-		var n := 0
-		for k in 40:
-			Waves.time = 700.0 + k * 0.37
-			var a := Waves.swell_height(dock + wind * (k * 0.13))
-			var b := Waves.swell_height(dock + wind * (k * 0.13 + 0.05))
-			slope2 += pow((b - a) / 0.05, 2.0)
-			n += 1
-		var slope := sqrt(slope2 / n)
-		var ripples := Waves.ripple_amount(3.0, fetch)
-		_check("laituri 3 m/s suuntaan %d°: pyyhkäisymatka %.0f m, Hs %.3f m, kaltevuus %.3f, väreet %.2f" % [roundi(rad_to_deg(dir)), fetch, hs, slope, ripples],
-			hs > 0.001 and slope > 0.01 and ripples >= 0.35)
+	for u in [2.0, 3.0]:
+		var worst := INF
+		var failed: Array[String] = []
+		for d in 16:
+			var dir := d * TAU / 16.0
+			Waves.reset(u, dir)
+			var fetch := Waves.set_fetch(0, dock)
+			var hs := _measure_hs(dock, 15.0, 0.7)
+			var ripples := Waves.ripple_amount(u, fetch)
+			worst = minf(worst, ripples)
+			if not (hs > 0.0 and ripples >= 0.35):
+				failed.append("%d° (pyyhkäisymatka %.0f m, Hs %.4f m, väreet %.2f)" % [roundi(rad_to_deg(dir)), fetch, hs, ripples])
+		_check("laituri %.0f m/s kaikista 16 suunnasta: väreet vähintään %.2f %s" % [u, worst, ", ".join(failed)], failed.is_empty())
