@@ -11,9 +11,9 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
 
 - Kun koodaaja tai designer ilmoittaa haaransa valmiiksi, siirry hänen
   työkopioonsa (tai tee oma: `git worktree add ../catchfish-testi-<aihe> claude/<aihe>`)
-  ja aja koko ikkunaton testisarja: `tools/run_tests.sh <godot>`.
-- Godot 4.7.2 Linux-binääri ladataan scratchpadiin, ja uudessa työkopiossa
-  ajetaan kerran `--headless --import` ennen testejä.
+  ja aja koko ikkunaton testisarja: `tools/run_tests.sh godot-4.7.2`.
+- Godot 4.7.2 on komentona `godot-4.7.2` (`~/.local/bin`), älä lataa omaa.
+  Uudessa työkopiossa ajetaan kerran `godot-4.7.2 --headless --import` ennen testejä.
 - Testaat haaran suunnitelman (`docs/suunnitelmat/<tunniste>.md`)
   hyväksymiskriteereitä vasten: käy jokainen kriteeri läpi ja kirjaa, miten
   tarkistit sen. Kriteerit, joita ei voi tarkistaa ilman ikkunaa, merkitset

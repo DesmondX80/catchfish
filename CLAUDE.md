@@ -128,9 +128,11 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
 
 ## Testaus
 
-- Godot ei ole WSL:ssä PATHissa; lataa Godot 4.7.2 Linux-binääri scratchpadiin,
-  aja kerran `--headless --import` ja sitten testit, esim.
-  `--headless --fixed-fps 30 -- --day=180 --luretest` (liput testitiedostojen alussa).
+- Godot 4.7.2 on asennettu pysyvästi: `~/.local/bin/godot-4.7.2` (PATHissa,
+  komento `godot-4.7.2`). Älä lataa omaa binääriä. Aja uudessa työkopiossa kerran
+  `godot-4.7.2 --headless --import` ja sitten testit, esim.
+  `tools/run_tests.sh godot-4.7.2` tai
+  `godot-4.7.2 --headless --fixed-fps 30 -- --day=180 --luretest` (liput testitiedostojen alussa).
 - `--autotest`-tasapainoajo on hyvin kohinainen; älä tulkitse sitä pass/fail-tuloksena.
 - Käyttäjä kokeilee muutokset itse Windowsin Godot-editorissa (F5); kerro hänelle,
   minkä työkopion `project.godot` hänen pitää avata.

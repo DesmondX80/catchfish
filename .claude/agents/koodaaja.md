@@ -16,7 +16,8 @@ Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siih
 
 - Teet kaiken työn omassa työkopiossasi:
   `git fetch && git worktree add -b claude/<aihe> ../catchfish-<aihe> origin/main`
-  ja ajat siinä kerran `godot --headless --import`.
+  ja ajat siinä kerran `godot-4.7.2 --headless --import` (Godot 4.7.2 on
+  asennettu komentona `godot-4.7.2`, älä lataa omaa).
 - Tallennat hyväksytyn suunnitelman haaraasi tiedostoon
   `docs/suunnitelmat/<tunniste>.md`.
 - Toteutat suunnitelman sellaisenaan: toiminnan, ulkoasun ja äänet. Jos
@@ -39,7 +40,7 @@ Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siih
 
 ## Kun olet valmis
 
-1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh <godot>`.
+1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh godot-4.7.2`.
 2. Commit ja `git push -u origin claude/<aihe>`.
 3. Kerro testaajalle ja työnjohtajalle: haara, työkopion polku, mitä muuttui,
    mitkä testit lisäsit ja mitä pitää kokeilla käsin (Windowsin editorissa F5).

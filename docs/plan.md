@@ -122,6 +122,7 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 ## Testaus
 
 Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
+WSL:ssä se on komentona `godot-4.7.2` (`~/.local/bin/godot-4.7.2`).
 GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 (`.github/workflows/tests.yml`); samat testit paikallisesti:
 `tools/run_tests.sh /polku/godotiin [testin_nimi...]`.
