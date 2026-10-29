@@ -121,6 +121,8 @@ run --log="$tmp/oma.log" speciestest
 check "--log: loki annetussa polussa" grep -q '^Läpi 1/1' "$tmp/oma.log"
 
 # Lokeja säilytetään 20.
+# Aiemmat ajot poistetaan: saman sekunnin ajot saavat saman nimen.
+rm -f "$tmp"/.test-logs/2*.log
 for i in $(seq -w 1 25); do : >"$tmp/.test-logs/20000101-0000$i.log"; done
 run speciestest
 check "lokeja säilytetään 20" \
