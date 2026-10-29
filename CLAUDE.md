@@ -106,8 +106,9 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
    Planessa *Done* ja työkopion poisto.
 7. **Retro.** Julkaisun jälkeen jokainen tiimiläinen (designer, koodaaja,
    testaaja) antaa parannusehdotuksia peliin, työn tehokkuuteen ja
-   työtapoihin, ja työnjohtaja lisää omansa. Tiimiläiset suljetaan vasta tämän
-   jälkeen.
+   työtapoihin, ja työnjohtaja lisää omansa. Työnjohtaja kirjaa ehdotukset
+   Planen CATCHFISH-projektiin tilaan *Backlog*, josta Teemu priorisoi ne
+   *Todo*-tilaan. Tiimiläiset suljetaan vasta tämän jälkeen.
 8. **Raportti.** Työnjohtaja kertoo Teemulle lyhyesti, mitä julkaistiin, mitä
    testaaja jätti käsin kokeiltavaksi ja retron ehdotukset koosteena (peli,
    tehokkuus, työtavat). Sitten seuraava tehtävä.
