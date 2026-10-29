@@ -36,6 +36,14 @@ func _ready() -> void:
 	# Kohtalainen tuuli, jotta koho keinuu aallokossa (aallokko riippuu tuulesta ja pyyhkäisymatkasta)
 	main.weather.wind_base = 5.0
 	main.weather._wind_target = 5.0
+	# Tuuli suuntaan, jossa pyyhkäisymatka on pisin: muuten satunnainen tuulen
+	# suunta voi jättää kohon ylätuulen rannan suojaan, jossa aallokko on pientä
+	var best_fetch := -1.0
+	for d in 16:
+		var f: float = main.lake.fetch_at(_spot.x, _spot.y, d * TAU / 16.0)
+		if f > best_fetch:
+			best_fetch = f
+			main.weather.wind_direction = d * TAU / 16.0
 	Waves.reset(5.0, main.weather.wind_direction)
 
 
