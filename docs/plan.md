@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 23.10.2026. Nykyinen versio **0.50.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.50.0)).
+Päivitetty 29.10.2026. Nykyinen versio **0.51.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.51.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
