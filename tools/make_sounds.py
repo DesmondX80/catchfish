@@ -186,18 +186,6 @@ def great_tit_call():
     return out
 
 
-def loon_call():
-    """Kuikka: pitkä, nouseva ja laskeva valitus vibraton kera."""
-    seconds = 4.2
-    t = t_axis(seconds)
-    pitch = np.interp(t, [0, 0.8, 1.6, 2.2, 3.2, 4.2], [560, 760, 740, 980, 900, 700])
-    vibrato = 1 + 0.012 * np.sin(2 * np.pi * 5.5 * t)
-    phase = 2 * np.pi * np.cumsum(pitch * vibrato) / SR
-    tone = np.sin(phase) + 0.35 * np.sin(2 * phase) + 0.12 * np.sin(3 * phase)
-    amp = np.interp(t, [0, 0.3, 1.5, 1.8, 2.1, 3.6, 4.2], [0, 1, 0.9, 0.4, 1, 0.8, 0])
-    return tone * amp
-
-
 # --- Vene --------------------------------------------------------------------
 
 def oar_catch():
@@ -346,7 +334,6 @@ def main(only=None):
         'cast_swish': cast_swish, 'lure_splash': lure_splash, 'fish_splash': fish_splash,
         'line_snap': line_snap, 'net_landing': net_landing, 'bite_tick': bite_tick,
         'record_chime': record_chime, 'bird_chaffinch': chaffinch_song, 'bird_great_tit': great_tit_call,
-        'bird_loon': loon_call,
     }
     # Myöhemmin lisätyt äänet tehdään viimeisinä, jotta aiempien satunnaisuus ei muutu
     late_loops = {'rain_loop': rain_loop}

@@ -17,8 +17,7 @@ func _ready() -> void:
 			_path = arg.split("=")[1]
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
-	main.sky.minutes = 21.0 * 60.0 # ilta: linnut ja kuikka
-	main.audio._loon_timer = 30.0
+	main.sky.minutes = 21.0 * 60.0 # ilta
 	_record = AudioEffectRecord.new()
 	AudioServer.add_bus_effect(0, _record)
 	_record.set_recording_active(true)

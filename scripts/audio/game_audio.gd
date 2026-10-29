@@ -36,7 +36,6 @@ const ONE_SHOTS := {
 	"snow_step": [-14.0, 4.0, 0.15],
 	"bird_chaffinch": [-6.0, 30.0, 0.06],
 	"bird_great_tit": [-6.0, 30.0, 0.06],
-	"bird_loon": [-2.0, 160.0, 0.04],
 	# Taivaalla lentävät linnut (Birds): kuuluvat kauas
 	"bird_varis": [-3.0, 60.0, 0.05],
 	"bird_korppi": [-3.0, 70.0, 0.05],
@@ -64,7 +63,6 @@ var _reel: AudioStreamPlayer3D
 var _drag: AudioStreamPlayer3D
 var _chime: AudioStreamPlayer
 var _bird_timer := 4.0
-var _loon_timer := 20.0
 var _rng := RandomNumberGenerator.new()
 
 
@@ -239,27 +237,15 @@ func _set_loop(player: AudioStreamPlayer3D, on: bool, volume_db: float, pitch: f
 		player.stop()
 
 
-## Pikkulinnut laulavat metsänreunassa päivällä, aamulla tiheämmin.
-## Kuikka huutaa järvellä illalla ja yöllä.
+## Pikkulinnut laulavat metsänreunassa valoisaan aikaan 8–15 s välein.
 func _birds(delta: float) -> void:
-	var hour := sky.hour()
 	_bird_timer -= delta
 	if _bird_timer <= 0.0:
-		var dawn := hour >= 3.0 and hour <= 8.0
-		_bird_timer = _rng.randf_range(3.0, 8.0) if dawn else _rng.randf_range(6.0, 18.0)
+		_bird_timer = _rng.randf_range(8.0, 15.0)
 		if sky.daylight() > 0.45:
 			var spot := _shore_spot()
 			if spot != Vector3.INF:
 				play_at("bird_chaffinch" if _rng.randf() < 0.6 else "bird_great_tit", spot)
-	_loon_timer -= delta
-	if _loon_timer <= 0.0:
-		_loon_timer = _rng.randf_range(35.0, 90.0)
-		if hour >= 20.5 or hour <= 4.0:
-			for attempt in 20:
-				var p := boat.pos + Vector2.from_angle(_rng.randf() * TAU) * _rng.randf_range(150.0, 700.0)
-				if lake.is_water(p.x, p.y):
-					play_at("bird_loon", Vector3(p.x, 0.3, p.y))
-					break
 
 
 ## Satunnainen kohta metsänreunassa 40–250 m päässä veneestä

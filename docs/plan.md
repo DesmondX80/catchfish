@@ -143,6 +143,7 @@ godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera
 godot --headless --fixed-fps 30 -- --day=180 --synctest     # vene, kamera ja vavat ruudun tahdissa
 godot --headless --fixed-fps 30 -- --day=180 --overlaptest  # päällekkäiset pinnat (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
+godot --headless --fixed-fps 30 -- --day=180 --birdsoundtest # pikkulintujen laulu 8–15 s välein, vain valoisalla
 godot --headless --fixed-fps 30 -- --day=180 --tackletest   # kalapakki (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --anchortest   # ankkurin lasku, köysi ja nosto
 godot --headless --fixed-fps 30 -- --day=180 --nettest      # verkon lasku, saalismalli ja nosto (talvi: --day=40)
@@ -668,6 +669,11 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   karheuden vaihtelu). Testit `--wavetest` ja
   `--watershots`; `--foamshots`, `--wavesoundtest`, `--baittest`,
   `--settingstest` ja `--overlaptest` päivitettiin.
+- **#88 Äänimaailma – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-88.md`.
+  Kuikan huuto illalla ja yöllä poistettiin (ääni, `make_sounds.py`:n
+  generointi ja `GameAudio`:n laskuri). Pikkulintujen (peippo, talitiainen)
+  laulujen väli on aina 8–15 s, eikä aamulla ole enää omaa tiheämpää väliä;
+  ne laulavat edelleen vain valoisalla. Testi `--birdsoundtest`.
 
 ## Huomioita ja avoimia kysymyksiä
 

@@ -298,6 +298,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/paddle_test.gd").new())
 	elif "--tackletest" in args:
 		add_child(load("res://tests/tackle_test.gd").new())
+	elif "--birdsoundtest" in args:
+		add_child(load("res://tests/bird_sound_test.gd").new())
 	elif "--birdtest" in args:
 		add_child(load("res://tests/bird_test.gd").new())
 	elif "--trollstriketest" in args:
