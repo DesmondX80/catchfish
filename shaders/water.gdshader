@@ -86,7 +86,7 @@ vec2 rot_noise(vec2 p, float a) {
 
 // Puuskat: tuulen mukana tuulta hitaammin kulkevat kymmenien metrien laikut
 // ("kissankäpälät"), joissa väreet ovat tiheämpiä. Pehmeät, pyöreähköt reunat. 0–1.
-float gust_patches(vec2 p) {
+float gust_patches(vec2 p, float footprint) {
 	if (gust < 0.2) {
 		return 0.0;
 	}
@@ -98,7 +98,9 @@ float gust_patches(vec2 p) {
 		n = n * 0.85 + vnoise(rot_noise(q, 2.3) * 4.3 + 3.0) * 0.15;
 	}
 	float cover = smoothstep(0.3, 3.0, gust) * 0.25;
-	return smoothstep(0.55 - cover, 0.82 - cover, n) * smoothstep(0.2, 1.2, gust);
+	// Kaukana reuna pehmenee lisää
+	float soft = clamp(footprint * 0.3, 0.0, 0.15);
+	return smoothstep(0.55 - cover - soft, 0.82 - cover + soft, n) * smoothstep(0.2, 1.2, gust);
 }
 
 // Väreet (Korkea): saumaton kuvio satojen lyhyiden aaltojen summasta
@@ -111,7 +113,7 @@ float gust_patches(vec2 p) {
 const float RIPPLE_RANGE = 3.0; // build_ripples.py RANGE
 // Kerrokset: ruudun koko (m), kulma tuulesta (rad), nopeus (m/s), voimakkuus
 const vec4 RIPPLE_LAYER[3] = vec4[](
-	vec4(6.0, 0.0, 0.32, 0.06), vec4(3.7, 0.47, 0.26, 0.06), vec4(1.05, -0.33, 0.2, 0.03)
+	vec4(6.0, 0.0, 0.32, 0.1), vec4(3.7, 0.47, 0.26, 0.1), vec4(1.05, -0.33, 0.2, 0.045)
 );
 
 // Kerroksen i kaltevuus maailman koordinaateissa
@@ -127,15 +129,14 @@ vec2 ripple_layer(int i, vec2 p, vec2 dpdx, vec2 dpdy, float base_ang) {
 	return (ax * s.x + ay * s.y) * layer.w;
 }
 
-vec2 ripple_slope(vec2 p, vec2 dpdx, vec2 dpdy, float footprint, vec2 wind_dir, float amount) {
+vec2 ripple_slope(vec2 p, vec2 dpdx, vec2 dpdy, float footprint, vec2 wind_dir, float amount, float patch_a) {
 	vec2 slope = vec2(0.0);
 	if (amount <= 0.001 || footprint > RIPPLE_LAYER[0].x / 25.0) {
 		return slope;
 	}
-	// Laikut: voimakkuus 0,3–1,7-kertainen, laikut ajelehtivat tuulen mukana
+	// Laikut (patch_a: sama kuin lyhyillä aalloilla), hienoilla väreillä omansa
 	vec2 drift = wind_dir * wave_time * 0.4;
 	vec2 pq = rot_noise(p - drift, 0.37);
-	float patch_a = 0.3 + 1.4 * (vnoise(pq / 7.0) * 0.65 + vnoise(rot_noise(pq, 1.3) / 2.9 + 5.0) * 0.35);
 	float patch_b = 0.3 + 1.4 * vnoise(rot_noise(pq, 2.1) / 3.7 + 11.0);
 	float base_ang = atan(wind_dir.y, wind_dir.x);
 	// Karkeat kerrokset vuorottelevat laikuittain; painot normitettu, jottei
@@ -244,6 +245,9 @@ float whitecaps(vec2 p, float footprint, float strength, vec2 dir, float crest, 
 		float bits = vnoise(rot_noise(s, 0.3) * vec2(5.0, 0.9)) * 0.7 + vnoise(s * 14.0) * 0.3;
 		foam = max(foam, smoothstep(0.66, 0.82, lane) * pieces * smoothstep(0.4, 0.8, bits) * 0.13 * streak_amount);
 	}
+	// Keskietäisyydellä vaahto ohenee ja reuna hajoaa, ennen kuin se sulautuu
+	float mid = smoothstep(0.02, 0.12, footprint);
+	foam *= mix(1.0, 0.45 + 0.4 * vnoise(q * 0.9 + 31.0), mid);
 	return mix(foam, amount * 0.05 + streak_amount * 0.02, far);
 }
 
@@ -289,31 +293,37 @@ void fragment() {
 	// 2 m/s alkaen, alle 1 m/s pinta on lähes peili. Suoja heikentää niitä vain
 	// ylätuulen rannan ensimmäisillä 10–20 metrillä. Puuskalaikuissa tiheämmät.
 	// Sama kaava kuin waves.gd ripple_amount.
-	float gm = gust_patches(p);
+	float gm = gust_patches(p, footprint);
 	float fetch_now = (sea_fetch.x * set_weight.x + sea_fetch.y * set_weight.y) / max(set_weight.x + set_weight.y, 0.001);
 	float shelter = mix(0.45, 1.0, smoothstep(1.0, 15.0, fetch_now));
 	float ripple_wind_now = ripple_wind + gm * (gust * 1.5 + 1.0);
 	float ripple_amount = (smoothstep(0.6, 2.2, ripple_wind_now) * 0.55 + smoothstep(2.2, 7.0, ripple_wind_now) * 0.45) * shelter;
-	// Matalalla väreitä ei piirretä: lyhimpien aaltojen (alle 1,5 m) kaltevuutta
-	// korostetaan väreiden tilalla, jottei pinta ole kapeassa lahdessa peili
-	float short_boost = quality == 0 ? ripple_amount * 1.5 : 0.0;
+	// Lyhimpien aaltojen (alle 1,5 m) kaltevuutta korostetaan tuulen mukaan, jotta
+	// lähivesi väreilee myös jyrkästi alas katsottaessa (pelkät väreet näkyvät
+	// siinä huonosti). Matalalla väreitä ei piirretä, joten korostus on suurempi.
+	float short_boost = ripple_amount * (quality == 0 ? 1.5 : 1.0);
+	vec2 wind_dir = vec2(sin(set_angle.x), -cos(set_angle.x));
+	// Tyynemmät ja karheammat laikut (5–20 m) ajelehtivat tuulen mukana: lyhyet
+	// aallot ja väreet vaihtelevat niiden mukaan, joten pinta ei ole tasaista mattoa
+	vec2 rq = rot_noise(p - wind_dir * wave_time * 0.6, 0.37);
+	float rn = vnoise(rq / 7.0) * 0.6 + vnoise(rot_noise(rq, 1.3) / 2.9 + 5.0) * 0.4;
+	float rough_patch = 0.1 + 1.9 * smoothstep(0.38, 0.62, rn);
 	vec3 nsum = vec3(0.0);
 	vec3 elev = vec3(0.0);
 	float lost = 0.0;
-	set_surface(p, 0, set_weight.x, sea.y, sea_cq.x, sea_cq.y, footprint, short_boost, nsum, elev, lost);
-	set_surface(p, 1, set_weight.y, sea.w, sea_cq.z, sea_cq.w, footprint, short_boost, nsum, elev, lost);
+	set_surface(p, 0, set_weight.x, sea.y, sea_cq.x, sea_cq.y, footprint, short_boost, rough_patch, nsum, elev, lost);
+	set_surface(p, 1, set_weight.y, sea.w, sea_cq.z, sea_cq.w, footprint, short_boost, rough_patch, nsum, elev, lost);
 	// Aallon harja ja etupuoli vaahtopäille: korkeus -1..1 ja kaltevuus tuulen suuntaan
 	float crest = elev.y > 0.0 ? elev.x / elev.y : 0.0;
-	vec2 wind_dir = vec2(sin(set_angle.x), -cos(set_angle.x));
 	float front = elev.z > 0.0 ? -dot(nsum.xz, wind_dir) / elev.z : 0.0;
 	// Paikallinen aallokko 0–1 (1 = 8 m/s tuuli 2 km selällä)
 	float hs = length(vec2(sea.x * set_weight.x, sea.z * set_weight.y));
 	float strength = hs / 0.183;
 	vec2 slope = vec2(0.0);
 	if (quality == 1) {
-		slope = ripple_slope(p, dpdx, dpdy, footprint, wind_dir, ripple_amount) * set_weight.x * set_weight.x;
+		slope = ripple_slope(p, dpdx, dpdy, footprint, wind_dir, ripple_amount, rough_patch) * set_weight.x * set_weight.x;
 		if (set_weight.y > 0.0) {
-			slope += ripple_slope(p, dpdx, dpdy, footprint, vec2(sin(set_angle.y), -cos(set_angle.y)), ripple_amount) * set_weight.y * set_weight.y;
+			slope += ripple_slope(p, dpdx, dpdy, footprint, vec2(sin(set_angle.y), -cos(set_angle.y)), ripple_amount, rough_patch) * set_weight.y * set_weight.y;
 		}
 	}
 	if (rain > 0.01) {
@@ -334,11 +344,11 @@ void fragment() {
 	// Kaukana väreiden kaltevuus muuttuu karheudeksi. Matalalla väreitä ei piirretä:
 	// niiden tilalla karheus vaihtelee tuulen mukana ajelehtivina laikkuina, jolloin
 	// kimallus ja taivaan heijastus elävät
-	float ripple_rough = ripple_amount * 0.1 * smoothstep(0.005, 0.08, footprint);
+	// Väreiden kaltevuus siirtyy karheudeksi samaa tahtia kuin väreet häivytetään
+	// (ei terävää rajaa tyynen ja väreilevän veden välille)
+	float ripple_rough = ripple_amount * 0.25 * smoothstep(0.03, 0.24, footprint) * mix(1.0, rough_patch, 0.5);
 	if (quality == 0) {
-		vec2 lq = rot_noise(p - wind_dir * wave_time * 0.5, 0.37);
-		float live = vnoise(lq / 2.3) * 0.6 + vnoise(rot_noise(lq, 1.7) / 0.9 + 7.0) * 0.4;
-		ripple_rough = max(ripple_rough, ripple_amount * (0.04 + 0.22 * live * live));
+		ripple_rough = max(ripple_rough, ripple_amount * (0.03 + 0.12 * rough_patch));
 	}
 	ROUGHNESS = clamp(0.18 + footprint * 0.1 + min(strength, 1.5) * 0.08 + gm * 0.15 + sqrt(lost) * 1.5
 			+ ripple_rough, 0.18, 0.6);

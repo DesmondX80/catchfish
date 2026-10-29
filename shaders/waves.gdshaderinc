@@ -227,8 +227,10 @@ float surface_height(vec2 p) {
 // on näytöllä muutaman pikselin kokoinen – muuten kaukaiset laineet välkkyvät.
 // n: (Σ dx k a cos, Σ q k a sin, Σ dz k a cos), elev: (Σ a sin, Σ a, Σ k a),
 // lost: häivytettyjen aaltojen kaltevuuden varianssi (karheudeksi).
-// short_boost: lyhimpien aaltojen kaltevuuden korostus (Matala, väreiden tilalla)
-void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float footprint, float short_boost, inout vec3 n, inout vec3 elev, inout float lost) {
+// short_boost: lyhimpien aaltojen kaltevuuden korostus (Matala, väreiden tilalla).
+// short_mod: lyhyiden aaltojen (alle 2 m) kaltevuuden laikuittainen vaihtelu
+// (tyynempiä ja karheampia laikkuja, vain valaistukseen; korkeudet ennallaan)
+void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float footprint, float short_boost, float short_mod, inout vec3 n, inout vec3 elev, inout float lost) {
 	if (weight <= 0.0 || c <= 0.0) {
 		return;
 	}
@@ -261,7 +263,7 @@ void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float
 		float sn = sin(th);
 		vec3 pg = wave_patch_grad(j, x0, dir, k);
 		float ae = a * env * pg.x;
-		float boost = 1.0 + short_boost * smoothstep(1.5, 0.4, len);
+		float boost = (1.0 + short_boost * (1.0 - smoothstep(0.4, 1.5, len))) * mix(1.0, short_mod, 1.0 - smoothstep(0.8, 2.0, len));
 		// Kaltevuus: aaltovektori, mutkittelun kaltevuus ja harjan katkeilu
 		n.xz += ((dir * k + warp.yz) * (ae * aa * cos(th)) + pg.yz * (a * env * aa * sn)) * boost;
 		n.y += q * k * a * aa * sn;

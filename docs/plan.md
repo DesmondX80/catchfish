@@ -656,7 +656,8 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   väreet tuulen mukaan saumattomasta kuviosta (`tools/build_ripples.py` →
   `assets/lake/ripples.bin`: satoja aaltoja ±60° tuulesta, kolme mittakaavaa,
   laikuittainen voimakkuus; suoja heikentää niitä vain ylätuulen rannan
-  ensimmäisillä metreillä, `Waves.ripple_amount`), puuskien tummat pehmeät
+  ensimmäisillä metreillä, `Waves.ripple_amount`; lyhyet aallot ja väreet
+  vaihtelevat tuulen mukana ajelehtivina tyynempinä ja karheampina laikkuina), puuskien tummat pehmeät
   laikut (`weather.gust`) ja vaahtopäät paikallisen aallokon mukaan harjalla
   ja sen etupuolella (pehmeät reunat, läpikuultava jälkivaahto, mutkittelevat
   katkonaiset juovat). Vene, koho, pyykit,
