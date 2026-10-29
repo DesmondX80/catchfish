@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 29.10.2026. Nykyinen versio **0.51.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.51.0)).
+Päivitetty 29.10.2026. Nykyinen versio **0.51.1**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.51.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -669,7 +669,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   karheuden vaihtelu). Testit `--wavetest` ja
   `--watershots`; `--foamshots`, `--wavesoundtest`, `--baittest`,
   `--settingstest` ja `--overlaptest` päivitettiin.
-- **#88 Äänimaailma – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-88.md`.
+- **#88 Äänimaailma – tehty (0.51.1).** Suunnitelma `docs/suunnitelmat/CATCHFISH-88.md`.
   Kuikan huuto illalla ja yöllä poistettiin (ääni, `make_sounds.py`:n
   generointi ja `GameAudio`:n laskuri). Pikkulintujen (peippo, talitiainen)
   laulujen väli on aina 8–15 s, eikä aamulla ole enää omaa tiheämpää väliä;
