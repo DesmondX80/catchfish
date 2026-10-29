@@ -1,5 +1,5 @@
 # Ikkunattomat testit Godot 4.7.2:lla jokaisesta pushista ja PR:stä.
-# Samat testit paikallisesti: tools/run_tests.sh /polku/godotiin
+# Samat testit paikallisesti: tools/run_tests.sh [/polku/godotiin]
 name: Testit
 
 on:
@@ -24,6 +24,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v4
+
+      - name: Testiajurin itsetesti
+        run: tools/run_tests_selftest.sh
 
       - name: Godot välimuistista
         id: cache

@@ -40,7 +40,9 @@ Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siih
 
 ## Kun olet valmis
 
-1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh godot-4.7.2`.
+1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh -q`.
+   Jos jokin testi epäonnistuu ja väität sen epäonnistuvan myös mainissa,
+   tarkista se: `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
 2. Commit ja `git push -u origin claude/<aihe>`.
 3. Kerro testaajalle ja työnjohtajalle: haara, työkopion polku, mitä muuttui,
    mitkä testit lisäsit ja mitä pitää kokeilla käsin (Windowsin editorissa F5).

@@ -125,7 +125,13 @@ Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
 WSL:ssä se on komentona `godot-4.7.2` (`~/.local/bin/godot-4.7.2`).
 GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 (`.github/workflows/tests.yml`); samat testit paikallisesti:
-`tools/run_tests.sh /polku/godotiin [testin_nimi...]`.
+`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [testin_nimi...]`.
+Lopussa on yhteenvetotaulukko (tulos, kesto ja `VIRHE`-rivit), ajon tulosrivit
+alkavat `>>`, ja koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
+`latest.log`). `-q` jättää Godotin tulosteen vain lokiin. `--repeat=N` ajaa
+testit N kertaa ja `--ref=origin/main` väliaikaisessa työkopiossa, jolla
+tarkistetaan, epäonnistuuko testi myös mainissa. Ajurin itsetesti
+`tools/run_tests_selftest.sh` ajetaan CI:ssä ennen testejä.
 
 ```bash
 godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet

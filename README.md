@@ -243,9 +243,20 @@ pushista ja PR:stä (`.github/workflows/tests.yml`). Samat testit voi ajaa
 itse:
 
 ```bash
-tools/run_tests.sh /polku/godotiin            # kaikki
-tools/run_tests.sh /polku/godotiin luretest   # vain nimetyt
+tools/run_tests.sh                            # kaikki (Godot: $GODOT, godot-4.7.2 tai godot)
+tools/run_tests.sh /polku/godotiin luretest   # vain nimetyt, Godot annettuna
+tools/run_tests.sh -q                         # vain tulosrivit ja yhteenveto päätteeseen
+tools/run_tests.sh --repeat=10 luretest       # epävakaan testin toistoajo
+tools/run_tests.sh --ref=origin/main --repeat=3 luretest  # sama mainissa (väliaikainen työkopio)
 ```
+
+Lopuksi tulostuu yhteenvetotaulukko (testi, tulos, kesto ja epäonnistuneen
+testin `VIRHE`-rivit). Tulosrivit alkavat `>>`, joten ne erottuvat testien
+omista riveistä. Koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
+`latest.log` uusimpaan; `--log=TIEDOSTO` muuttaa polun). Aikaraja on
+`TEST_TIMEOUT` sekuntia testiä kohti (oletus 600). Paluukoodi on 0, kun kaikki
+menivät läpi, 1, jos jokin epäonnistui, ja 2 väärällä käytöllä.
+`tools/run_tests_selftest.sh` testaa itse ajurin valekomennolla.
 
 Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.
 Ikkunaa vaativat testit (esim. `--inputtest`, `--pausetest`, `--menutest`)

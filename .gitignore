@@ -16,3 +16,6 @@ data/piper/
 
 # Python
 __pycache__/
+
+# tools/run_tests.sh -lokit
+.test-logs/
