@@ -19,6 +19,7 @@ tests=(
 	"anchortest|--fixed-fps 30 -- --day=180 --anchortest"
 	"anglertest|--fixed-fps 30 -- --day=180 --anglertest"
 	"anglertest-talvi|--fixed-fps 30 -- --day=40 --anglertest"
+	"audiologtest|--fixed-fps 30 -- --day=180 --audio-log --audiologtest"
 	"baittest|--fixed-fps 30 -- --day=180 --baittest"
 	"birdsoundtest|--fixed-fps 30 -- --day=180 --birdsoundtest"
 	"birdtest|--fixed-fps 30 -- --day=180 --birdtest"

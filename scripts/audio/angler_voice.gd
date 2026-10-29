@@ -62,6 +62,7 @@ var boat: Boat
 var fishing: Fishing
 var weather: Weather
 var hud: Hud
+var audio: GameAudio # äänilokiin kirjaus (--audio-log)
 var last_line := ""
 var _player: AudioStreamPlayer3D
 var _streams := {}
@@ -111,6 +112,8 @@ func say(event: String, urgent := false) -> bool:
 		key = options[_rng.randi() % options.size()]
 	_player.stream = _streams[key]
 	_player.play()
+	if audio:
+		audio.log_sound("voice:" + key, _player.global_position)
 	hud.show_speech(LINES[key])
 	last_line = key
 	_last_said[key] = _time

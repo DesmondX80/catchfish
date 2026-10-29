@@ -153,6 +153,7 @@ godot --headless --fixed-fps 30 -- --day=180 --headwindtest  # soutu ja melonta 
 godot --headless --fixed-fps 30 -- --day=180 --anglertest   # kalastajahahmo (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --tubtest      # kalasaavi (--day=40 talvella)
 godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
+godot --headless --fixed-fps 30 -- --day=180 --audio-log --audiologtest # ääniloki
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen ja tuulen äänet (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --wavetest     # aallokko: koko, suoja, harjat, kääntyminen, kasvu
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
@@ -166,6 +167,12 @@ godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] [-
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
+
+`--audio-log` yhdistetään mihin tahansa testiin tai ajoon: se tulostaa jokaisesta
+soitetusta äänestä rivin `[ääni] HH:MM:SS nimi etäisyys` (pelin kello, etäisyys
+veneestä; soittamatta jäänyt merkinnällä `OHITETTU`, silmukoista `loop_start`/
+`loop_stop`), esim. `godot --headless --fixed-fps 30 -- --day=180 --audio-log --casttest`.
+Pelkkä `--audio-log` ei ohita valikkoa.
 
 `--autotest` (puoli tuntia kalastusta) on hyvin satunnainen eikä sovi
 läpi/hylätty-testiksi. Useimmissa testeissä on `--*-shots=KANSIO` kuvakaappauksia

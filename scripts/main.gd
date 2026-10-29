@@ -45,7 +45,7 @@ func _ready() -> void:
 				_show_menu()
 				add_child(load("res://tests/%s.gd" % menu_tests[prefix]).new())
 				return
-		if arg.begins_with("--"):
+		if arg.begins_with("--") and arg != "--audio-log": # äänen kirjaus ei ohita valikkoa
 			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
 			_start_game(0) # testit ohittavat valikon
 			return
@@ -232,6 +232,7 @@ func _start_game(start_index: int, career := false) -> void:
 	voice = AnglerVoice.new()
 	add_child(voice)
 	voice.setup(boat, fishing, weather, hud)
+	voice.audio = audio
 	birds = Birds.new()
 	add_child(birds)
 	birds.setup(boat, camera_rig.camera, sky, weather, lake, season.frozen())
@@ -266,6 +267,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/cast_test.gd").new())
 	elif "--voicetest" in args:
 		add_child(load("res://tests/voice_test.gd").new())
+	elif "--audiologtest" in args:
+		add_child(load("res://tests/audio_log_test.gd").new())
 	elif "--wavesoundtest" in args:
 		add_child(load("res://tests/wave_sound_test.gd").new())
 	elif "--baittest" in args:

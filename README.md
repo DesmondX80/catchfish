@@ -253,6 +253,11 @@ ajetaan käsin. Välkkymisen ja nykimisen voi mitata kuvista:
 `godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO`
 merkitsee punaisella pikselit, jotka vaihtavat väriä edestakaisin.
 
+Äänimuutokset näkee lokista ilman kuuntelua: `--audio-log` tulostaa jokaisesta
+soitetusta äänestä rivin (pelin kello, äänen nimi, etäisyys veneestä), esim.
+`godot --headless --fixed-fps 30 -- --day=180 --audio-log --casttest`.
+Lipun voi antaa myös editorin ajoon; rivit näkyvät Output-paneelissa.
+
 ## Lisenssit
 
 Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m

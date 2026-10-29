@@ -7,6 +7,8 @@ extends Node
 ## nauhoituksista (tools/make_recorded_sounds.py).
 ## Taustaäänet (tuuli, sade, laineet, linnut) soivat Taustaäänet-väylällä, muut
 ## Efektit-väylällä; voimakkuudet säädetään asetuksista (Settings).
+## Käynnistyslippu --audio-log tulostaa jokaisesta soitetusta äänestä rivin
+## (pelin kello, nimi, etäisyys veneestä) testausta varten.
 
 const DIR := "res://assets/sounds/"
 const LOOPS := ["wind_light_loop", "wind_strong_loop", "wind_light_winter_loop", "wind_strong_winter_loop", "water_lap_loop", "water_waves_loop", "motor_loop", "reel_loop", "drag_loop", "rain_loop"]
@@ -64,6 +66,9 @@ var _drag: AudioStreamPlayer3D
 var _chime: AudioStreamPlayer
 var _bird_timer := 4.0
 var _rng := RandomNumberGenerator.new()
+## Ääniloki (--audio-log): rivit tulostetaan ja säilytetään testiä varten
+var log_enabled := false
+var log_lines: Array[String] = []
 
 
 func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_time: SkyTime, lake_data: LakeData) -> void:
@@ -73,6 +78,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	sky = sky_time
 	lake = lake_data
 	_rng.randomize()
+	log_enabled = "--audio-log" in OS.get_cmdline_user_args()
 	# Rajoitin päämikserissä estää säröytymisen, kun moni ääni soi yhtä aikaa
 	# (vain kerran: peli voidaan käynnistää uudelleen kotoa)
 	var has_limiter := false
@@ -100,13 +106,13 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	_wind_light.volume_db = -80.0
 	_wind_light.bus = "Taustaäänet"
 	add_child(_wind_light)
-	_wind_light.play()
+	_play_loop(_wind_light)
 	_wind_strong = AudioStreamPlayer.new()
 	_wind_strong.stream = _streams["wind_strong_loop"]
 	_wind_strong.volume_db = -80.0
 	_wind_strong.bus = "Taustaäänet"
 	add_child(_wind_strong)
-	_wind_strong.play()
+	_play_loop(_wind_strong)
 
 	_rain = AudioStreamPlayer.new()
 	_rain.stream = _streams["rain_loop"]
@@ -116,10 +122,10 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 
 	_lap = _attached_loop("water_lap_loop", 6.0)
 	_lap.bus = "Taustaäänet"
-	_lap.play()
+	_play_loop(_lap)
 	_waves = _attached_loop("water_waves_loop", 8.0)
 	_waves.bus = "Taustaäänet"
-	_waves.play()
+	_play_loop(_waves)
 	_motor = _attached_loop("motor_loop", 20.0)
 	_reel = _attached_loop("reel_loop", 3.0)
 	_drag = _attached_loop("drag_loop", 4.0)
@@ -132,8 +138,46 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 
 	boat.sound_event.connect(play_at)
 	fishing.sound_event.connect(play_at)
-	fishing.caught.connect(func(_entry, record): if record: _chime.play())
+	fishing.caught.connect(func(_entry, record): if record: _play_chime())
 	_process(0.0) # äänenvoimakkuudet heti säätä vastaaviksi
+
+
+## Ennätyksen kilahdus (ei sijaintia)
+func _play_chime() -> void:
+	_chime.play()
+	log_sound("record_chime", Vector3.INF)
+
+
+## Kirjaa soitetun äänen lokiin, jos --audio-log on päällä. Piste Vector3.INF:
+## ei sijaintia (etäisyyden tilalla -).
+func log_sound(sound: String, at: Vector3, skipped := false) -> void:
+	if not log_enabled:
+		return
+	var dist := "-" if at == Vector3.INF else "%.1f m" % at.distance_to(boat.global_position)
+	_log_line("%s %s%s" % [sound, dist, " OHITETTU" if skipped else ""])
+
+
+## Kirjaa silmukan käynnistyksen tai pysäytyksen
+func _log_loop(event: String, player: Node) -> void:
+	if log_enabled:
+		_log_line("%s %s" % [event, player.stream.resource_path.get_file().get_basename()])
+
+
+func _log_line(text: String) -> void:
+	var s := int(sky.minutes * 60.0) % (24 * 3600)
+	var line := "[ääni] %02d:%02d:%02d %s" % [s / 3600, s / 60 % 60, s % 60, text]
+	print(line)
+	log_lines.append(line)
+
+
+func _play_loop(player: Node) -> void:
+	player.play()
+	_log_loop("loop_start", player)
+
+
+func _stop_loop(player: Node) -> void:
+	player.stop()
+	_log_loop("loop_stop", player)
 
 
 ## Veneen mukana kulkeva silmukka
@@ -150,6 +194,7 @@ func _attached_loop(name: String, unit_size: float) -> AudioStreamPlayer3D:
 ## Kertaääni maailman pisteessä
 func play_at(sound: String, at: Vector3) -> void:
 	if not _streams.has(sound) or get_child_count() > MAX_ONE_SHOTS + 3:
+		log_sound(sound, at, true)
 		return
 	var cfg: Array = ONE_SHOTS.get(sound, [0.0, 10.0, 0.05])
 	var p := AudioStreamPlayer3D.new()
@@ -164,6 +209,7 @@ func play_at(sound: String, at: Vector3) -> void:
 	p.global_position = at
 	p.finished.connect(p.queue_free)
 	p.play()
+	log_sound(sound, at)
 
 
 func _process(delta: float) -> void:
@@ -178,8 +224,8 @@ func _process(delta: float) -> void:
 		_winter = boat.on_ice
 		_wind_light.stream = _streams["wind_light_winter_loop" if _winter else "wind_light_loop"]
 		_wind_strong.stream = _streams["wind_strong_winter_loop" if _winter else "wind_strong_loop"]
-		_wind_light.play()
-		_wind_strong.play()
+		_play_loop(_wind_light)
+		_play_loop(_wind_strong)
 	var wind := weather.speed()
 	var level := clampf(0.08 + wind / 10.0, 0.0, 1.1)
 	var strong := smoothstep(4.0, 8.0, weather.wind_base)
@@ -191,10 +237,10 @@ func _process(delta: float) -> void:
 	# Sade: voimakkuuden mukaan
 	if weather.rain > 0.02:
 		if not _rain.playing:
-			_rain.play()
+			_play_loop(_rain)
 		_rain.volume_db = linear_to_db(clampf(weather.rain, 0.05, 1.0)) - 3.0
 	elif _rain.playing:
-		_rain.stop()
+		_stop_loop(_rain)
 
 	# Vesi veneen kyljessä: tyynellä pientä liplatusta, tuulen voimistuessa
 	# aallot loiskivat ja pärskyvät. Liikkuva vene voimistaa molempia.
@@ -213,12 +259,12 @@ func _process(delta: float) -> void:
 	if boat.motor_running:
 		if not _motor.playing:
 			_motor.volume_db = -30.0
-			_motor.play()
+			_play_loop(_motor)
 		var rpm := absf(boat.throttle)
 		_motor.pitch_scale = lerpf(_motor.pitch_scale, 0.6 + rpm * 0.4, minf(1.0, delta * 3.0))
 		_motor.volume_db = move_toward(_motor.volume_db, -12.0 + rpm * 5.0, delta * 40.0)
 	elif _motor.playing:
-		_motor.stop()
+		_stop_loop(_motor)
 
 	# Kela ja jarru
 	_set_loop(_reel, fishing.is_reeling(), -10.0, fishing.reel_speed() / Fishing.REEL_SPEED)
@@ -232,9 +278,9 @@ func _set_loop(player: AudioStreamPlayer3D, on: bool, volume_db: float, pitch: f
 		player.pitch_scale = clampf(pitch, 0.3, 3.0)
 		player.volume_db = volume_db
 		if not player.playing:
-			player.play()
+			_play_loop(player)
 	elif player.playing:
-		player.stop()
+		_stop_loop(player)
 
 
 ## Pikkulinnut laulavat metsänreunassa valoisaan aikaan 8–15 s välein.
