@@ -103,9 +103,14 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
    Näkyvät muutokset designer tarkistaa kuvakaappauksista ennen hyväksyntää.
 6. **Julkaisu.** Kun testaaja on hyväksynyt haaran, työnjohtaja julkaisee sen
    työtavan kohtien 4–5 mukaan: versio, Windows-vienti, push, GitHub-release,
-   Planessa *Done*, työkopion poisto ja tiimiläisten sulkeminen.
-7. **Raportti.** Työnjohtaja kertoo Teemulle lyhyesti, mitä julkaistiin, ja
-   mitä testaaja jätti käsin kokeiltavaksi. Sitten seuraava tehtävä.
+   Planessa *Done* ja työkopion poisto.
+7. **Retro.** Julkaisun jälkeen jokainen tiimiläinen (designer, koodaaja,
+   testaaja) antaa parannusehdotuksia peliin, työn tehokkuuteen ja
+   työtapoihin, ja työnjohtaja lisää omansa. Tiimiläiset suljetaan vasta tämän
+   jälkeen.
+8. **Raportti.** Työnjohtaja kertoo Teemulle lyhyesti, mitä julkaistiin, mitä
+   testaaja jätti käsin kokeiltavaksi ja retron ehdotukset koosteena (peli,
+   tehokkuus, työtavat). Sitten seuraava tehtävä.
 
 ### Säännöt
 
