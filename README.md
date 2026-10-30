@@ -30,7 +30,7 @@ Ensimmäinen käynnistys kestää muutaman sekunnin, kun järvi, metsä ja kalat
 | W / S | kaasu (moottori) tai soutu eteen/taakse |
 | A / D | ohjaus |
 | Q | perämoottori käyntiin / sammuksiin (sammuksissa soudetaan) |
-| X | ankkuri alas / ylös (lasketaan keulasta pohjaan 1 m/s, köyttä syvyys + 0,5 m; köysi kiristyy jos yrität lähteä) |
+| X | ankkuri alas / ylös (lasketaan keulasta pohjaan 1 m/s, köyttä syvyys + 0,5 m; köysi kiristyy jos yrität lähteä). Ankkuria laskiessa ja nostaessa kalastaja on keulassa köyden kimpussa, joten moottori on vapaalla eikä soutaa voi. |
 | V | mela käteen / pois: melalla pääsee irti laiturista, kun airot eivät mahdu (W/S melonta, A/D melotaan toiselta puolelta) |
 | Hiiri | kameran ja heittosuunnan kääntö, rulla = zoomaus |
 | P | kamera: veneen takana / FPV kalastajan silmistä (valinta muistetaan) |

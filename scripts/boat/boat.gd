@@ -50,6 +50,8 @@ var anchor_point := Vector2.ZERO
 var anchor_rope := 0.0
 var anchor: BoatAnchor # ankkurin ja köyden malli ja animaatio
 var _rope_warned := false
+var _hands_warned := false # köyttä käsitellessä ajoyrityksen ilmoitus annettu
+var _hands_trying := false # ajo- tai ohjausnäppäin pohjassa edellisellä askeleella
 ## Verkko (NetControl): veto perästä (N), kalastajan kädet verkolla nostossa;
 ## nostaessa kädet ovat varattuina eikä soudeta
 var stern_pull := Vector2.ZERO
@@ -217,20 +219,24 @@ func paddle_in_hand() -> bool:
 
 
 ## Ankkuri alas tai ylös (X). Ankkuri lasketaan keulasta ja vene on ankkurissa,
-## kun ankkuri on pohjassa; nostettaessa vene irtoaa heti.
+## kun ankkuri on pohjassa; nostettaessa vene irtoaa heti. Kalastaja on keulassa
+## köyden kimpussa, joten kaasu menee vapaalle ja aisa keskelle.
 func toggle_anchor() -> void:
 	if angler and angler.fishing and angler.fishing.busy():
 		message.emit("Kelaa ensin uistin ylös – sitten ankkuri")
 		return
+	var was_throttle := absf(throttle) >= PROP_MIN_THROTTLE
+	throttle = 0.0
+	tiller = 0.0
 	if anchor.state == BoatAnchor.State.STOWED or anchor.state == BoatAnchor.State.RAISING:
 		anchor.lower()
 		sound_event.emit("anchor_drop", anchor.bow_chock())
-		message.emit("Ankkuri lasketaan keulasta...")
+		message.emit("Kaasu vapaalle – ankkuri lasketaan keulasta..." if was_throttle else "Ankkuri lasketaan keulasta...")
 	else:
 		anchor.raise()
 		anchored = false
 		sound_event.emit("anchor_up", anchor.bow_chock())
-		message.emit("Ankkuria nostetaan...")
+		message.emit("Kaasu vapaalle – ankkuria nostetaan..." if was_throttle else "Ankkuria nostetaan...")
 
 
 ## Ankkuriköyden kulkukohta keulassa veneen keskeltä (BoatAnchor.BOW_CHOCK)
@@ -306,6 +312,16 @@ func _simulate(dt: float) -> void:
 	if not net_hands.is_empty():
 		drive = 0.0 # kädet verkolla
 		steer = 0.0
+	var trying := drive != 0.0 or steer != 0.0
+	if anchor.handling():
+		if trying and not _hands_trying and not _hands_warned:
+			_hands_warned = true
+			message.emit("Kädet ankkurin köydellä – odota, että ankkuri on veneessä")
+		drive = 0.0 # kädet ankkurin köydellä
+		steer = 0.0
+	else:
+		_hands_warned = false
+	_hands_trying = trying
 	var fwd := forward()
 	var side := right()
 	var v_fwd := velocity.dot(fwd)

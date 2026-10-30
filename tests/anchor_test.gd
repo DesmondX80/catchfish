@@ -6,6 +6,9 @@ extends Node
 ## ankkuri päätyy veneeseen. Kalastaja käsittelee köyttä etutuhdolla.
 ## Köyttä on syvyys + 0,5 m eikä sitä tule lisää ajettaessa, lasku ja nosto
 ## etenevät 1 m/s, ja liikkuvasta veneestä laskettu ankkuri kulkee keulan alla.
+## Köyttä käsitellessä ei voi ajaa eikä soutaa, X vie kaasun vapaalle, ja
+## nostossa köysi ei veny: väli on joka ruudulla enintään ulkona olevan köyden
+## mittainen, myös vene täydeltä kaasulta tai 5 m/s liu'ussa.
 
 var main: Node
 var _log: Array[String] = []
@@ -16,6 +19,10 @@ var _spot := Vector2.ZERO
 var _depth := 0.0
 var _shots := ""
 var _saw_anchor_pose := false
+var _max_over := -INF # nostossa suurin (väli - ulkona oleva köysi)
+var _dragged := false # ankkuri lähti nostossa veneen perään
+var _still := true # vene pysyi paikallaan, vaikka W oli pohjassa
+var _start := Vector2.ZERO
 
 
 func _ready() -> void:
@@ -77,6 +84,8 @@ func _physics_process(delta: float) -> void:
 	var boat: Boat = main.boat
 	var anchor: BoatAnchor = boat.anchor
 	_saw_anchor_pose = _saw_anchor_pose or boat.angler.pose == Angler.Pose.ANCHOR
+	if anchor.state == BoatAnchor.State.RAISING:
+		_max_over = maxf(_max_over, anchor.bow_chock().distance_to(anchor.ring()) - anchor.rope_out)
 	match _step:
 		0:
 			_calm()
@@ -175,7 +184,148 @@ func _physics_process(delta: float) -> void:
 				var bow := anchor.bow_chock()
 				var off := Vector2(anchor.xz.x - bow.x, anchor.xz.y - bow.z).length()
 				_check("liikkuvasta veneestä laskettu ankkuri keulan alla (%.2f m)" % off, anchor.state != BoatAnchor.State.STOWED and off < 0.5)
+				boat.velocity = Vector2.ZERO
+				boat.motor_running = true
+				_messages.clear()
+				_next()
+		8:
+			# Ajoyritys ankkuria laskiessa: kädet köydellä
+			_calm()
+			Input.action_press("boat_forward")
+			if _t > 0.5:
+				Input.action_release("boat_forward")
+				_check("W laskussa ei nosta kaasua (%.2f)" % boat.throttle, anchor.state == BoatAnchor.State.LOWERING and boat.throttle == 0.0)
+				_check("laskussa ilmoitus kädet köydellä kerran", _count("Kädet ankkurin köydellä") == 1)
+				_next()
+		9:
+			_calm()
+			if boat.anchored:
+				boat.throttle = 1.0
+				_next()
+			elif _t > 15.0:
+				_check("ankkuri vajosi pohjaan", false)
 				_finish()
+		10:
+			# Täysi kaasu ankkuri pohjassa, W yhä pohjassa, kun X painetaan
+			_calm()
+			Input.action_press("boat_forward")
+			if _t > 3.0:
+				_messages.clear()
+				_max_over = -INF
+				boat.tiller = 0.5
+				boat.toggle_anchor()
+				_check("X vie kaasun vapaalle ja aisan keskelle", boat.throttle == 0.0 and boat.tiller == 0.0)
+				_check("moottori jää käymään", boat.motor_running)
+				_next()
+		11:
+			# Pohjassa pysynyt W ei peitä kaasun ilmoitusta, uusi painallus antaa ilmoituksen
+			_calm()
+			if _t < 0.5:
+				Input.action_press("boat_forward")
+			elif _t < 0.7:
+				Input.action_release("boat_forward")
+			else:
+				Input.action_press("boat_forward")
+			if _t > 1.0 and _t < 1.1:
+				_shot("ankkuri-5-nosto-kaasulla")
+			if _t > 1.5:
+				Input.action_release("boat_forward")
+				_check("ilmoitus: kaasu vapaalle, ankkuria nostetaan", _messages.size() > 0 and _messages[0] == "Kaasu vapaalle – ankkuria nostetaan...")
+				_check("pohjassa pysynyt W ei tuonut ilmoitusta heti, uusi painallus toi kerran", _messages.size() == 2 and _count("Kädet ankkurin köydellä") == 1)
+				_check("W nostossa ei muuta kaasua (%.2f)" % boat.throttle, boat.throttle == 0.0)
+				_next()
+		12:
+			_calm()
+			if anchor.state == BoatAnchor.State.STOWED:
+				var total := _t + 1.5
+				_check("nosto kaasulta: köysi ei venynyt (yli %.2f m)" % _max_over, _max_over <= 0.1)
+				_check("nosto kaasulta syvyys + enintään 3 s (%.1f s, syvyys %.1f m)" % [total, _depth_at_anchor()], total < _depth_at_anchor() + 3.0)
+				Input.action_press("boat_forward")
+				_next()
+			elif _t > 30.0:
+				_check("ankkuri nostettiin veneeseen", false)
+				_finish()
+		13:
+			_calm()
+			if _t > 0.5:
+				Input.action_release("boat_forward")
+				_check("ankkurin tultua W nostaa kaasun (%.2f)" % boat.throttle, boat.throttle > 0.2)
+				boat.throttle = 0.0
+				boat.velocity = Vector2.ZERO
+				boat.yaw_rate = 0.0
+				boat.pos = _spot
+				boat.toggle_anchor()
+				_next()
+		14:
+			_calm()
+			boat.velocity = Vector2.ZERO
+			if boat.anchored:
+				_max_over = -INF
+				_start = anchor.xz
+				boat.toggle_anchor()
+				boat.velocity = boat.forward() * 5.0
+				_next()
+			elif _t > 15.0:
+				_check("ankkuri vajosi pohjaan", false)
+				_finish()
+		15:
+			# Vene liukuu 5 m/s, kun X painetaan: ankkuri laahautuu perässä
+			_calm()
+			if anchor.state == BoatAnchor.State.RAISING and anchor.xz.distance_to(_start) > 0.5:
+				_dragged = true
+			if _t < delta * 1.5:
+				_check("liu'ussa vene irtoaa heti (%.1f m/s)" % boat.velocity.length(), boat.velocity.length() > 4.0)
+			if anchor.state == BoatAnchor.State.STOWED:
+				_check("liu'ussa köysi ei venynyt (yli %.2f m)" % _max_over, _max_over <= 0.1)
+				_check("liu'ussa ankkuri laahautui perässä", _dragged)
+				_check("ankkuri veneessä liu'unkin jälkeen, %.1f s" % _t, _t < _depth_at_anchor() + 3.0)
+				boat.motor_running = false
+				boat.velocity = Vector2.ZERO
+				boat.yaw_rate = 0.0
+				boat.pos = _spot
+				boat.toggle_anchor()
+				_next()
+			elif _t > 30.0:
+				_check("ankkuri nostettiin veneeseen", false)
+				_finish()
+		16:
+			_calm()
+			boat.velocity = Vector2.ZERO
+			if boat.anchored:
+				boat.toggle_anchor()
+				Input.action_press("boat_forward")
+				_next()
+			elif _t > 15.0:
+				_check("ankkuri vajosi pohjaan", false)
+				_finish()
+		17:
+			# Soutu ja melonta nostossa: W pohjassa, vene ei kiihdy
+			_calm()
+			if _t > 1.2:
+				boat.paddling = true
+			if boat._rowing or boat._paddle_stroking or boat.velocity.length() > 0.02:
+				_still = false
+			if _t > 2.2:
+				_check("airot ja mela eivät vedä nostossa", _still and anchor.state == BoatAnchor.State.RAISING)
+				boat.paddling = false
+				_next()
+		18:
+			_calm()
+			if anchor.state == BoatAnchor.State.STOWED:
+				_next()
+			elif _t > 30.0:
+				_check("ankkuri nostettiin veneeseen", false)
+				_finish()
+		19:
+			# Pohjassa pysynyt W alkaa soutaa heti, kun ankkuri on veneessä
+			_calm()
+			if _t > 2.0:
+				_check("ankkurin tultua soutu toimii (%.2f m/s)" % boat.velocity.length(), boat._rowing and boat.velocity.length() > 0.2)
+				_finish()
+
+
+func _count(prefix: String) -> int:
+	return _messages.filter(func(m): return m.begins_with(prefix)).size()
 
 
 func _depth_at_anchor() -> float:

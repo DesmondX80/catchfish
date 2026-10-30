@@ -725,6 +725,22 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   niiden sisälle (`other_boats`-uniform). Testit ja kokeiluajot eivät saa
   satunnaisia veneitä (paitsi `--perftest` ja `--autotest`). Testi
   `--otherboatstest` (kesä ja talvi), kuvat `--otherboatshots=KANSIO`.
+- **#83 Bug: ankkuriköysi venyy nostettaessa – korjattu.** Suunnitelma
+  `docs/suunnitelmat/CATCHFISH-83.md`. Köysi venyi, koska nostossa vene irtoaa
+  heti (#57), mutta ankkuri nousi vain 1 m/s ja köysi piirrettiin suorana niin
+  pitkänä kuin väli oli. Nyt köyttä käsitellessä (`BoatAnchor.handling()`) W/S
+  ja A/D eivät liikuta venettä kuten verkkoa nostaessa: X vie kaasun vapaalle ja
+  aisan keskelle (ilmoitus "Kaasu vapaalle – ..."), moottori jää tyhjäkäynnille,
+  ja ajoyrityksestä tulee kerran ilmoitus "Kädet ankkurin köydellä". Painallus
+  lasketaan vain uudesta painalluksesta, joten X:ää painaessa pohjassa ollut W ei
+  peitä kaasun ilmoitusta. Nostossa `BoatAnchor.rope_out` on ulkona oleva köysi
+  (alussa `anchor_rope`, sitten −1 m/s): keulan ja renkaan väli on enintään sen
+  mittainen, eli ankkuri laahautuu veneen perässä ja irtoaa pohjasta, kun köysi
+  ei enää riitä pohjaan (keulapiikin korkeuden takia jo noston alussa). Irti
+  pohjasta se heilahtaa keulan alle. Löysä köysi roikkuu kaarella. Vene irtoaa
+  edelleen heti. `--anchortest` tarkistaa rajan joka ruudulla (kaasulla,
+  5 m/s liu'ussa), ajoesteen moottorilla, airoilla ja melalla sekä ajon
+  jatkumisen; kuva `ankkuri-5-nosto-kaasulla`.
 
 ## Huomioita ja avoimia kysymyksiä
 
