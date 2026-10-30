@@ -738,13 +738,14 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   mittainen, eli ankkuri laahautuu veneen perässä ja irtoaa pohjasta, kun köysi
   ei enää riitä pohjaan (keulapiikin korkeuden takia jo noston alussa). Irti
   pohjasta se heilahtaa keulan alle. Löysä köysi roikkuu kaarella. Vene irtoaa
-  edelleen heti. Liu'ussa (yli 1 m/s, `BoatAnchor.SLIDE_SPEED`) ankkuri pysyy
-  keulan takana rungon pohjan alla (`KEEL_CLEAR`), ja köyttä kelataan vain
-  1,5 m:iin (`SLIDE_ROPE`); nosto päättyy, kun vene on hidastunut. Köysi, joka
+  edelleen heti. Köyttä kelataan aina 1 m/s, joten nosto päättyy
+  aina (syvyys + 0,5 s), myös liu'ussa ja tuulessa. Keulan takana ankkuri pysyy
+  rungon pohjan alla (`KEEL_CLEAR`), ja kun köysi ei enää riitä sinne, ankkuri
+  siirtyy veden alla keulan eteen (`BOW_CLEAR`) ja nousee siitä. Köysi, joka
   kulkisi suorana rungon läpi, kiertää keulavantaa pitkin vesirajaan
   (`_through_hull`). `--anchortest` tarkistaa rajan joka ruudulla (kaasulla,
-  5 m/s liu'ussa ja vauhdissa perutussa laskussa), rungon läpileikkauksen,
-  ajoesteen moottorilla, airoilla ja melalla sekä ajon jatkumisen; kuvat
+  5 m/s liu'ussa, vauhdissa perutussa laskussa ja 10 m/s:n tuulessa), rungon
+  läpileikkauksen, ajoesteen moottorilla, airoilla ja melalla sekä ajon jatkumisen; kuvat
   `ankkuri-5-nosto-kaasulla` ja `ankkuri-6-nosto-liussa`.
 
 ## Huomioita ja avoimia kysymyksiä

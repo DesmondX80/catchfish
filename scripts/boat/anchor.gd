@@ -6,8 +6,8 @@ extends Node3D
 ## tule lisää, vaikka veneellä yritettäisiin ajaa pois. Nostettaessa köyttä kelataan vuorokäsin, ja ankkuri nousee
 ## keulaan ja lasketaan veneen pohjalle. Köysi ei veny: jos vene ajautuu
 ## nostossa kauemmas kuin ulkona oleva köysi riittää, ankkuri laahautuu perässä.
-## Keulan takana ankkuri kulkee rungon pohjan alla, ja vauhdissa köyttä kelataan
-## vain sen verran, ettei ankkuri nouse runkoa vasten, ennen kuin vene hidastuu.
+## Köyttä kelataan aina 1 m/s. Keulan takana ankkuri kulkee rungon pohjan alla,
+## ja kun köysi ei enää riitä sinne, ankkuri tulee keulan eteen ja nousee siitä.
 ## Pohjassa olevan ankkurin köysi roikkuu löysänä kaarella ja kiristyy suoraksi,
 ## kun vene liikkuu ankkurista poispäin.
 ## Humusvedessä ankkuri ja köysi eivät näy pinnan alla.
@@ -25,15 +25,15 @@ const HAND_POINT := Vector3(0.0, 0.5, -1.5) # kalastajan kädet köydellä
 const STOW_POINT := Vector3(0.0, Boat.FOOT_STEP + 0.04, -1.62) # ankkuri keulan jalkatasolla, rengas perään päin
 const STEM_KNEE := Vector3(0.0, 0.3, -2.22) # keulavanta taittuu viistoksi (rungon koordinaateissa, vannan ulkopuolella)
 const STEM_WATER := Vector3(0.0, -0.05, -1.98) # keulavanta vesirajan alapuolella
-const SLIDE_SPEED := 1.0 # m/s: tätä nopeammassa veneessä ankkuri ei nouse keulan takaa
-const SLIDE_ROPE := 1.5 # m: köyttä ulkona liu'un ajan, ankkuri mahtuu rungon alle
 const KEEL_CLEAR := -0.35 # keulan takana ankkurin renkaan yläraja (rungon koordinaateissa, köli -0,25)
+const BOW_CLEAR := 0.1 # m: keulan edestä nouseva ankkuri
 
 var boat: Boat
 var state := State.STOWED
 var xz := Vector2.ZERO # ankkurin paikka vaakatasossa
 var height := 0.0 # ankkurin korkeus (0 = vedenpinta)
 var rope_out := 0.0 # nostossa ulkona oleva köysi (m)
+var _ahead := false # nostossa ankkuri on siirtynyt keulan eteen
 var _anchor: Node3D
 var _rope: Array[MeshInstance3D] = []
 var _rope_material: StandardMaterial3D
@@ -107,6 +107,7 @@ func lower() -> void:
 
 
 func raise() -> void:
+	_ahead = false
 	if state == State.DOWN:
 		rope_out = boat.anchor_rope
 		state = State.RAISING
@@ -161,8 +162,7 @@ func update(dt: float) -> void:
 				reached_bottom.emit(-bottom)
 		State.RAISING:
 			# Köyttä kelataan: ulkona oleva köysi lyhenee, ja se rajaa ankkurin paikan
-			var sliding := boat.velocity.length() >= SLIDE_SPEED and _behind_bow()
-			rope_out = maxf(rope_out - RAISE_SPEED * dt, SLIDE_ROPE if sliding else 0.0)
+			rope_out = maxf(0.0, rope_out - RAISE_SPEED * dt)
 			if rope_out <= 0.02:
 				stow()
 				stowed.emit()
@@ -174,6 +174,9 @@ func update(dt: float) -> void:
 ## Ankkuri köyden varassa nostossa: pohjasta irti se roikkuu ja heilahtaa keulan
 ## alle, ja keulan ja renkaan väli on enintään ulkona olevan köyden mittainen
 func _haul(dt: float) -> void:
+	if _ahead:
+		_hold_ahead()
+		return
 	var chock := bow_chock()
 	if height > -boat.lake.depth_at(xz.x, xz.y):
 		xz = xz.move_toward(Vector2(chock.x, chock.z), RAISE_SPEED * dt)
@@ -190,7 +193,7 @@ func _haul(dt: float) -> void:
 
 
 ## Keulan takana ankkuri pysyy rungon pohjan alla: köysi riittää silloin vain
-## lyhyemmälle matkalle keulan taakse, ja lopuksi ankkuri nousee keulan edestä
+## lyhyemmälle matkalle keulan taakse, ja lopuksi ankkuri siirtyy keulan eteen
 func _clear_keel() -> void:
 	if not _behind_bow():
 		return
@@ -199,11 +202,23 @@ func _clear_keel() -> void:
 	var limit := (hull * Vector3(local.x, KEEL_CLEAR, local.z)).y
 	if height <= limit:
 		return
-	height = limit
 	var chock := bow_chock()
 	var drop := chock.y - limit
+	if rope_out < drop:
+		_ahead = true
+		_hold_ahead()
+		return
+	height = limit
 	var off := xz - Vector2(chock.x, chock.z)
-	xz = Vector2(chock.x, chock.z) + off.limit_length(sqrt(maxf(0.0, rope_out * rope_out - drop * drop)))
+	xz = Vector2(chock.x, chock.z) + off.limit_length(sqrt(rope_out * rope_out - drop * drop))
+
+
+## Keulan edessä ankkuri roikkuu köyden varassa ja nousee köyden mukana
+func _hold_ahead() -> void:
+	var chock := bow_chock()
+	xz = Vector2(chock.x, chock.z) + boat.forward() * BOW_CLEAR
+	var hang := sqrt(maxf(0.0, rope_out * rope_out - BOW_CLEAR * BOW_CLEAR))
+	height = maxf(chock.y - hang, -boat.lake.depth_at(xz.x, xz.y))
 
 
 func _behind_bow() -> bool:

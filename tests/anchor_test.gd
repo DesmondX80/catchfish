@@ -8,9 +8,10 @@ extends Node
 ## etenevät 1 m/s, ja liikkuvasta veneestä laskettu ankkuri kulkee keulan alla.
 ## Köyttä käsitellessä ei voi ajaa eikä soutaa, X vie kaasun vapaalle, ja
 ## nostossa köysi ei veny: väli on joka ruudulla enintään ulkona olevan köyden
-## mittainen, myös vene täydeltä kaasulta tai 5 m/s liu'ussa. Liu'ussa ankkuri
-## pysyy keulan takana rungon pohjan alla ja nousee vasta veneen hidastuttua, ja
-## köysi kulkee keulavantaa pitkin eikä rungon läpi, myös vauhdissa perutussa laskussa.
+## mittainen, myös vene täydeltä kaasulta tai 5 m/s liu'ussa. Keulan takana
+## ankkuri pysyy rungon pohjan alla ja nousee keulan edestä, köysi kulkee
+## keulavantaa pitkin eikä rungon läpi, ja nosto päättyy aina: vauhdissa perutussa
+## laskussa ja kovassa tuulessa ajautuvasta veneestä syvyys + enintään 3 s:ssa.
 
 var main: Node
 var _log: Array[String] = []
@@ -27,6 +28,7 @@ var _still := true # vene pysyi paikallaan, vaikka W oli pohjassa
 var _max_keel := -INF # keulan takana renkaan suurin korkeus rungon koordinaateissa
 var _rope_in_hull := false # näkyvä köysi kulki rungon sisällä
 var _start := Vector2.ZERO
+var _raise_depth := 0.0 # syvyys noston alussa
 
 
 func _ready() -> void:
@@ -179,7 +181,10 @@ func _physics_process(delta: float) -> void:
 			if _t > 1.0:
 				_check("kalastaja palasi kalastamaan", boat.angler.pose == Angler.Pose.FISHING)
 				_calm()
+				boat.motor_running = true
+				boat.throttle = 0.5
 				boat.toggle_anchor()
+				_check("X laskuun vie kaasun vapaalle, ilmoitus kertoo sen", boat.throttle == 0.0 and boat.motor_running and _messages[-1] == "Kaasu vapaalle – ankkuri lasketaan keulasta...")
 				_next()
 		7:
 			# Ankkuri lasketaan liikkuvasta veneestä: se kulkee keulan alla
@@ -233,6 +238,8 @@ func _physics_process(delta: float) -> void:
 				Input.action_release("boat_forward")
 			else:
 				Input.action_press("boat_forward")
+			if _t > 0.4 and _t <= 0.4 + delta:
+				_check("pohjassa pysynyt W ei tuo ilmoitusta", _messages.size() == 1)
 			if _t > 1.0 and _t < 1.1:
 				_shot("ankkuri-5-nosto-kaasulla")
 			if _t > 1.5:
@@ -274,6 +281,7 @@ func _physics_process(delta: float) -> void:
 			if boat.anchored:
 				_reset_tracking()
 				_start = anchor.xz
+				_raise_depth = _depth_at_anchor()
 				boat.toggle_anchor()
 				boat.velocity = boat.forward() * 5.0
 				_next()
@@ -294,7 +302,7 @@ func _physics_process(delta: float) -> void:
 				_check("liu'ussa köysi ei venynyt (yli %.2f m)" % _max_over, _max_over <= 0.1)
 				_check("liu'ussa ankkuri laahautui perässä", _dragged)
 				_check_hull("liu'ussa")
-				_check("liukunosto päättyi veneen hidastuttua (%.1f s, %.2f m/s)" % [_t, boat.velocity.length()], boat.velocity.length() < BoatAnchor.SLIDE_SPEED)
+				_check("liukunosto syvyys + enintään 3 s (%.1f s, syvyys %.1f m)" % [_t, _raise_depth], _t < _raise_depth + 3.0)
 				boat.motor_running = false
 				boat.velocity = Vector2.ZERO
 				boat.yaw_rate = 0.0
@@ -349,6 +357,7 @@ func _physics_process(delta: float) -> void:
 			boat.velocity = boat.forward() * 4.0
 			if _t > 1.0:
 				_reset_tracking()
+				_raise_depth = _depth_at_anchor()
 				boat.toggle_anchor()
 				_check("vauhdissa perutussa laskussa ankkuria nostetaan", anchor.state == BoatAnchor.State.RAISING)
 				_next()
@@ -357,11 +366,79 @@ func _physics_process(delta: float) -> void:
 			if anchor.state == BoatAnchor.State.STOWED:
 				_check("perutussa laskussa köysi ei venynyt (yli %.2f m)" % _max_over, _max_over <= 0.1)
 				_check_hull("perutussa laskussa")
-				_check("perutun laskun nosto päättyi veneen hidastuttua (%.1f s, %.2f m/s)" % [_t, boat.velocity.length()], boat.velocity.length() < BoatAnchor.SLIDE_SPEED)
-				_finish()
+				_check("perutun laskun nosto syvyys + enintään 3 s (%.1f s, syvyys %.1f m)" % [_t, _raise_depth], _t < _raise_depth + 3.0)
+				boat.pos = _spot
+				boat.yaw = _downwind_yaw(0.5)
+				boat.yaw_rate = 0.0
+				boat.velocity = boat.forward() * 1.5
+				boat.toggle_anchor()
+				_next()
 			elif _t > 30.0:
 				_check("ankkuri nostettiin veneeseen", false)
 				_finish()
+		22:
+			# Tuuli 10 m/s, vene viistosti tuulen alla: X, 1,5 s, X
+			_gale()
+			if _t > 1.5:
+				_reset_tracking()
+				_raise_depth = _depth_at_anchor()
+				boat.toggle_anchor()
+				_next()
+		23:
+			_gale()
+			if anchor.state == BoatAnchor.State.STOWED:
+				_check_gale("perutussa laskussa")
+				boat.pos = _spot
+				boat.yaw = _downwind_yaw(0.5)
+				boat.yaw_rate = 0.0
+				boat.velocity = boat.forward() * 1.5
+				boat.toggle_anchor()
+				_next()
+			elif _t > 30.0:
+				_check("tuulessa ankkuri nostettiin veneeseen", false)
+				_finish()
+		24:
+			_gale()
+			if boat.anchored:
+				_reset_tracking()
+				_raise_depth = _depth_at_anchor()
+				boat.toggle_anchor()
+				_next()
+			elif _t > 15.0:
+				_check("ankkuri vajosi pohjaan", false)
+				_finish()
+		25:
+			# Tuulessa nosto heti pohjasta
+			_gale()
+			if anchor.state == BoatAnchor.State.STOWED:
+				_check_gale("pohjasta nostettaessa")
+				_finish()
+			elif _t > 30.0:
+				_check("tuulessa ankkuri nostettiin veneeseen", false)
+				_finish()
+
+
+func _gale() -> void:
+	var w: Weather = main.weather
+	w.wind_base = 10.0
+	w.gust = 0.0
+	w._wind_target = 10.0
+	w._gust_timer = 999.0
+
+
+## Keula myötätuuleen, kulma (rad) tuulen suunnasta sivuun
+func _downwind_yaw(angle: float) -> float:
+	var w: Weather = main.weather
+	var dir := Vector2(sin(w.wind_direction), -cos(w.wind_direction))
+	return wrapf(atan2(-dir.x, -dir.y) + angle, -PI, PI)
+
+
+func _check_gale(when: String) -> void:
+	var speed: float = main.boat.velocity.length()
+	_check("tuulessa %s ankkuri tuli veneeseen syvyys + enintään 3 s (%.1f s, syvyys %.1f m, vene %.2f m/s)" % [when, _t, _raise_depth, speed], _t < _raise_depth + 3.0)
+	_check("tuulessa %s vene ajautui yli 1 m/s" % when, speed > 1.0)
+	_check("tuulessa %s köysi ei venynyt (yli %.2f m)" % [when, _max_over], _max_over <= 0.1)
+	_check_hull("tuulessa %s" % when)
 
 
 func _reset_tracking() -> void:
