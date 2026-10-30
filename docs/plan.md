@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 29.10.2026. Nykyinen versio **0.51.1**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.51.1)).
+Päivitetty 30.10.2026. Nykyinen versio **0.52.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.52.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -692,7 +692,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   generointi ja `GameAudio`:n laskuri). Pikkulintujen (peippo, talitiainen)
   laulujen väli on aina 8–15 s, eikä aamulla ole enää omaa tiheämpää väliä;
   ne laulavat edelleen vain valoisalla. Testi `--birdsoundtest`.
-- **#68 Muita veneitä järvellä – tehty.** Suunnitelma
+- **#68 Muita veneitä järvellä – tehty (0.52.0).** Suunnitelma
   `docs/suunnitelmat/CATCHFISH-68.md`. Avovesikaudella valoisaan aikaan
   (`sky.daylight() > 0,45`) järvellä on enintään kaksi vierasta venettä:
   ensimmäinen 2–6 min pelin alusta, seuraava 4–12 min edellisestä (todellista

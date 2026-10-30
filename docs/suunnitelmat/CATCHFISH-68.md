@@ -280,6 +280,11 @@ Teemu valitsi kohdat 1, 3, 7 ja 9; muut työnjohtaja ratkaisi suosituksen mukaan
 16. Soutuveneen soutumatka kalapaikalle on enintään 600 m (1,5 × 400 m), koska
     kodalta useimmat 100–400 m:n päässä linnuntietä olevat kalapaikat ovat
     salmien takana 1,5–1,8 km:n soutumatkan päässä (työnjohtaja).
+17. FPV-kameran horisontti pysyy vaakasuorassa peräaallossa, kuten
+    tavallisessa aallokossakin: silmän paikka seuraa kalastajan päätä, mutta
+    kamera ei kallistu rungon mukana. Kohdan "FPV-kamera keinuu samoin"
+    toteutus on siis sama kuin aallokossa (työnjohtaja, designerin
+    kuvatarkistuksen jälkeen).
 
 ## Avoimet kysymykset Teemulle (ratkaistu, ks. Päätökset)
 1. **Näkyykö peräaalto vesipinnassa?** a) Vain vaahtojuovat ja veneen
