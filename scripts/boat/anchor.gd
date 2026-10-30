@@ -6,6 +6,8 @@ extends Node3D
 ## tule lisää, vaikka veneellä yritettäisiin ajaa pois. Nostettaessa köyttä kelataan vuorokäsin, ja ankkuri nousee
 ## keulaan ja lasketaan veneen pohjalle. Köysi ei veny: jos vene ajautuu
 ## nostossa kauemmas kuin ulkona oleva köysi riittää, ankkuri laahautuu perässä.
+## Keulan takana ankkuri kulkee rungon pohjan alla, ja vauhdissa köyttä kelataan
+## vain sen verran, ettei ankkuri nouse runkoa vasten, ennen kuin vene hidastuu.
 ## Pohjassa olevan ankkurin köysi roikkuu löysänä kaarella ja kiristyy suoraksi,
 ## kun vene liikkuu ankkurista poispäin.
 ## Humusvedessä ankkuri ja köysi eivät näy pinnan alla.
@@ -21,6 +23,11 @@ const ROPE_SEGMENTS := 14
 const BOW_CHOCK := Vector3(0.0, 0.64, -2.2) # köyden kulku keulapiikin yli (rungon koordinaateissa)
 const HAND_POINT := Vector3(0.0, 0.5, -1.5) # kalastajan kädet köydellä
 const STOW_POINT := Vector3(0.0, Boat.FOOT_STEP + 0.04, -1.62) # ankkuri keulan jalkatasolla, rengas perään päin
+const STEM_KNEE := Vector3(0.0, 0.3, -2.22) # keulavanta taittuu viistoksi (rungon koordinaateissa, vannan ulkopuolella)
+const STEM_WATER := Vector3(0.0, -0.05, -1.98) # keulavanta vesirajan alapuolella
+const SLIDE_SPEED := 1.0 # m/s: tätä nopeammassa veneessä ankkuri ei nouse keulan takaa
+const SLIDE_ROPE := 1.5 # m: köyttä ulkona liu'un ajan, ankkuri mahtuu rungon alle
+const KEEL_CLEAR := -0.35 # keulan takana ankkurin renkaan yläraja (rungon koordinaateissa, köli -0,25)
 
 var boat: Boat
 var state := State.STOWED
@@ -154,7 +161,8 @@ func update(dt: float) -> void:
 				reached_bottom.emit(-bottom)
 		State.RAISING:
 			# Köyttä kelataan: ulkona oleva köysi lyhenee, ja se rajaa ankkurin paikan
-			rope_out = maxf(0.0, rope_out - RAISE_SPEED * dt)
+			var sliding := boat.velocity.length() >= SLIDE_SPEED and _behind_bow()
+			rope_out = maxf(rope_out - RAISE_SPEED * dt, SLIDE_ROPE if sliding else 0.0)
 			if rope_out <= 0.02:
 				stow()
 				stowed.emit()
@@ -172,11 +180,35 @@ func _haul(dt: float) -> void:
 		height = maxf(height - SINK_SPEED * dt, -boat.lake.depth_at(xz.x, xz.y))
 	var from_chock := Vector3(xz.x, height, xz.y) - chock
 	if from_chock.length() <= rope_out:
+		_clear_keel()
 		return
 	# Köysi kireällä: ankkuri tulee köyden suuntaan välin verran
 	var p := chock + from_chock.normalized() * rope_out
 	xz = Vector2(p.x, p.z)
 	height = maxf(p.y, -boat.lake.depth_at(xz.x, xz.y))
+	_clear_keel()
+
+
+## Keulan takana ankkuri pysyy rungon pohjan alla: köysi riittää silloin vain
+## lyhyemmälle matkalle keulan taakse, ja lopuksi ankkuri nousee keulan edestä
+func _clear_keel() -> void:
+	if not _behind_bow():
+		return
+	var hull := boat.hull.global_transform
+	var local := hull.affine_inverse() * Vector3(xz.x, height, xz.y)
+	var limit := (hull * Vector3(local.x, KEEL_CLEAR, local.z)).y
+	if height <= limit:
+		return
+	height = limit
+	var chock := bow_chock()
+	var drop := chock.y - limit
+	var off := xz - Vector2(chock.x, chock.z)
+	xz = Vector2(chock.x, chock.z) + off.limit_length(sqrt(maxf(0.0, rope_out * rope_out - drop * drop)))
+
+
+func _behind_bow() -> bool:
+	var chock := bow_chock()
+	return (xz - Vector2(chock.x, chock.z)).dot(boat.forward()) < -0.05
 
 
 func _place() -> void:
@@ -207,7 +239,8 @@ func _water_level() -> float:
 
 
 ## Köysi: keulasta ankkurin renkaaseen; ankkurin ollessa pohjassa tai nostossa
-## löysä köysi roikkuu kaarella ja kiristyy suoraksi, kun köysi on täysin auki
+## löysä köysi roikkuu kaarella ja kiristyy suoraksi, kun köysi on täysin auki.
+## Jos suora köysi kulkisi rungon läpi, se kiertää keulavantaa pitkin vesirajaan.
 func _draw_rope() -> void:
 	var a := bow_chock()
 	var b := ring()
@@ -219,13 +252,20 @@ func _draw_rope() -> void:
 		length = rope_out
 	var sag := sqrt(maxf(0.0, length * length - span * span)) * 0.5
 	var points: Array[Vector3] = []
-	for i in ROPE_SEGMENTS + 1:
-		var t := float(i) / ROPE_SEGMENTS
-		var p := a.lerp(b, t) + Vector3.DOWN * sag * 4.0 * t * (1.0 - t)
+	if _through_hull(b):
+		var hull := boat.hull.global_transform
+		var stem := hull * STEM_WATER
+		points.append(a)
+		points.append(hull * STEM_KNEE)
+		for i in ROPE_SEGMENTS - 1:
+			points.append(stem.lerp(b, float(i) / (ROPE_SEGMENTS - 2)))
+	else:
+		for i in ROPE_SEGMENTS + 1:
+			var t := float(i) / ROPE_SEGMENTS
+			points.append(a.lerp(b, t) + Vector3.DOWN * sag * 4.0 * t * (1.0 - t))
+	for i in points.size():
 		# Löysä köysi lepää pohjalla
-		var floor_y := boat.lake.height_at(p.x, p.z) + 0.02
-		p.y = maxf(p.y, floor_y)
-		points.append(p)
+		points[i].y = maxf(points[i].y, boat.lake.height_at(points[i].x, points[i].z) + 0.02)
 	# Kalastajan käsien kautta keulaan, kun köyttä käsitellään
 	var water := _water_level()
 	var hand := boat.hull.global_transform * HAND_POINT
@@ -252,6 +292,15 @@ func _draw_rope() -> void:
 			p0 = p1.lerp(p0, (p1.y - water) / (p1.y - p0.y))
 		seg.visible = true
 		_segment(seg, p0, p1)
+
+
+## Kulkisiko suora köysi keulasta vesirajassa keulavannan takaa rungon sisältä
+func _through_hull(ring_point: Vector3) -> bool:
+	var to := boat.hull.global_transform.affine_inverse() * ring_point
+	if to.y >= STEM_WATER.y:
+		return false
+	var at := BOW_CHOCK.lerp(to, (BOW_CHOCK.y - STEM_WATER.y) / (BOW_CHOCK.y - to.y))
+	return at.z > STEM_WATER.z and absf(at.x) < boat._half_width_at(at.z, 0.0)
 
 
 func _segment(seg: MeshInstance3D, p0: Vector3, p1: Vector3) -> void:

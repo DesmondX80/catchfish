@@ -316,7 +316,7 @@ func _simulate(dt: float) -> void:
 	if anchor.handling():
 		if trying and not _hands_trying and not _hands_warned:
 			_hands_warned = true
-			message.emit("Kädet ankkurin köydellä – odota, että ankkuri on veneessä")
+			message.emit("Kädet ankkurin köydellä – odota, että ankkuri on %s" % ("veneessä" if anchor.state == BoatAnchor.State.RAISING else "pohjassa"))
 		drive = 0.0 # kädet ankkurin köydellä
 		steer = 0.0
 	else:
