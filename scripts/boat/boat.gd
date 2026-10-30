@@ -91,6 +91,8 @@ var _strike_cooldown := 0.0
 var _shallow_warned := false
 var _time := 0.0
 var _dock_contact := Vector2.ZERO # viimeisimmän laiturikosketuksen kohta (_dock_push)
+## Muut veneet järvellä: törmäys ja niiden peräaallot (main.gd asettaa)
+var other_boats: OtherBoats
 ## Ruudulla vene piirretään kahden viimeisimmän fysiikka-askeleen väliin.
 ## Fysiikka etenee omassa tahdissaan (60 Hz), ja ilman välitilaa vene nykisi
 ## kameraan, kalastajaan ja vapoihin nähden, kun ruudunpäivitys ei osu
@@ -410,6 +412,7 @@ func _simulate(dt: float) -> void:
 			new_pos -= out * (bow.length() - reach)
 			velocity -= out * maxf(0.0, velocity.dot(out))
 	new_pos += _dock_collision(new_pos)
+	new_pos += _boat_collision(new_pos)
 	var old_clearance := _min_depth(pos, yaw)
 	var new_clearance := _min_depth(new_pos, yaw)
 	if new_clearance < DRAFT and new_clearance < old_clearance:
@@ -478,7 +481,7 @@ const OUTLINE: Array[Vector2] = [
 
 
 ## Rungon ääriviiva maailmassa
-func _outline(p: Vector2, heading: float) -> PackedVector2Array:
+static func _outline(p: Vector2, heading: float) -> PackedVector2Array:
 	var side := Vector2(cos(heading), -sin(heading))
 	var back := Vector2(sin(heading), cos(heading))
 	var poly := PackedVector2Array()
@@ -490,18 +493,28 @@ func _outline(p: Vector2, heading: float) -> PackedVector2Array:
 ## Siirtymä, jolla runko kohdassa p pääsee irti laitureista: syvin rungon piste
 ## laiturin kannen alla tai syvin laiturin kulma rungon sisällä
 func _dock_push(p: Vector2, heading: float) -> Vector2:
+	var hit := dock_push_at(lake, p, heading)
+	if hit[0] != Vector2.ZERO:
+		_dock_contact = hit[1]
+	return hit[0]
+
+
+## Sama kuin _dock_push mille tahansa rungolle (myös vieraat veneet):
+## [siirtymä, kosketuskohta]
+static func dock_push_at(lake_data: LakeData, p: Vector2, heading: float) -> Array:
 	var best := Vector2.ZERO
+	var contact := p
 	var poly := _outline(p, heading)
 	for v in poly:
-		var push := lake.dock_push(v)
+		var push := lake_data.dock_push(v)
 		if push.length() > best.length():
 			best = push
-			_dock_contact = v
-	for d in lake.docks:
+			contact = v
+	for d in lake_data.docks:
 		var half: Vector2 = d["half"]
 		if p.distance_to(d["center"]) > half.length() + LENGTH:
 			continue
-		for corner in lake.dock_corners(d):
+		for corner in lake_data.dock_corners(d):
 			if not Geometry2D.is_point_in_polygon(corner, poly):
 				continue
 			# Rungon lähin reuna siirtyy kulman kohdalle
@@ -512,8 +525,8 @@ func _dock_push(p: Vector2, heading: float) -> Vector2:
 					nearest = corner - edge
 			if nearest.length() > best.length():
 				best = nearest
-				_dock_contact = corner
-	return best
+				contact = corner
+	return [best, contact]
 
 
 ## Laiturikosketus: runko työnnetään irti kannesta ja laituria kohti oleva
@@ -538,6 +551,72 @@ func _dock_collision(new_pos: Vector2) -> Vector2:
 		var r := _dock_contact - new_pos
 		yaw_rate = yaw_rate * 0.6 - (r.x * impulse.y - r.y * impulse.x) / YAW_INERTIA
 	return push
+
+
+## Kahden rungon päällekkäisyys: siirtymä, jolla runko a (kohdassa pa, suunta ya)
+## pääsee irti rungosta b, ja kosketuskohta. Kuten laiturissa: syvin b:n kulma
+## a:n sisällä tai syvin a:n kulma b:n sisällä. [siirtymä, kosketuskohta]
+static func hull_push(pa: Vector2, ya: float, pb: Vector2, yb: float) -> Array:
+	var best := Vector2.ZERO
+	var contact := pa
+	var poly_a := _outline(pa, ya)
+	var poly_b := _outline(pb, yb)
+	for k in 2:
+		var inside: PackedVector2Array = poly_b if k == 0 else poly_a
+		var around: PackedVector2Array = poly_a if k == 0 else poly_b
+		for corner in inside:
+			if not Geometry2D.is_point_in_polygon(corner, around):
+				continue
+			var nearest := Vector2.ZERO
+			var nearest_d := INF
+			for i in around.size():
+				var edge := Geometry2D.get_closest_point_to_segment(corner, around[i], around[(i + 1) % around.size()])
+				# b:n kulma a:n sisällä: a:n reuna siirtyy kulman kohdalle;
+				# a:n kulma b:n sisällä: kulma siirtyy b:n reunalle
+				var move := corner - edge if k == 0 else edge - corner
+				if move.length() < nearest_d:
+					nearest = move
+					nearest_d = move.length()
+			if nearest.length() > best.length():
+				best = nearest
+				contact = corner
+	return [best, contact]
+
+
+## Kosketus vieraisiin veneisiin (OtherBoats) kuten laituriin: runko työnnetään
+## irti ja toisiaan kohti oleva suhteellinen nopeus pysäytetään hieman kimmoten.
+## Liikkuva vieras vene (sama massa) saa vastakkaisen iskun; ankkurissa tai
+## laiturissa oleva ei liiku. Palauttaa siirtymän, joka lisätään uuteen paikkaan.
+func _boat_collision(new_pos: Vector2) -> Vector2:
+	if other_boats == null:
+		return Vector2.ZERO
+	var total := Vector2.ZERO
+	for other in other_boats.boats:
+		if other.pos.distance_to(new_pos + total) > LENGTH + 0.5:
+			continue
+		var hit := hull_push(new_pos + total, yaw, other.pos, other.yaw)
+		var push: Vector2 = hit[0]
+		if push == Vector2.ZERO:
+			continue
+		total += push
+		var n := push.normalized()
+		var v_in := (velocity - other.velocity).dot(n)
+		if v_in >= 0.0:
+			continue
+		if v_in < -0.4 and _bump_cooldown <= 0.0:
+			sound_event.emit("boat_bump", global_position)
+			if v_in < -1.0:
+				message.emit("Kolahdus! Vene törmäsi toiseen veneeseen")
+			_bump_cooldown = 3.0
+		var share := 1.0 if other.fixed() else 0.5
+		var impulse := -n * v_in * 1.2 * MASS * share
+		velocity += impulse / MASS
+		var r: Vector2 = hit[1] - new_pos
+		yaw_rate = yaw_rate * 0.6 - (r.x * impulse.y - r.y * impulse.x) / YAW_INERTIA
+		other.bumped(-impulse / MASS, hit[1])
+	return total
+
+
 func _min_depth(p: Vector2, heading: float) -> float:
 	var f := Vector2(-sin(heading), -cos(heading)) * LENGTH * 0.45
 	return minf(lake.depth_at(p.x + f.x, p.y + f.y), minf(lake.depth_at(p.x, p.y), lake.depth_at(p.x - f.x, p.y - f.y)))
@@ -552,15 +631,18 @@ func _apply_transform() -> void:
 func _animate(dt: float) -> void:
 	# Vene keinuu samoissa aalloissa kuin vesipinta: korkeus keskeltä,
 	# keulan ja perän sekä laitojen korkeuserosta kallistukset
+	# Ohi ajaneiden moottoriveneiden peräaallot keinuttavat runkoa samoista
+	# pisteistä (vesipinta ei nouse niiden kohdalla)
 	var fwd := forward()
 	var side := right()
-	var h_bow := Waves.swell_height(pos + fwd * LENGTH * 0.45)
-	var h_stern := Waves.swell_height(pos - fwd * LENGTH * 0.45)
-	var h_left := Waves.swell_height(pos - side * 0.7)
-	var h_right := Waves.swell_height(pos + side * 0.7)
+	var wakes: Array = other_boats.wakes_at(pos) if other_boats else []
+	var h_bow := Waves.swell_height(pos + fwd * LENGTH * 0.45) + OtherBoats.wake_sum(wakes, pos + fwd * LENGTH * 0.45)
+	var h_stern := Waves.swell_height(pos - fwd * LENGTH * 0.45) + OtherBoats.wake_sum(wakes, pos - fwd * LENGTH * 0.45)
+	var h_left := Waves.swell_height(pos - side * 0.7) + OtherBoats.wake_sum(wakes, pos - side * 0.7)
+	var h_right := Waves.swell_height(pos + side * 0.7) + OtherBoats.wake_sum(wakes, pos + side * 0.7)
 	var planing := clampf(velocity.dot(fwd) * 0.012 * throttle, -0.05, 0.06) # keula nousee kaasulla
 	var heel := clampf(yaw_rate * velocity.length() * 0.05, -0.08, 0.08) # kallistus käännöksessä
-	hull.position.y = lerpf(hull.position.y, Waves.swell_height(pos), minf(1.0, dt * 6.0))
+	hull.position.y = lerpf(hull.position.y, Waves.swell_height(pos) + OtherBoats.wake_sum(wakes, pos), minf(1.0, dt * 6.0))
 	hull.rotation.x = lerpf(hull.rotation.x, atan2(h_bow - h_stern, LENGTH * 0.9) + planing, minf(1.0, dt * 4.0))
 	hull.rotation.z = lerpf(hull.rotation.z, atan2(h_left - h_right, 1.4) + heel, minf(1.0, dt * 4.0))
 	_motor.rotation.y = -tiller * 0.6
@@ -598,7 +680,7 @@ const OARLOCK := Vector3(0.68, 0.45, 0.65) # soutajan (keskituhto) perän puolel
 ##  0.55–0.93 palautus: lapa ilmassa takaisin keulan puolelle
 ##  0.93–1.00 otto: lapa kääntyy pystyyn ja painuu veteen
 ## Palauttaa [pyyhkäisykulma (rad, + = perään päin), laskukulma (rad), lavan kierto (rad)]
-func _stroke_pose(f: float) -> Array:
+static func _stroke_pose(f: float) -> Array:
 	var catch_sweep := deg_to_rad(-35.0)
 	var finish_sweep := deg_to_rad(30.0)
 	var deep := deg_to_rad(21.0) # lapa n. 15 cm veden alla
@@ -810,7 +892,7 @@ func _stern_position() -> Vector3:
 
 # --- Ulkonäkö ---------------------------------------------------------------
 
-func _material(color: Color, cull_disabled := false) -> StandardMaterial3D:
+static func _material(color: Color, cull_disabled := false) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = 0.8
@@ -823,42 +905,11 @@ func _build_visuals() -> void:
 	hull = Node3D.new()
 	add_child(hull)
 
-	_build_hull()
-	_build_motor()
-
-	# Airot hankaimissa: vasen (-X) ja oikea (+X). Airon varsi alkaa hieman
-	# hankaimen sisäpuolelta (kahva) ja lapa on varren ulkopäässä.
-	var oar_shape := _lathe_mesh(OAR_PROFILE)
-	var pine := _pine_material()
-	var sleeve_shape := CylinderMesh.new() # musta kumiholkki hankaimen kohdalla
-	sleeve_shape.top_radius = 0.027
-	sleeve_shape.bottom_radius = 0.027
-	sleeve_shape.height = 0.2
-	sleeve_shape.radial_segments = 12
-	sleeve_shape.rings = 1
-	sleeve_shape.material = _material(Color(0.06, 0.06, 0.06))
-	for s in [-1.0, 1.0]:
-		var pivot := Node3D.new()
-		pivot.position = Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z)
-		hull.add_child(pivot)
-		# Airo kiertyy varren ympäri (lavan kääntö): koko malli on roll-solmun lapsi
-		var roll := Node3D.new()
-		pivot.add_child(roll)
-		var oar_mesh := MeshInstance3D.new()
-		oar_mesh.name = "Shaft"
-		oar_mesh.mesh = oar_shape
-		oar_mesh.material_override = pine
-		# Profiili kulkee -Y:hen; Z-kierto kääntää sen airon suuntaan ja lavan pystyyn
-		oar_mesh.transform = Transform3D(Basis(Vector3.BACK, s * PI / 2.0), Vector3(-OAR_HANDLE_IN * s, 0, 0))
-		roll.add_child(oar_mesh)
-		var sleeve := MeshInstance3D.new()
-		sleeve.mesh = sleeve_shape
-		sleeve.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(0.08 * s, 0, 0))
-		roll.add_child(sleeve)
-		var blade := Node3D.new() # lavan keskikohta: äänet, vana ja laiturin tarkistus
-		blade.position = Vector3(BLADE_OUT * s, 0, 0)
-		roll.add_child(blade)
-		_oars.append({"side": s, "pivot": pivot, "roll": roll, "blade": blade})
+	build_hull(hull)
+	var motor_parts := build_motor(hull)
+	_motor = motor_parts[0]
+	_prop = motor_parts[1]
+	_oars = build_oars(hull)
 
 	# Mela: kahva paikallisessa origossa, varsi ja lapa -Y:n suuntaan
 	_paddle = Node3D.new()
@@ -884,6 +935,45 @@ func _build_visuals() -> void:
 	angler = Angler.new()
 	angler.position = Angler.SEATS[Angler.Pose.FISHING]
 	hull.add_child(angler)
+
+
+## Airot hankaimissa: vasen (-X) ja oikea (+X). Airon varsi alkaa hieman
+## hankaimen sisäpuolelta (kahva) ja lapa on varren ulkopäässä.
+## Palauttaa [{side, pivot, roll, blade}] (vasen, oikea).
+static func build_oars(parent: Node3D) -> Array[Dictionary]:
+	var oars: Array[Dictionary] = []
+	var oar_shape := _lathe_mesh(OAR_PROFILE)
+	var pine := _pine_material()
+	var sleeve_shape := CylinderMesh.new() # musta kumiholkki hankaimen kohdalla
+	sleeve_shape.top_radius = 0.027
+	sleeve_shape.bottom_radius = 0.027
+	sleeve_shape.height = 0.2
+	sleeve_shape.radial_segments = 12
+	sleeve_shape.rings = 1
+	sleeve_shape.material = _material(Color(0.06, 0.06, 0.06))
+	for s in [-1.0, 1.0]:
+		var pivot := Node3D.new()
+		pivot.position = Vector3(OARLOCK.x * s, OARLOCK.y, OARLOCK.z)
+		parent.add_child(pivot)
+		# Airo kiertyy varren ympäri (lavan kääntö): koko malli on roll-solmun lapsi
+		var roll := Node3D.new()
+		pivot.add_child(roll)
+		var oar_mesh := MeshInstance3D.new()
+		oar_mesh.name = "Shaft"
+		oar_mesh.mesh = oar_shape
+		oar_mesh.material_override = pine
+		# Profiili kulkee -Y:hen; Z-kierto kääntää sen airon suuntaan ja lavan pystyyn
+		oar_mesh.transform = Transform3D(Basis(Vector3.BACK, s * PI / 2.0), Vector3(-OAR_HANDLE_IN * s, 0, 0))
+		roll.add_child(oar_mesh)
+		var sleeve := MeshInstance3D.new()
+		sleeve.mesh = sleeve_shape
+		sleeve.transform = Transform3D(Basis(Vector3.BACK, PI / 2.0), Vector3(0.08 * s, 0, 0))
+		roll.add_child(sleeve)
+		var blade := Node3D.new() # lavan keskikohta: äänet, vana ja laiturin tarkistus
+		blade.position = Vector3(BLADE_OUT * s, 0, 0)
+		roll.add_child(blade)
+		oars.append({"side": s, "pivot": pivot, "roll": roll, "blade": blade})
+	return oars
 
 
 ## Airojen kahvat maailmassa: [vasen airo, oikea airo]
@@ -916,7 +1006,7 @@ const PADDLE_PROFILE := [
 
 
 ## Pyörähdysmäinen puuesine profiilista [y, puolileveys, puolipaksuus], -Y:n suuntaan
-func _lathe_mesh(profile: Array) -> Mesh:
+static func _lathe_mesh(profile: Array) -> Mesh:
 	var sides := 12
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
@@ -953,7 +1043,7 @@ func _lathe_mesh(profile: Array) -> Mesh:
 
 
 ## Lakattu mänty: vaalea, pitkittäinen syykuvio
-func _pine_material() -> StandardMaterial3D:
+static func _pine_material() -> StandardMaterial3D:
 	var noise := FastNoiseLite.new()
 	noise.noise_type = FastNoiseLite.TYPE_SIMPLEX
 	noise.frequency = 0.09
@@ -974,7 +1064,7 @@ func _pine_material() -> StandardMaterial3D:
 
 
 ## Kolmio rungon verkkoon; sisäpinnalle kiertosuunta käännetään
-func _add_triangle(st: SurfaceTool, tri: Array, inward: bool) -> void:
+static func _add_triangle(st: SurfaceTool, tri: Array, inward: bool) -> void:
 	if inward:
 		tri = [tri[0], tri[2], tri[1]]
 	for v in tri:
@@ -1006,7 +1096,7 @@ const INSIDE := Color(0.85, 0.8, 0.64)
 const RUB_RAIL := Color(0.1, 0.14, 0.3)
 
 
-func _shiny(color: Color, roughness: float, metallic := 0.0) -> StandardMaterial3D:
+static func _shiny(color: Color, roughness: float, metallic := 0.0) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
 	m.albedo_color = color
 	m.roughness = roughness
@@ -1015,7 +1105,7 @@ func _shiny(color: Color, roughness: float, metallic := 0.0) -> StandardMaterial
 	return m
 
 
-func _part(parent: Node3D, mesh: Mesh, at: Vector3, mat: Material) -> MeshInstance3D:
+static func _part(parent: Node3D, mesh: Mesh, at: Vector3, mat: Material) -> MeshInstance3D:
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = mat
@@ -1024,13 +1114,13 @@ func _part(parent: Node3D, mesh: Mesh, at: Vector3, mat: Material) -> MeshInstan
 	return mi
 
 
-func _box_mesh(size: Vector3) -> BoxMesh:
+static func _box_mesh(size: Vector3) -> BoxMesh:
 	var b := BoxMesh.new()
 	b.size = size
 	return b
 
 
-func _cyl_mesh(radius: float, height: float, segments := 12) -> CylinderMesh:
+static func _cyl_mesh(radius: float, height: float, segments := 12) -> CylinderMesh:
 	var c := CylinderMesh.new()
 	c.top_radius = radius
 	c.bottom_radius = radius
@@ -1041,7 +1131,7 @@ func _cyl_mesh(radius: float, height: float, segments := 12) -> CylinderMesh:
 
 
 ## Sylinteri pisteestä a pisteeseen b
-func _rod_between(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Material) -> MeshInstance3D:
+static func _rod_between(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Material) -> MeshInstance3D:
 	var mi := _part(parent, _cyl_mesh(radius, a.distance_to(b)), (a + b) / 2.0, mat)
 	var y := (b - a).normalized()
 	var x := y.cross(Vector3.FORWARD if absf(y.z) < 0.9 else Vector3.RIGHT).normalized()
@@ -1050,7 +1140,7 @@ func _rod_between(parent: Node3D, a: Vector3, b: Vector3, radius: float, mat: Ma
 
 
 ## Rungon mitat kohdassa z: Vector3(laidan puolileveys, laidan korkeus, köli)
-func _hull_at(z: float) -> Vector3:
+static func _hull_at(z: float) -> Vector3:
 	var st := HULL_STATIONS
 	var i := 0
 	while i < st.size() - 2 and z > st[i + 1][0]:
@@ -1068,7 +1158,7 @@ func _hull_at(z: float) -> Vector3:
 ## Poikkileikkauksen piste (x, y) kölistä (s = 0) laitaan (s = 1). Pohjan
 ## V-muoto jyrkkenee keulaa kohti ja loivenee perässä lähes tasaiseksi, ja
 ## kyljet levenevät ylöspäin.
-func _section(z: float, s: float) -> Vector2:
+static func _section(z: float, s: float) -> Vector2:
 	var h := _hull_at(z)
 	var bow := clampf((-0.8 - z) / 1.4, 0.0, 1.0)
 	var rise := h.y - h.z
@@ -1080,7 +1170,7 @@ func _section(z: float, s: float) -> Vector2:
 
 
 ## Ulkopinnan kylkiaskelma: jokaisen kaistan alareuna on ulompana (limisauma)
-func _strake(s: float) -> float:
+static func _strake(s: float) -> float:
 	var u := (s - 0.2) / 0.8 * STRAKES
 	if u <= 0.0 or u >= STRAKES:
 		return 0.0
@@ -1088,7 +1178,7 @@ func _strake(s: float) -> float:
 
 
 ## Rungon pinnan piste; ulkopinnalla kylkiaskelmat (side: -1 vasen, 1 oikea)
-func _hull_point(z: float, s: float, side: float, outer: bool) -> Vector3:
+static func _hull_point(z: float, s: float, side: float, outer: bool) -> Vector3:
 	var p := _section(z, s)
 	if outer:
 		var d := _section(z, minf(s + 0.001, 1.0)) - _section(z, maxf(s - 0.001, 0.0))
@@ -1098,7 +1188,7 @@ func _hull_point(z: float, s: float, side: float, outer: bool) -> Vector3:
 
 
 ## Sisäpinnan puolileveys korkeudella y (0, jos köli on ylempänä)
-func _half_width_at(z: float, y: float) -> float:
+static func _half_width_at(z: float, y: float) -> float:
 	var lo := 0.0
 	var hi := 1.0
 	if _section(z, 0.0).y >= y:
@@ -1115,7 +1205,7 @@ func _half_width_at(z: float, y: float) -> float:
 
 
 ## Rungon z-kohdat: tiheämmin keulassa, jossa muoto muuttuu nopeasti
-func _hull_rows(count: int) -> Array:
+static func _hull_rows(count: int) -> Array:
 	var zs := []
 	for i in count:
 		zs.append(-2.2 + 4.4 * pow(i / float(count - 1), 1.3))
@@ -1124,7 +1214,7 @@ func _hull_rows(count: int) -> Array:
 
 ## Runko poikkileikkauksista (keula -Z, perä +Z): ulkopinta kylkiaskelmineen tai
 ## sisäpinta, jonka normaalit osoittavat sisään. Peräpeili umpeen.
-func _hull_mesh(inward := false) -> Mesh:
+static func _hull_mesh(inward := false) -> Mesh:
 	var samples := []
 	for i in 25:
 		samples.append(i / 24.0)
@@ -1158,7 +1248,7 @@ func _hull_mesh(inward := false) -> Mesh:
 
 
 ## Laidan reunalista: suorakaideprofiili laidan yläreunan ja ulkopinnan yli
-func _rail_mesh() -> Mesh:
+static func _rail_mesh() -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var zs := _hull_rows(41)
@@ -1184,7 +1274,7 @@ func _rail_mesh() -> Mesh:
 
 
 ## Vaakasuora valettu taso rungon sisällä: korkeus y(z), z-väli from..to
-func _deck_mesh(from: float, to: float, height: Callable) -> Mesh:
+static func _deck_mesh(from: float, to: float, height: Callable) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var prev := []
@@ -1202,7 +1292,7 @@ func _deck_mesh(from: float, to: float, height: Callable) -> Mesh:
 
 
 ## Pystysuora valettu seinämä poikkileikkauksen muotoisena korkeuksien y0..y1 välissä
-func _bulkhead_mesh(z: float, y0: float, y1: float) -> Mesh:
+static func _bulkhead_mesh(z: float, y0: float, y1: float) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	for i in 8:
@@ -1217,48 +1307,50 @@ func _bulkhead_mesh(z: float, y0: float, y1: float) -> Mesh:
 	return st.commit()
 
 
-func _build_hull() -> void:
+## Runko rungon solmuun (parent): pelaajan vene valkoinen sinisellä reunalistalla,
+## vieraat veneet (other_boat.gd) omin värein.
+static func build_hull(body: Node3D, outside := FIBERGLASS, rail := RUB_RAIL) -> void:
 	# Runko: valkoinen kiiltävä lasikuitu, sisäpuoli kermanvärinen. Sisäpuoli on
 	# oma verkkonsa, jonka normaalit osoittavat sisään, jotta valaistus on oikein.
-	for side in [[false, FIBERGLASS], [true, INSIDE]]:
+	for side in [[false, outside], [true, INSIDE]]:
 		var mi := MeshInstance3D.new()
 		mi.mesh = _hull_mesh(side[0])
 		var m := _material(side[1])
 		m.roughness = 0.3
 		mi.material_override = m
-		hull.add_child(mi)
-	_part(hull, _rail_mesh(), Vector3.ZERO, _shiny(RUB_RAIL, 0.35))
+		body.add_child(mi)
+	_part(body, _rail_mesh(), Vector3.ZERO, _shiny(rail, 0.35))
 
 	# Valettu pohja, keulakansi ja tuhdot (korkeudet kuten kalastajan istumapaikoissa)
 	var molded := _shiny(INSIDE, 0.45)
-	_part(hull, _deck_mesh(-2.0, 2.19, func(_z): return FLOOR_Y), Vector3.ZERO, _shiny(INSIDE.darkened(0.08), 0.8))
-	_part(hull, _deck_mesh(-2.2, -1.8, func(z): return _hull_at(z).y - 0.02), Vector3.ZERO, molded)
-	_part(hull, _deck_mesh(-2.0, FOOT_STEP_Z, func(_z): return FOOT_STEP), Vector3.ZERO, molded)
-	_part(hull, _bulkhead_mesh(FOOT_STEP_Z, FLOOR_Y, FOOT_STEP), Vector3.ZERO, molded)
+	_part(body, _deck_mesh(-2.0, 2.19, func(_z): return FLOOR_Y), Vector3.ZERO, _shiny(INSIDE.darkened(0.08), 0.8))
+	_part(body, _deck_mesh(-2.2, -1.8, func(z): return _hull_at(z).y - 0.02), Vector3.ZERO, molded)
+	_part(body, _deck_mesh(-2.0, FOOT_STEP_Z, func(_z): return FOOT_STEP), Vector3.ZERO, molded)
+	_part(body, _bulkhead_mesh(FOOT_STEP_Z, FLOOR_Y, FOOT_STEP), Vector3.ZERO, molded)
 	for z in [-0.9, 0.25, 1.45]:
 		var w := minf(_half_width_at(z - 0.15, 0.2), _half_width_at(z + 0.15, 0.2))
-		_part(hull, _box_mesh(Vector3(w * 2.0, 0.045, 0.3)), Vector3(0, 0.2025, z), molded)
-		_part(hull, _box_mesh(Vector3(w * 2.0 - 0.04, 0.06, 0.02)), Vector3(0, 0.15, z - 0.14), molded) # etureunan helma
+		_part(body, _box_mesh(Vector3(w * 2.0, 0.045, 0.3)), Vector3(0, 0.2025, z), molded)
+		_part(body, _box_mesh(Vector3(w * 2.0 - 0.04, 0.06, 0.02)), Vector3(0, 0.15, z - 0.14), molded) # etureunan helma
 
 	# Peräpeilin moottorilevy ja kromiset hankaimet laidalla. Levy on 2 mm irti
 	# peräpeilistä: samassa tasossa olevat pinnat välkkyvät (z-fighting).
 	var stern := _hull_at(2.2)
-	_part(hull, _box_mesh(Vector3(0.34, 0.22, 0.02)), Vector3(0, stern.y - 0.11, 2.212), _shiny(Color(0.12, 0.12, 0.13), 0.5))
+	_part(body, _box_mesh(Vector3(0.34, 0.22, 0.02)), Vector3(0, stern.y - 0.11, 2.212), _shiny(Color(0.12, 0.12, 0.13), 0.5))
 	var chrome := _shiny(Color(0.82, 0.83, 0.85), 0.2, 0.9)
 	for s in [-1.0, 1.0]:
 		var w := _hull_at(OARLOCK.z).x
-		_part(hull, _box_mesh(Vector3(w - OARLOCK.x + 0.03, 0.012, 0.06)), Vector3(s * (OARLOCK.x + w) / 2.0, OARLOCK.y + 0.019, OARLOCK.z), chrome)
+		_part(body, _box_mesh(Vector3(w - OARLOCK.x + 0.03, 0.012, 0.06)), Vector3(s * (OARLOCK.x + w) / 2.0, OARLOCK.y + 0.019, OARLOCK.z), chrome)
 		for dz in [-0.035, 0.035]:
-			_part(hull, _cyl_mesh(0.006, 0.07, 8), Vector3(OARLOCK.x * s, OARLOCK.y + 0.055, OARLOCK.z + dz), chrome)
+			_part(body, _cyl_mesh(0.006, 0.07, 8), Vector3(OARLOCK.x * s, OARLOCK.y + 0.055, OARLOCK.z + dz), chrome)
 	# Keulan kiinnityslenkki
-	var eye := _part(hull, _cyl_mesh(0.02, 0.012, 12), Vector3(0, 0.62, -2.21), chrome)
+	var eye := _part(body, _cyl_mesh(0.02, 0.012, 12), Vector3(0, 0.62, -2.21), chrome)
 	eye.rotation.z = PI / 2.0
 
 
 # --- Perämoottori ------------------------------------------------------------
 
 ## Pyöristetty laatikko (superellipsoidi): pienempi e = kulmikkaampi
-func _rounded_box_mesh(size: Vector3, e := 0.3) -> Mesh:
+static func _rounded_box_mesh(size: Vector3, e := 0.3) -> Mesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
 	var spow := func(x: float) -> float: return signf(x) * pow(absf(x), e)
@@ -1283,62 +1375,63 @@ func _rounded_box_mesh(size: Vector3, e := 0.3) -> Mesh:
 
 ## Pieni nelitahtinen ohjausaisaperämoottori: musta kopa punaisella raidalla,
 ## kiinnike peräpeilissä, varsi, kavitaatiolevy, vaihteistokotelo ja
-## kolmilapainen potkuri. Ohjauksessa kääntyy _motor (origo kääntöakselilla),
-## kiinnike pysyy rungossa.
-func _build_motor() -> void:
+## kolmilapainen potkuri. Ohjauksessa kääntyy moottorin solmu (origo
+## kääntöakselilla), kiinnike pysyy rungossa. Palauttaa [moottori, potkuri].
+static func build_motor(body: Node3D) -> Array[Node3D]:
 	var black := _shiny(Color(0.045, 0.045, 0.05), 0.3)
 	var dark := _shiny(Color(0.16, 0.16, 0.17), 0.55)
 	var rubber := _shiny(Color(0.08, 0.08, 0.08), 0.95)
 	var g := _hull_at(2.2).y
 	# Kiinnike peräpeilin yli ja kiristysruuvit veneen puolella
-	_part(hull, _box_mesh(Vector3(0.17, 0.24, 0.05)), Vector3(0, g - 0.09, 2.245), black)
-	_part(hull, _box_mesh(Vector3(0.174, 0.04, 0.12)), Vector3(0, g + 0.02, 2.2), black)
+	_part(body, _box_mesh(Vector3(0.17, 0.24, 0.05)), Vector3(0, g - 0.09, 2.245), black)
+	_part(body, _box_mesh(Vector3(0.174, 0.04, 0.12)), Vector3(0, g + 0.02, 2.2), black)
 	for x in [-0.05, 0.05]:
-		var screw := _part(hull, _cyl_mesh(0.008, 0.08, 8), Vector3(x, g - 0.12, 2.15), dark)
+		var screw := _part(body, _cyl_mesh(0.008, 0.08, 8), Vector3(x, g - 0.12, 2.15), dark)
 		screw.rotation.x = PI / 2.0
-		var handle := _part(hull, _cyl_mesh(0.007, 0.07, 8), Vector3(x, g - 0.12, 2.11), dark)
+		var handle := _part(body, _cyl_mesh(0.007, 0.07, 8), Vector3(x, g - 0.12, 2.11), dark)
 		handle.rotation.z = PI / 2.0
 
-	_motor = Node3D.new()
-	_motor.position = Vector3(0, 0.55, 2.3)
-	hull.add_child(_motor)
-	_part(_motor, _box_mesh(Vector3(0.1, 0.24, 0.08)), Vector3(0, -0.13, -0.03), black) # kääntöpukki
+	var motor := Node3D.new()
+	motor.position = Vector3(0, 0.55, 2.3)
+	body.add_child(motor)
+	_part(motor, _box_mesh(Vector3(0.1, 0.24, 0.08)), Vector3(0, -0.13, -0.03), black) # kääntöpukki
 	# Kopa ja sen alaosa
-	_part(_motor, _rounded_box_mesh(Vector3(0.3, 0.3, 0.46)), Vector3(0, 0.2, 0.03), black)
-	_part(_motor, _rounded_box_mesh(Vector3(0.23, 0.14, 0.34), 0.5), Vector3(0, 0.03, 0.02), black)
+	_part(motor, _rounded_box_mesh(Vector3(0.3, 0.3, 0.46)), Vector3(0, 0.2, 0.03), black)
+	_part(motor, _rounded_box_mesh(Vector3(0.23, 0.14, 0.34), 0.5), Vector3(0, 0.03, 0.02), black)
 	var red := _shiny(Color(0.75, 0.08, 0.06), 0.4)
 	var silver := _shiny(Color(0.7, 0.7, 0.72), 0.3, 0.6)
 	for s in [-1.0, 1.0]:
-		_part(_motor, _box_mesh(Vector3(0.004, 0.016, 0.3)), Vector3(s * 0.151, 0.19, 0.05), red)
-		_part(_motor, _box_mesh(Vector3(0.004, 0.005, 0.26)), Vector3(s * 0.151, 0.172, 0.07), silver)
-	_part(_motor, _box_mesh(Vector3(0.14, 0.025, 0.035)), Vector3(0, 0.355, 0.2), dark) # kantokahva
-	_part(_motor, _box_mesh(Vector3(0.03, 0.02, 0.06)), Vector3(0.12, 0.04, -0.06), dark) # vaihdevipu
+		_part(motor, _box_mesh(Vector3(0.004, 0.016, 0.3)), Vector3(s * 0.151, 0.19, 0.05), red)
+		_part(motor, _box_mesh(Vector3(0.004, 0.005, 0.26)), Vector3(s * 0.151, 0.172, 0.07), silver)
+	_part(motor, _box_mesh(Vector3(0.14, 0.025, 0.035)), Vector3(0, 0.355, 0.2), dark) # kantokahva
+	_part(motor, _box_mesh(Vector3(0.03, 0.02, 0.06)), Vector3(0.12, 0.04, -0.06), dark) # vaihdevipu
 	# Varsi, kavitaatiolevy, vaihteistokotelo, skegi
-	_part(_motor, _box_mesh(Vector3(0.075, 0.72, 0.13)), Vector3(0, -0.38, 0.03), black) # yläpää kopan sisällä
-	_part(_motor, _box_mesh(Vector3(0.2, 0.012, 0.3)), Vector3(0, -0.745, 0.07), black)
-	_part(_motor, _box_mesh(Vector3(0.06, 0.14, 0.12)), Vector3(0, -0.81, 0.03), black)
-	var torpedo := _part(_motor, _cyl_mesh(0.042, 0.26), Vector3(0, -0.9, 0.04), black)
+	_part(motor, _box_mesh(Vector3(0.075, 0.72, 0.13)), Vector3(0, -0.38, 0.03), black) # yläpää kopan sisällä
+	_part(motor, _box_mesh(Vector3(0.2, 0.012, 0.3)), Vector3(0, -0.745, 0.07), black)
+	_part(motor, _box_mesh(Vector3(0.06, 0.14, 0.12)), Vector3(0, -0.81, 0.03), black)
+	var torpedo := _part(motor, _cyl_mesh(0.042, 0.26), Vector3(0, -0.9, 0.04), black)
 	torpedo.rotation.x = PI / 2.0
 	var nose := SphereMesh.new()
 	nose.radius = 0.042
 	nose.height = 0.084
-	_part(_motor, nose, Vector3(0, -0.9, -0.09), black)
-	_part(_motor, _box_mesh(Vector3(0.012, 0.12, 0.09)), Vector3(0, -0.99, 0.1), black)
+	_part(motor, nose, Vector3(0, -0.9, -0.09), black)
+	_part(motor, _box_mesh(Vector3(0.012, 0.12, 0.09)), Vector3(0, -0.99, 0.1), black)
 	# Potkuri: napa ja kolme kierrettyä lapaa
-	_prop = Node3D.new()
-	_prop.position = Vector3(0, -0.9, 0.19)
-	_motor.add_child(_prop)
-	var hub := _part(_prop, _cyl_mesh(0.026, 0.07), Vector3.ZERO, dark)
+	var prop := Node3D.new()
+	prop.position = Vector3(0, -0.9, 0.19)
+	motor.add_child(prop)
+	var hub := _part(prop, _cyl_mesh(0.026, 0.07), Vector3.ZERO, dark)
 	hub.rotation.x = PI / 2.0
 	for k in 3:
 		var arm := Node3D.new()
 		arm.rotation.z = TAU * k / 3.0
-		_prop.add_child(arm)
+		prop.add_child(arm)
 		var blade := _part(arm, _rounded_box_mesh(Vector3(0.07, 0.1, 0.008), 0.7), Vector3(0, 0.07, 0), dark)
 		blade.rotation.y = 0.6 # lavan nousu
 	# Ohjausaisa: nivel kopan edessä, varsi ja kumikahva
-	var hinge := _part(_motor, _cyl_mesh(0.035, 0.09), Vector3(0, 0.07, -0.2), black)
+	var hinge := _part(motor, _cyl_mesh(0.035, 0.09), Vector3(0, 0.07, -0.2), black)
 	hinge.rotation.z = PI / 2.0
-	_rod_between(_motor, Vector3(0, 0.07, -0.2), Vector3(0, 0.2, -0.78), 0.017, black)
-	_rod_between(_motor, Vector3(0, 0.2, -0.78), Vector3(0, 0.2, -0.98), 0.023, rubber)
-	_part(_motor, _cyl_mesh(0.012, 0.02, 8), Vector3(0, 0.11, -0.25), red) # hätäsammutin
+	_rod_between(motor, Vector3(0, 0.07, -0.2), Vector3(0, 0.2, -0.78), 0.017, black)
+	_rod_between(motor, Vector3(0, 0.2, -0.78), Vector3(0, 0.2, -0.98), 0.023, rubber)
+	_part(motor, _cyl_mesh(0.012, 0.02, 8), Vector3(0, 0.11, -0.25), red) # hätäsammutin
+	return [motor, prop]

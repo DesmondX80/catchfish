@@ -200,6 +200,20 @@ painuu, hauki hyppää).
   lähellä. Talvella sorsat, hanhet ja lokit ovat muuttaneet pois, ja
   hanhia näkee eniten muuttoaikaan keväällä ja syksyllä. Kun kalastaja
   näkee merikotkan, hän huudahtaa "Oho! Merikotka!".
+- **Muut veneet**: avovesikaudella valoisaan aikaan järvellä liikkuu silloin
+  tällöin muita kalastajia, enintään kaksi venettä kerrallaan: moottorivene
+  ajaa laiturilta toiselle laiturille tai kalapaikalle, ja soutuvene soutaa
+  kalapaikalle, kalastaa ankkurissa 5–15 minuuttia ja palaa (kodan matalalta
+  laiturilta lähtee vain soutuveneitä). Ensimmäinen vene
+  lähtee 2–6 minuutin kuluttua pelin alusta ja seuraava 4–12 minuutin välein
+  (todellista aikaa); yksi vene voi olla järvellä jo alussa. Kovalla tuulella
+  (yli 8 m/s) ja rankkasateella ei lähdetä, ja hämärän tullen veneet palaavat
+  laiturille. Veneet ilmestyvät ja katoavat laitureilla vain, kun olet kaukana
+  tai et katso laituria kohti. Ne kulkevat syvää vettä pitkin ja kiertävät
+  sinut ja verkkojesi pyykit. Ohi ajavan moottoriveneen peräaallot saapuvat
+  vanan V-haaran mukana ja keinuttavat venettäsi noin 4–5 aallon ajan:
+  kylki aaltoon enemmän kuin keula, lähellä enemmän kuin kaukana. Muiden
+  veneiden läpi ei pääse: niihin voi törmätä kuten laituriin.
 - Lajien arvot ovat tiedostossa `scripts/fishing/species.gd` ja uistinten
   `scripts/fishing/lures.gd`.
 

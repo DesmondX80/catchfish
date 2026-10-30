@@ -79,6 +79,7 @@ var released_fame := 0
 var tub: CatchTub
 var voice: AnglerVoice
 var birds: Birds
+var other_boats: OtherBoats # muut veneet järvellä
 var tackle_box: TackleBox
 var nets: NetControl # verkkokalastus
 
@@ -238,6 +239,17 @@ func _start_game(start_index: int, career := false) -> void:
 	birds.setup(boat, camera_rig.camera, sky, weather, lake, season.frozen())
 	birds.sound_event.connect(audio.play_at)
 	birds.eagle_seen.connect(func(): voice.say("eagle", true))
+	other_boats = OtherBoats.new()
+	add_child(other_boats)
+	other_boats.audio = audio
+	other_boats.setup(boat, camera_rig.camera, sky, weather, lake, nets, season.frozen())
+	other_boats.sound_event.connect(audio.play_at)
+	boat.other_boats = other_boats
+	audio.other_boats = other_boats
+	# Testiajoissa ei satunnaisia veneitä (suorituskyky- ja tasapainoajossa on)
+	var user_args := OS.get_cmdline_user_args()
+	if not CatchLog.persist and not ("--perftest" in user_args or "--autotest" in user_args):
+		other_boats.auto_spawn = false
 
 	load_ms = Time.get_ticks_msec() - t0
 	running = true
@@ -317,6 +329,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/release_test.gd").new())
 	elif "--wavetest" in args:
 		add_child(load("res://tests/wave_test.gd").new())
+	elif "--otherboatstest" in args:
+		add_child(load("res://tests/other_boats_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
@@ -337,6 +351,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/shadow_shots.gd").new())
 			elif arg.begins_with("--jittershots="):
 				add_child(load("res://tests/jitter_shots.gd").new())
+			elif arg.begins_with("--otherboatshots="):
+				add_child(load("res://tests/other_boats_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):
 				add_child(load("res://tests/audio_preview.gd").new())
 
@@ -443,7 +459,21 @@ func _process(delta: float) -> void:
 		mat.set_shader_parameter("sky_color", sky.horizon_color)
 		mat.set_shader_parameter("rain", weather.rain)
 	waters.append(boat.wake.material)
+	# Vieraiden veneiden sisällä ei myöskään vettä eikä vanaa (ruudulla näkyvä asento)
+	var others := PackedVector4Array()
+	for other in other_boats.boats:
+		Waves.apply(other.wake.material)
+		waters.append(other.wake.material)
+		if others.size() < 2:
+			others.append(Vector4(other.position.x, other.position.z, other.rotation.y, 0.0))
+	var other_count := others.size()
+	while others.size() < 2:
+		others.append(Vector4(1e6, 1e6, 0.0, 0.0))
 	for mat in waters:
 		mat.set_shader_parameter("boat_pos", Vector2(1e6, 1e6) if boat.on_ice else boat.pos)
 		mat.set_shader_parameter("boat_yaw", boat.yaw)
+		mat.set_shader_parameter("other_boat_count", other_count)
+		mat.set_shader_parameter("other_boats", others)
 	boat.wake.material.set_shader_parameter("light", sky.daylight())
+	for other in other_boats.boats:
+		other.wake.material.set_shader_parameter("light", sky.daylight())

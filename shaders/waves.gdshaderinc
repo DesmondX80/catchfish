@@ -271,15 +271,17 @@ void set_surface(vec2 x0, int s, float weight, float lp, float c, float q, float
 	}
 }
 
-// Veneen runko: vettä ei piirretä veneen sisälle (vene istuu vesirajan alapuolella)
+// Veneen runko: vettä ei piirretä veneen sisälle (vene istuu vesirajan alapuolella).
+// Pelaajan vene ja enintään kaksi vierasta venettä (other_boats: x, z, suunta).
 uniform vec2 boat_pos = vec2(1e6);
 uniform float boat_yaw = 0.0;
+uniform int other_boat_count = 0;
+uniform vec4 other_boats[2];
 
-bool inside_boat(vec2 world_xz) {
-	vec2 d = world_xz - boat_pos;
+bool inside_hull(vec2 d, float yaw) {
 	// Veneen paikalliset koordinaatit: z perään päin, x oikealle
-	float lx = dot(d, vec2(cos(boat_yaw), -sin(boat_yaw)));
-	float lz = dot(d, vec2(sin(boat_yaw), cos(boat_yaw)));
+	float lx = dot(d, vec2(cos(yaw), -sin(yaw)));
+	float lz = dot(d, vec2(sin(yaw), cos(yaw)));
 	if (lz < -2.15 || lz > 2.18) {
 		return false;
 	}
@@ -291,4 +293,16 @@ bool inside_boat(vec2 world_xz) {
 	else if (lz < 1.2) w = mix(0.76, 0.72, lz / 1.2);
 	else w = mix(0.72, 0.62, (lz - 1.2) / 1.0);
 	return abs(lx) < w * 0.86 - 0.015;
+}
+
+bool inside_boat(vec2 world_xz) {
+	if (inside_hull(world_xz - boat_pos, boat_yaw)) {
+		return true;
+	}
+	for (int i = 0; i < min(other_boat_count, 2); i++) {
+		if (inside_hull(world_xz - other_boats[i].xy, other_boats[i].z)) {
+			return true;
+		}
+	}
+	return false;
 }

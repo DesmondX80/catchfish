@@ -48,6 +48,8 @@ const ONE_SHOTS := {
 }
 
 var boat: Boat
+## Muut veneet (main.gd asettaa): peräaallon saapuessa aaltoääni voimistuu
+var other_boats: OtherBoats
 var fishing: Fishing
 var weather: Weather
 var sky: SkyTime
@@ -157,10 +159,11 @@ func log_sound(sound: String, at: Vector3, skipped := false) -> void:
 	_log_line("%s %s%s" % [sound, dist, " OHITETTU" if skipped else ""])
 
 
-## Kirjaa silmukan käynnistyksen tai pysäytyksen
+## Kirjaa silmukan käynnistyksen tai pysäytyksen (vieraan veneen silmukka merkitään)
 func _log_loop(event: String, player: Node) -> void:
 	if log_enabled:
-		_log_line("%s %s" % [event, player.stream.resource_path.get_file().get_basename()])
+		var label: String = " (%s)" % player.get_meta("log_label") if player.has_meta("log_label") else ""
+		_log_line("%s %s%s" % [event, player.stream.resource_path.get_file().get_basename(), label])
 
 
 func _log_line(text: String) -> void:
@@ -180,15 +183,40 @@ func _stop_loop(player: Node) -> void:
 	_log_loop("loop_stop", player)
 
 
-## Veneen mukana kulkeva silmukka
-func _attached_loop(name: String, unit_size: float) -> AudioStreamPlayer3D:
+## Veneen mukana kulkeva silmukka (oletuksena pelaajan veneessä)
+func _attached_loop(name: String, unit_size: float, parent: Node3D = null) -> AudioStreamPlayer3D:
 	var p := AudioStreamPlayer3D.new()
 	p.stream = _streams[name]
 	p.unit_size = unit_size
 	p.volume_db = -80.0
 	p.bus = "Efektit"
-	boat.add_child(p)
+	(parent if parent else boat).add_child(p)
 	return p
+
+
+## Vieraan veneen perämoottorin silmukka veneen mukana: tyynellä järvellä
+## perämoottori kuuluu kauas (enintään OTHER_MOTOR_RANGE)
+const OTHER_MOTOR_RANGE := 600.0
+func other_motor_loop(node: Node3D) -> AudioStreamPlayer3D:
+	var p := _attached_loop("motor_loop", 20.0, node)
+	p.max_distance = OTHER_MOTOR_RANGE
+	p.set_meta("log_label", "vieras vene")
+	return p
+
+
+## Perämoottorin silmukka: kierrokset kaasun mukaan (nauhoitus on täydeltä kaasulta,
+## sytytystaajuus noin 49 Hz; tyhjäkäynnillä noin 30 Hz), käynnistyksen jälkeen
+## pehmeä aloitus. Sama kaava pelaajan ja vieraiden veneiden moottoreille.
+func drive_motor(player: AudioStreamPlayer3D, running: bool, throttle: float, delta: float) -> void:
+	if running:
+		if not player.playing:
+			player.volume_db = -30.0
+			_play_loop(player)
+		var rpm := absf(throttle)
+		player.pitch_scale = lerpf(player.pitch_scale, 0.6 + rpm * 0.4, minf(1.0, delta * 3.0))
+		player.volume_db = move_toward(player.volume_db, -12.0 + rpm * 5.0, delta * 40.0)
+	elif player.playing:
+		_stop_loop(player)
 
 
 ## Kertaääni maailman pisteessä
@@ -248,23 +276,16 @@ func _process(delta: float) -> void:
 	var s := Waves.local_strength(boat.pos) # paikallinen aallokko: suojassa hiljaisempaa
 	var lap := clampf(0.35 + speed * 0.08, 0.0, 0.8) * (1.0 - 0.75 * s)
 	var waves := clampf(s * 1.15 - 0.1, 0.0, 1.0) * (1.0 + speed * 0.05)
+	# Ohi ajaneen moottoriveneen peräaalto loiskii kylkeen aallon korkeuden mukaan
+	if other_boats:
+		waves = minf(1.2, waves + other_boats.wake_amplitude(boat.pos) / OtherBoats.WAKE_HEIGHT * 0.8)
 	if boat.on_ice:
 		lap = 0.0
 		waves = 0.0
 	_lap.volume_db = linear_to_db(maxf(lap, 0.0001)) - 6.0
 	_waves.volume_db = linear_to_db(maxf(waves, 0.0001)) - 4.0
 
-	# Moottori: kierrokset kaasun mukaan (nauhoitus on täydeltä kaasulta, sytytystaajuus
-	# noin 49 Hz; tyhjäkäynnillä noin 30 Hz), käynnistyksen jälkeen pehmeä aloitus
-	if boat.motor_running:
-		if not _motor.playing:
-			_motor.volume_db = -30.0
-			_play_loop(_motor)
-		var rpm := absf(boat.throttle)
-		_motor.pitch_scale = lerpf(_motor.pitch_scale, 0.6 + rpm * 0.4, minf(1.0, delta * 3.0))
-		_motor.volume_db = move_toward(_motor.volume_db, -12.0 + rpm * 5.0, delta * 40.0)
-	elif _motor.playing:
-		_stop_loop(_motor)
+	drive_motor(_motor, boat.motor_running, boat.throttle, delta)
 
 	# Kela ja jarru
 	_set_loop(_reel, fishing.is_reeling(), -10.0, fishing.reel_speed() / Fishing.REEL_SPEED)

@@ -30,6 +30,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 | Kalastaja | Quaterniuksen riggattu malli (CC0): kesällä maastoasu ja lippalakki, talvella pilkkihaalari ja pipo; kädet IK:lla vapaan, airoihin, ohjausaisaan ja kairaan, istuessa jalat lattialla, jäällä kävelyanimaatio |
 | Asetukset | Hiiren herkkyys, käänteinen pystyohjaus ja äänenvoimakkuudet (kaikki, taustaäänet, efektit, puhe) alku- ja taukovalikossa, tallennetaan koneelle |
 | Puhe | Kalastajan repliikit tapahtumiin ja lajin huudahdus tunnistettaessa (Piper-puhesynteesi, tools/make_voice.py) |
+| Muut veneet | Avovesikaudella päivällä enintään kaksi vierasta venettä: moottorivene laiturilta toiselle tai kalapaikalle, soutuvene kalastaa ankkurissa ja palaa; reitit syvää vettä pitkin, väistö, peräaallot keinuttavat omaa venettä, törmäys kuten laituriin |
 
 ### Tehtävänhallinta
 
@@ -115,6 +116,7 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 | `scripts/boat/` | Vene (laiturikosketus rungon ääriviivalla), kalastaja (malli `assets/characters/`, luut ohjataan `AnglerPoser`-muokkaimella animaation jälkeen), kamera (näkymät: normaali, koho, saavi, haavinta), saavi |
 | `scripts/audio/` | Äänet (`game_audio.gd`) ja kalastajan puhe (`angler_voice.gd`) |
 | `scripts/world/birds.gd` | Taivaan linnut: mallit koodissa, lentotavat, ääntely, kotkan huudahdus |
+| `scripts/boat/other_boats.gd`, `other_boat.gd`, `other_boat_crew.gd` | Muut veneet: ilmestyminen laitureilla, reittihaku (`AStarGrid2D` 8 m ruudukossa, rakennetaan pelin alussa muutaman ruudun aikana), ohjaus ja väistö, peräaallot (`wakes_at`, keinuttavat pelaajan venettä `Boat._animate`), törmäys (`Boat._boat_collision`); rungon ja moottorin malli `Boat.build_hull`/`build_motor`/`build_oars` |
 | `scripts/ui/` | HUD, valikot, uramoodin näkymät, kaikuluotain, kartta, kalakirja (`fish_book_view.gd`) |
 | `scripts/catch_log.gd`, `scripts/fish_book.gd` | Ennätyslista (kertakalastus) ja kalakirja (kaikki saaliit lajeittain) |
 | `tools/` | Järven rakennus MML-aineistosta, äänten ja puheen generointi |
@@ -162,6 +164,7 @@ godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --audio-log --audiologtest # ääniloki
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen ja tuulen äänet (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --wavetest     # aallokko: koko, suoja, harjat, kääntyminen, kasvu
+godot --headless --fixed-fps 30 -- --day=180 --otherboatstest # muut veneet: reitit, peräaalto, törmäys, väistö, ehdot (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
@@ -171,6 +174,7 @@ godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat 
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
 godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] [--watershots-only=01,19] # vesi eri tuulilla, laituri ja ruudun aika (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
+godot --fixed-fps 30 -- --day=180 --otherboatshots=KANSIO   # muut veneet, vana ja peräaallon kallistus (ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
 
@@ -688,6 +692,39 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   generointi ja `GameAudio`:n laskuri). Pikkulintujen (peippo, talitiainen)
   laulujen väli on aina 8–15 s, eikä aamulla ole enää omaa tiheämpää väliä;
   ne laulavat edelleen vain valoisalla. Testi `--birdsoundtest`.
+- **#68 Muita veneitä järvellä – tehty.** Suunnitelma
+  `docs/suunnitelmat/CATCHFISH-68.md`. Avovesikaudella valoisaan aikaan
+  (`sky.daylight() > 0,45`) järvellä on enintään kaksi vierasta venettä:
+  ensimmäinen 2–6 min pelin alusta, seuraava 4–12 min edellisestä (todellista
+  aikaa), moottori-/soutuveneitä 60/40, ja pelin alussa yksi vene voi olla jo
+  kalapaikalla. Yli 8 m/s tuulella tai sateella (`rain` > 0,5) ei lähdetä, ja
+  hämärtyessä veneet palaavat laiturille. Vene ilmestyy ja katoaa laiturilla,
+  kun pelaaja on yli 250 m:n päässä tai ei katso laituria kohti (eikä alle
+  40 m:n päässä). Reitit `AStarGrid2D`-haulla 8 m:n ruudukossa (moottorivene
+  ≥ 1,3 m, soutuvene ≥ 0,6 m, 15 m rannasta, laiturin kansi kierretään,
+  laiturin matala lähivesi 120 m:n säteellä hitaasti, verkkojen pyykit 10 m
+  ja verkon linja kierretään); ruudukko rakennetaan pelin alussa noin 2 ms
+  ruutua kohti. Kodan laiturilta on noin 600 m matalaa vettä, joten
+  moottoriveneet käyttävät vain uimalaituria ja veneenlaskupaikkaa ja kodalla
+  käyvät vain soutuveneet. Soutuvene pääsee kodan lahdesta kapeaa vettä
+  pitkin (≥ 0,6 m, rantaan ≥ 6 m, reittihaku välttää painolla 4); soudettava
+  matka kalapaikalle on enintään 600 m. Vieras vene on laiturissa kannen
+  suuntaisena ja lähtee ensin 5 m suoraan eteenpäin kannen pään ohi. Moottorivene ajaa 4,4 m/s (pelaajan
+  moottori ja vastus 70 %:n kaasulla), noin puolet ohiajoista kulkee
+  30–80 m:n päästä pelaajasta. Väistö: pelaaja ja toiset veneet kierretään
+  15 m:n (soutaen 6 m) etäisyydeltä, alle 10 m:ssä hiljennetään ja alle 4 m:ssä
+  pysähdytään. Peräaalto (`OtherBoats.wakes_at`): Kelvinin hajaantuvat aallot
+  35°:n kulmassa, saapuvat vanan V-haaran mukana, 4,5 harjaa, 0,15 m 20 m:n
+  päässä matkanopeudella, vaimenevat `d^-1/3` ja ajan mukaan; keinuttavat
+  pelaajan runkoa (`Boat._animate`) ja voimistavat aaltoääntä, mutta eivät
+  siirrä venettä eikä näy vesipinnassa. Törmäys (`Boat._boat_collision`,
+  `Boat.hull_push`) kuten laituriin, viesti "Kolahdus! Vene törmäsi toiseen
+  veneeseen". Vieraat veneet: sama runko (`Boat.build_hull`) kolmella
+  värillä, kuljettajalla oranssi kelluntaliivi (`other_boat_crew.gd`), oma
+  vaahtovana, moottorin ääni 600 m:iin, airovedot lähellä; vettä ei piirretä
+  niiden sisälle (`other_boats`-uniform). Testit ja kokeiluajot eivät saa
+  satunnaisia veneitä (paitsi `--perftest` ja `--autotest`). Testi
+  `--otherboatstest` (kesä ja talvi), kuvat `--otherboatshots=KANSIO`.
 
 ## Huomioita ja avoimia kysymyksiä
 
