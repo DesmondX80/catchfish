@@ -247,6 +247,9 @@ func _physics_process(delta: float) -> void:
 				var total := _t + 1.5
 				_check("nosto kaasulta: köysi ei venynyt (yli %.2f m)" % _max_over, _max_over <= 0.1)
 				_check_hull("nosto kaasulta")
+				var hull := boat.hull.global_transform
+				_check("keulan alla riippuva köysi on suora", not anchor._through_hull(hull * Vector3(0.0, -1.5, -2.2)))
+				_check("keulan takaa köysi kiertää vannan", anchor._through_hull(hull * Vector3(0.0, -1.5, -1.8)))
 				_check("nosto kaasulta syvyys + enintään 3 s (%.1f s, syvyys %.1f m)" % [total, _depth_at_anchor()], total < _depth_at_anchor() + 3.0)
 				Input.action_press("boat_forward")
 				_next()
@@ -376,9 +379,20 @@ func _track_hull(boat: Boat, anchor: BoatAnchor) -> void:
 		_max_keel = maxf(_max_keel, (to_hull * ring).y)
 	for i in BoatAnchor.ROPE_SEGMENTS: # viimeinen pala on käsien ja keulan välissä
 		var seg: MeshInstance3D = anchor._rope[i]
-		var local: Vector3 = to_hull * seg.global_position
-		if seg.visible and local.z > -1.9 and local.y > -0.1:
-			_rope_in_hull = true
+		if not seg.visible:
+			continue
+		var along := seg.global_basis.y * 0.5
+		for k in [-1.0, 0.0, 1.0]:
+			_rope_in_hull = _rope_in_hull or _behind_stem(to_hull * (seg.global_position + along * k))
+
+
+## Onko rungon koordinaattien piste keulavannan linjan takana rungon sisällä
+## (suoraan keulan alla riippuva köysi saa olla 8 cm linjan takana)
+func _behind_stem(p: Vector3) -> bool:
+	var knee := BoatAnchor.STEM_KNEE
+	var water := BoatAnchor.STEM_WATER
+	var k := clampf((knee.y - p.y) / (knee.y - water.y), 0.0, 1.0)
+	return p.y > water.y and p.z > lerpf(knee.z, water.z, k) + 0.08 and absf(p.x) < Boat._half_width_at(p.z, p.y)
 
 
 func _check_hull(when: String) -> void:

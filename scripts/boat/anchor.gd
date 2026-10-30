@@ -294,13 +294,17 @@ func _draw_rope() -> void:
 		_segment(seg, p0, p1)
 
 
-## Kulkisiko suora köysi keulasta vesirajassa keulavannan takaa rungon sisältä
+## Kulkisiko suora köysi keulasta rungon sisältä keulavannan takaa: tutkitaan
+## vannan taitteen korkeus ja vesiraja. Keulan alla riippuva köysi pysyy suorana.
 func _through_hull(ring_point: Vector3) -> bool:
 	var to := boat.hull.global_transform.affine_inverse() * ring_point
 	if to.y >= STEM_WATER.y:
 		return false
-	var at := BOW_CHOCK.lerp(to, (BOW_CHOCK.y - STEM_WATER.y) / (BOW_CHOCK.y - to.y))
-	return at.z > STEM_WATER.z and absf(at.x) < boat._half_width_at(at.z, 0.0)
+	for stem in [Vector3(0.0, STEM_KNEE.y, BOW_CHOCK.z + 0.05), STEM_WATER]:
+		var at := BOW_CHOCK.lerp(to, (BOW_CHOCK.y - stem.y) / (BOW_CHOCK.y - to.y))
+		if at.z > stem.z and absf(at.x) < boat._half_width_at(at.z, stem.y):
+			return true
+	return false
 
 
 func _segment(seg: MeshInstance3D, p0: Vector3, p1: Vector3) -> void:
