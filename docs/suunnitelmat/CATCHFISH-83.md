@@ -121,3 +121,9 @@ siis voi karata köyttä pidemmälle.
   on keulassa, joten kukaan ei pidä peräsimestä (työnjohtaja).
 - Vene irtoaa nostettaessa heti, ja jos vene ajautuu kauemmas kuin köysi riittää,
   ankkuri laahautuu perässä. #57:n "irtoaa heti" säilyy (työnjohtaja).
+- Ankkuri irtoaa pohjasta jo noston alussa eikä vasta, kun `rope_out` < syvyys. Keulapiikki
+  on noin 0,64 m vedenpinnan yläpuolella, joten köysi (syvyys + 0,5 m) on alusta asti
+  lyhyempi kuin väli keulasta pohjaan. Kriteeri "väli ≤ `rope_out` + 0,1 m" menee
+  suunnitelman sanamuodon edelle (toteutuksessa ratkaistu, työnjohtaja).
+- Ilmoitus "Kädet ankkurin köydellä" tulee vain uudesta painalluksesta, jotta pohjassa
+  pysynyt W ei korvaa "Kaasu vapaalle" -ilmoitusta (toteutuksessa ratkaistu, työnjohtaja).
