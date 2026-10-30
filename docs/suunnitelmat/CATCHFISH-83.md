@@ -49,7 +49,7 @@ siis voi karata köyttä pidemmälle.
     suora, mutta ei koskaan ulkona olevaa köyttä pidempi.
 - **Nosto vauhdissa.** Jos vene liukuu vielä nopeasti (esim. heti täydeltä kaasulta),
   veden vastus hidastaa sitä kuten nyt. Ankkuri laahautuu perässä sen aikaa, ja köysi
-  on kireä mutta oikean mittainen. Kun vene on hidastunut, nosto jatkuu normaalisti.
+  on kireä mutta oikean mittainen. Nosto ei odota hidastumista (ks. Päätetyt).
 - **Ennallaan pysyvät (#57):** lasku keulan alla 1 m/s; köyttä syvyys + 0,5 m; pohjassa
   kova raja, ja kireä köysi kääntää keulaa; ilmoitus ja "Perkele, ankkuri!"
   ajoyrityksestä ankkuri pohjassa; nostoaika noin 1 m/s; vene on ankkurissa vasta

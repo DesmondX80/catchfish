@@ -725,7 +725,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   niiden sisälle (`other_boats`-uniform). Testit ja kokeiluajot eivät saa
   satunnaisia veneitä (paitsi `--perftest` ja `--autotest`). Testi
   `--otherboatstest` (kesä ja talvi), kuvat `--otherboatshots=KANSIO`.
-- **#83 Bug: ankkuriköysi venyy nostettaessa – korjattu.** Suunnitelma
+- **#83 Bug: ankkuriköysi venyy nostettaessa – korjattu (0.52.1).** Suunnitelma
   `docs/suunnitelmat/CATCHFISH-83.md`. Köysi venyi, koska nostossa vene irtoaa
   heti (#57), mutta ankkuri nousi vain 1 m/s ja köysi piirrettiin suorana niin
   pitkänä kuin väli oli. Nyt köyttä käsitellessä (`BoatAnchor.handling()`) W/S
