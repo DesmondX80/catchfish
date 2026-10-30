@@ -37,6 +37,9 @@ Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siih
 - Et lisää suunnitelmaan kuulumattomia ominaisuuksia.
 - Et arvaa pelimekaniikan yksityiskohtia. Jos jokin on epäselvää, kysy
   työnjohtajalta; hän kysyy tarvittaessa Teemulta.
+- Et jää odottamaan mitään tarkistamatta, että se on oikeasti käynnissä.
+  Ennen odotusta varmista tilanne (esim. `ps`, ajon lokitiedosto). Jos ajo on
+  loppunut tai sitä ei ole, lue tulos tai aja se uudelleen ja jatka heti.
 
 ## Kun olet valmis
 

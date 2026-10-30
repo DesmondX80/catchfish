@@ -134,6 +134,11 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
   `tools/run_tests.sh -q` (vain tulosrivit ja yhteenvetotaulukko, koko loki
   `.test-logs/latest.log`) tai
   `godot-4.7.2 --headless --fixed-fps 30 -- --day=180 --luretest` (liput testitiedostojen alussa).
+- Ikkunaa vaativat ajot ja kuvakaappaukset aina näytönohjaimella. Ilman näitä
+  muuttujia Godot käyttää WSL:ssä ohjelmistorenderöijää (llvmpipe), joka on
+  moninkertaisesti hitaampi ja kuormittaa koko suoritinta:
+  `GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA godot-4.7.2 --fixed-fps 30 --disable-vsync -- --day=180 --anchortest --anchortest-shots=KANSIO`.
+  Lokin rivillä `OpenGL API` pitää lukea `RTX 4050`. Aja kuvia yksi ajo kerrallaan.
 - Epävakaa testi: `tools/run_tests.sh -q --repeat=N NIMI`; epäonnistuuko se myös
   mainissa: `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
 - `--autotest`-tasapainoajo on hyvin kohinainen; älä tulkitse sitä pass/fail-tuloksena.

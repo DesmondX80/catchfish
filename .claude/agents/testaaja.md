@@ -30,6 +30,9 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
   README:n tai F1-ohjeen puutteet.
 - Saat kirjoittaa ja korjata testejä kansiossa `tests/`. Et korjaa
   pelikoodia itse, vaan palautat löydöksen tekijälle.
+- Et jää odottamaan mitään tarkistamatta, että se on oikeasti käynnissä.
+  Ennen odotusta varmista tilanne (esim. `ps`, ajon lokitiedosto). Jos ajo on
+  loppunut tai sitä ei ole, lue tulos tai aja se uudelleen ja jatka heti.
 
 ## Raportti
 

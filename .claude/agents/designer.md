@@ -54,7 +54,8 @@ Kun muutos näkyy tai kuuluu pelissä, tarkista se ennen hyväksyntää:
 - Ota kuvat koodaajan työkopiossa valmiilla kuvaskripteillä, esim.
   `godot --fixed-fps 30 -- --screenshots=KANSIO` tai `--day=180 --boatshots=KANSIO`
   (lista: `docs/plan.md`, osio *Testaus*). Ne vaativat ikkunan; jos ikkunaa ei
-  saa auki, pyydä työnjohtajaa hankkimaan kuvat Teemulta.
+  saa auki, pyydä työnjohtajaa hankkimaan kuvat Teemulta. Aja kuvat aina
+  näytönohjaimella (ks. `CLAUDE.md`, osio *Testaus*).
 - Katso PNG-kuvat Read-työkalulla ja vertaa suunnitelmaan.
 - Anna konkreettinen palaute koodaajalle ja työnjohtajalle: mikä kuva, mikä
   poikkeaa suunnitelmasta, mitä ehdotat.
@@ -65,3 +66,6 @@ Kun muutos näkyy tai kuuluu pelissä, tarkista se ennen hyväksyntää:
 - Et nosta versiota, vie, julkaise etkä muuta Planen tiloja (työnjohtajan työtä).
 - Et arvaa Teemun makua tai pelimekaniikan yksityiskohtia: jos suunta on
   epäselvä, kirjaa avoin kysymys ja tarvittaessa 2-3 vaihtoehtoa.
+- Et jää odottamaan mitään tarkistamatta, että se on oikeasti käynnissä.
+  Ennen odotusta varmista tilanne (esim. `ps`, ajon lokitiedosto). Jos ajo on
+  loppunut tai sitä ei ole, lue tulos tai aja se uudelleen ja jatka heti.
