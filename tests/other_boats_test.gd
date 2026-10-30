@@ -75,6 +75,7 @@ func _run() -> void:
 		_finish()
 		return
 	_find_spot()
+	await _motor_route()
 	await _row_route()
 	await _wake_passes()
 	await _collisions()
@@ -401,7 +402,13 @@ func _conditions() -> void:
 	for i in 30:
 		await _frame()
 	var home := ob.boats.all(func(b): return b.dock >= 0)
-	_check("hämärtyessä veneet palaavat laiturille (%d venettä)" % ob.boats.size(), home)
+	_check("hämärtyessä veneet lähtevät laiturille (%d venettä)" % ob.boats.size(), home)
+	# Seurataan perille: laituriin tullut vene katoaa, kun pelaaja ei näe sitä
+	var steps := 0
+	while steps < 900 * 60 and not ob.boats.all(func(b): return b.state == OtherBoat.State.DOCKED):
+		await _frame()
+		steps += 1
+	_check("hämärtyessä veneet pääsevät laiturille (%.0f s)" % (steps / 60.0), ob.boats.all(func(b): return b.state == OtherBoat.State.DOCKED))
 	_clear_boats()
 
 
