@@ -129,13 +129,15 @@ siis voi karata köyttä pidemmälle.
   pysynyt W ei korvaa "Kaasu vapaalle" -ilmoitusta (toteutuksessa ratkaistu, työnjohtaja).
 - Läpileikkaus korjataan tässä tehtävässä (Teemu 2026-10-30). Kun vene liukuu yli 1 m/s,
   ankkuri jäi keulan taakse rungon alle, ja köysi ja ankkuri nousivat veneen pohjan läpi.
-  - Ankkuri pysyy rungon pohjan alapuolella niin kauan kuin se on keulan takana, ja
-    nousee veneeseen vasta, kun vene on hidastunut alle 1 m/s:n.
+  - Köyttä kelataan aina 1 m/s veneen nopeudesta ja tuulesta riippumatta, kuten oikeastikin
+    (Teemu 2026-10-30, korvaa aiemman päätöksen odottaa veneen hidastumista). Nosto ei
+    odota mitään, ja se päättyy aina.
+  - Ankkuri pysyy rungon pohjan alapuolella niin kauan kuin se on keulan takana. Kun köysi
+    on liian lyhyt siihen, ankkuri siirtyy veden alla keulan eteen ja nousee siitä.
   - Köysi kulkee keulasta keulavannasta vesirajaan rungon ulkopuolella eikä suoraan
     rungon läpi.
   - Köysi ei silti veny: väli ≤ `rope_out` + 0,1 m pätee edelleen.
-- Kriteeri "syvyys + enintään 3 s" koskee vain nostoa, jossa vene ei liu'u. Liukunosto
-  saa kestää pidempään, mutta se päättyy, kun vene on hidastunut.
+- Kriteeri "syvyys + enintään 3 s" koskee kaikkia nostoja, myös liukua ja tuulta.
 - Ilmoitus on tilan mukainen (designer): laskussa
   `Kädet ankkurin köydellä – odota, että ankkuri on pohjassa`, nostossa
   `Kädet ankkurin köydellä – odota, että ankkuri on veneessä`.
