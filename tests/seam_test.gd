@@ -6,6 +6,11 @@ extends Node
 ## molemmilla veden laaduilla rivin leveyden verkosta, häivytyksen
 ## (Waves.near_fade) rivillä ja keskellä, saumarajan paikan, materiaaleihin
 ## asetetut parametrit ja että varjostin käyttää samoja kaavoja.
+## Lähdetarkistus (Windows-korjaus): fragment() laskee pikselin derivaatat
+## ennen ensimmäistä discardia, eikä discardin jälkeen (eikä varjostimen
+## apufunktioissa) ole derivaattoja tai texture()-kutsuja, koska ne ovat
+## discardin jälkeen määrittelemättömiä (NVIDIA antaa nollan). Saumatesti
+## käyttää näkösäteen ja y = 0 -tason leikkausta.
 
 var main: Node
 var _log: Array[String] = []
@@ -91,3 +96,31 @@ func _shader_checks() -> void:
 		inc.contains("return near_radius - 0.5 * near_edge;"))
 	_check("lähivesi ja järviverkko hylkäävät pikselin samalla saumatestillä",
 		water.contains("if ((max(nd.x, nd.y) < near_seam()) != is_near) {") and not water.contains("near_radius - 0.02"))
+	_derivative_checks(water, inc)
+
+
+## Derivaatat ennen discardia (CATCHFISH-120, Windows/NVIDIA)
+func _derivative_checks(water: String, inc: String) -> void:
+	var start := water.find("void fragment() {")
+	var end := water.find("\n}\n", start)
+	_check("varjostimessa on fragment()", start >= 0 and end > start)
+	if start < 0 or end < start:
+		return
+	var frag := water.substr(start, end - start)
+	var first_discard := frag.find("discard;")
+	var dx := frag.find("dFdx(")
+	var dy := frag.find("dFdy(")
+	_check("fragment(): dFdx (%d) ja dFdy (%d) ennen ensimmäistä discardia (%d)" % [dx, dy, first_discard],
+		first_discard > 0 and dx >= 0 and dy >= 0 and dx < first_discard and dy < first_discard)
+	# Discardin jälkeen suoritettava koodi: fragment()in loppu ja apufunktiot
+	# (muu water.gdshader ja waves.gdshaderinc)
+	var after := frag.substr(first_discard) + water.substr(0, start) + water.substr(end) + inc
+	var found: Array[String] = []
+	for call in ["dFdx(", "dFdy(", "fwidth(", "texture("]:
+		if after.contains(call):
+			found.append(call)
+	_check("ei derivaattoja eikä texture()-kutsuja discardin jälkeen tai apufunktioissa %s" % [found], found.is_empty())
+	_check("saumatesti käyttää näkösäteen ja y = 0 -tason leikkausta",
+		frag.contains("vec2 nd = abs(sp - near_center);") and frag.find("vec2 sp = ") < frag.find("vec2 nd = ")
+		and frag.contains("INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, -1.0, 1.0)")
+		and not frag.contains("vec2 nd = abs(p - near_center);"))

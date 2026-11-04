@@ -272,6 +272,16 @@ void vertex() {
 
 void fragment() {
 	vec2 p = rest_pos;
+	// Kuinka monta metriä yksi pikseli kattaa tässä kohdassa. Derivaatat
+	// lasketaan ennen jokaista discardia: GPU laskee ne 2 × 2 pikselin
+	// ryhmistä, ja discardin jälkeen ne ovat määrittelemättömiä. NVIDIA:n
+	// ajuri antaa saumalla, rannassa ja veneen reunalla nollan, jolloin
+	// aallot eivät häivy ja pinta heijastaa katkoviivana kirkkaana.
+	// Discardin jälkeen ei siksi saa olla dFdx/dFdy/fwidth- eikä
+	// texture()-kutsuja (vain textureLod, textureGrad ja texelFetch).
+	vec2 dpdx = dFdx(p);
+	vec2 dpdy = dFdy(p);
+	float footprint = length(abs(dpdx) + abs(dpdy));
 	if (is_near) {
 		// Lähivesi vain järven kohdalle (padon takana oleva matala maa ei jää veden alle)
 		if (textureLod(water_mask, (p - mask_rect.xy) / mask_rect.zw, 0.0).r <= 0.001) {
@@ -279,18 +289,25 @@ void fragment() {
 		}
 	}
 	// Saumarajan sisällä piirtää lähivesi, ulkopuolella kaukainen järviverkko:
-	// läpikuultavaa vettä ei kahta kerrosta eikä rakoa
-	vec2 nd = abs(p - near_center);
+	// läpikuultavaa vettä ei kahta kerrosta eikä rakoa. Kohta lasketaan
+	// pikselin näkösäteen ja y = 0 -tason leikkauksesta eikä rest_posista,
+	// jota verkot interpoloivat eri kolmioista hieman eri tavalla (saumalle
+	// osuva pikseli hylättäisiin joskus molemmissa). Uloin lähiveden rivi ja
+	// järviverkko ovat saumalla tasaisia y = 0:ssa, joten kohta on sama.
+	// Kaksi säteen pistettä toimii myös ortografisella kameralla.
+	vec2 sndc = SCREEN_UV * 2.0 - 1.0;
+	vec4 sa = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, -1.0, 1.0);
+	vec4 sb = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, 1.0, 1.0);
+	vec3 ra = sa.xyz / sa.w;
+	vec3 rb = sb.xyz / sb.w;
+	vec2 sp = mix(ra.xz, rb.xz, ra.y / (ra.y - rb.y));
+	vec2 nd = abs(sp - near_center);
 	if ((max(nd.x, nd.y) < near_seam()) != is_near) {
 		discard;
 	}
 	if (inside_boat(world_pos.xz)) {
 		discard;
 	}
-	// Kuinka monta metriä yksi pikseli kattaa tässä kohdassa
-	vec2 dpdx = dFdx(p);
-	vec2 dpdy = dFdy(p);
-	float footprint = length(abs(dpdx) + abs(dpdy));
 	// Väreet syntyvät tuulesta jo muutaman metrin pyyhkäisymatkalla: selvästi
 	// 2 m/s alkaen, alle 1 m/s pinta on lähes peili. Suoja heikentää niitä vain
 	// ylätuulen rannan ensimmäisillä 10–20 metrillä. Puuskalaikuissa tiheämmät.
