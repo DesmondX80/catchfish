@@ -167,3 +167,13 @@ Vain `shaders/water.gdshader`, `fragment()`:
    tässä haarassa.
 3. Windowsin väliaikaiskansiota C:\Users\teeka\AppData\Local\Temp\cf120 saa
    käyttää; työnjohtaja poistaa sen julkaisun jälkeen.
+4. Poikkeama suunnitelmasta (designerin löydös, työnjohtaja hyväksyi):
+   korjauksen B näkösäteen leikkausta käytetään vain lähiveden uloimmalla
+   tasaisella rivillä (max(|rest_pos − near_center|) ≥ near_radius −
+   near_edge, eli near_fade = 0). Sisempänä saumapäätös tehdään rest_posista
+   kuten v0.52.2:ssa. Syy: aallon harjan näkösäde leikkaa y = 0 -tason harjaa
+   kauempana, matalalta katsottaessa (kohokamera 0,9 m, FPV) jopa saumarajan
+   tai kameran takana, jolloin lähivesi voisi hylätä harjan ja tilalle
+   piirtyisi tasainen järviverkko tai reikä. 8–12 m/s kuvissa ilmiötä ei
+   näkynyt, mutta rajaus poistaa koko virheluokan aallokon korkeudesta ja
+   kamerasta riippumatta. `--seamtest` tarkistaa rajauksen lähteestä.

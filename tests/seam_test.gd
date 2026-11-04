@@ -10,7 +10,8 @@ extends Node
 ## ennen ensimmäistä discardia, eikä discardin jälkeen (eikä varjostimen
 ## apufunktioissa) ole derivaattoja tai texture()-kutsuja, koska ne ovat
 ## discardin jälkeen määrittelemättömiä (NVIDIA antaa nollan). Saumatesti
-## käyttää näkösäteen ja y = 0 -tason leikkausta.
+## käyttää uloimmalla tasaisella rivillä näkösäteen ja y = 0 -tason leikkausta,
+## sisempänä rest_posia.
 
 var main: Node
 var _log: Array[String] = []
@@ -120,7 +121,13 @@ func _derivative_checks(water: String, inc: String) -> void:
 		if after.contains(call):
 			found.append(call)
 	_check("ei derivaattoja eikä texture()-kutsuja discardin jälkeen tai apufunktioissa %s" % [found], found.is_empty())
-	_check("saumatesti käyttää näkösäteen ja y = 0 -tason leikkausta",
-		frag.contains("vec2 nd = abs(sp - near_center);") and frag.find("vec2 sp = ") < frag.find("vec2 nd = ")
+	# Näkösäde vain uloimmalla tasaisella rivillä, sisempänä rest_pos (aallon
+	# harjan säde leikkaa tason harjaa kauempana)
+	var band := frag.find("if (max(nd.x, nd.y) >= near_radius - near_edge) {")
+	var ray := frag.find("nd = abs(sp - near_center);")
+	var seam := frag.find("if ((max(nd.x, nd.y) < near_seam()) != is_near) {")
+	_check("saumatesti: rest_pos sisempänä, näkösäteen ja y = 0 -tason leikkaus vain uloimmalla tasaisella rivillä",
+		frag.find("vec2 nd = abs(p - near_center);") < band and band >= 0 and band < frag.find("vec2 sp = ")
+		and frag.find("vec2 sp = ") < ray and ray < seam
 		and frag.contains("INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, -1.0, 1.0)")
-		and not frag.contains("vec2 nd = abs(p - near_center);"))
+		and frag.find("vec2 nd = abs(p - near_center);") >= 0)

@@ -289,19 +289,25 @@ void fragment() {
 		}
 	}
 	// Saumarajan sisällä piirtää lähivesi, ulkopuolella kaukainen järviverkko:
-	// läpikuultavaa vettä ei kahta kerrosta eikä rakoa. Kohta lasketaan
-	// pikselin näkösäteen ja y = 0 -tason leikkauksesta eikä rest_posista,
-	// jota verkot interpoloivat eri kolmioista hieman eri tavalla (saumalle
-	// osuva pikseli hylättäisiin joskus molemmissa). Uloin lähiveden rivi ja
-	// järviverkko ovat saumalla tasaisia y = 0:ssa, joten kohta on sama.
-	// Kaksi säteen pistettä toimii myös ortografisella kameralla.
-	vec2 sndc = SCREEN_UV * 2.0 - 1.0;
-	vec4 sa = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, -1.0, 1.0);
-	vec4 sb = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, 1.0, 1.0);
-	vec3 ra = sa.xyz / sa.w;
-	vec3 rb = sb.xyz / sb.w;
-	vec2 sp = mix(ra.xz, rb.xz, ra.y / (ra.y - rb.y));
-	vec2 nd = abs(sp - near_center);
+	// läpikuultavaa vettä ei kahta kerrosta eikä rakoa. Uloimmalla tasaisella
+	// rivillä (near_fade = 0) kohta lasketaan pikselin näkösäteen ja y = 0
+	// -tason leikkauksesta eikä rest_posista, jota verkot interpoloivat eri
+	// kolmioista hieman eri tavalla (saumalle osuva pikseli hylättäisiin
+	// joskus molemmissa). Rivi ja järviverkko ovat siellä tasaisia y = 0:ssa,
+	// joten kohta on sama. Kaksi säteen pistettä toimii myös ortografisella
+	// kameralla. Rivin sisäpuolella käytetään rest_posia: aallon harjan
+	// näkösäde leikkaa tason harjaa kauempana (matalalta katsottaessa jopa
+	// saumarajan takana tai kameran takana), jolloin harja hylättäisiin.
+	vec2 nd = abs(p - near_center);
+	if (max(nd.x, nd.y) >= near_radius - near_edge) {
+		vec2 sndc = SCREEN_UV * 2.0 - 1.0;
+		vec4 sa = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, -1.0, 1.0);
+		vec4 sb = INV_VIEW_MATRIX * INV_PROJECTION_MATRIX * vec4(sndc, 1.0, 1.0);
+		vec3 ra = sa.xyz / sa.w;
+		vec3 rb = sb.xyz / sb.w;
+		vec2 sp = mix(ra.xz, rb.xz, ra.y / (ra.y - rb.y));
+		nd = abs(sp - near_center);
+	}
 	if ((max(nd.x, nd.y) < near_seam()) != is_near) {
 		discard;
 	}
