@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 4.11.2026. Nykyinen versio **0.52.2**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.52.2)).
+Päivitetty 4.11.2026. Nykyinen versio **0.52.3**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.52.3)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -757,6 +757,16 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ennen lähiveden uloimpaa riviä (`near_edge`, Korkea 6,15 m, Matala 10,55 m),
   ja molemmat verkot hylkäävät pikselin samalla saumatestillä `near_seam()`
   tasaisen rivin keskellä. Testi `--seamtest`, kuvat `--seamshots=KANSIO`.
+  **Windows-korjaus (0.52.3),** suunnitelma `docs/suunnitelmat/CATCHFISH-120-windows.md`:
+  Windowsin NVIDIA-ajurilla viiva jäi, koska `water.gdshader` laski pikselin
+  derivaatat (`dFdx`/`dFdy`, footprint) vasta `discard`in jälkeen, ja ajuri
+  antoi saumalla nollan, jolloin pinta heijasti kirkkaana. Derivaatat lasketaan
+  nyt ennen ensimmäistä `discard`ia. Uloimmalla tasaisella rivillä saumakohta
+  lasketaan pikselin näkösäteen ja y = 0 -tason leikkauksesta (ei rakopikseleitä),
+  muualla `rest_pos`ista. `--seamtest` tarkistaa järjestyksen lähteestä.
+  Näkyvät varjostinmuutokset kannattaa kuvata myös Windowsin ajurilla
+  (WSL-interop, Windowsin Godot-editorin konsoliversio), koska Mesa/D3D12 ei
+  toista kaikkia vikoja.
 
 ## Huomioita ja avoimia kysymyksiä
 
