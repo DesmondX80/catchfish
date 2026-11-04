@@ -47,6 +47,7 @@ tests=(
 	"proptest|--fixed-fps 30 -- --day=180 --proptest"
 	"releasetest|--fixed-fps 30 -- --day=180 --releasetest"
 	"releasetest-talvi|--fixed-fps 30 -- --day=40 --releasetest"
+	"seamtest|--fixed-fps 30 -- --day=180 --seamtest"
 	"seasonfishtest|-- --day=180 --seasonfishtest"
 	"sonartest|--fixed-fps 30 -- --day=180 --sonartest"
 	"speciestest|-- --speciestest"

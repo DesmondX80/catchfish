@@ -6,7 +6,9 @@ shader_type spatial;
 // on näytöllä pikseliä pienempi – muuten kaukaiset laineet välkkyvät.
 // Sama varjostin piirtää kameraa seuraavan tiheän lähiveden (is_near), jonka
 // verteksit liikkuvat aaltojen mukana, ja kaukaisen järviverkon, joka on
-// tasainen ja jättää lähiveden alueen piirtämättä.
+// tasainen ja jättää lähiveden alueen piirtämättä. Molemmat päättävät saumasta
+// samalla pikselikohtaisella testillä lähiveden tasaisella uloimmalla rivillä,
+// jolloin saumaan ei jää rakoa eikä kahta läpikuultavaa kerrosta.
 render_mode blend_mix, depth_draw_opaque, cull_back, specular_schlick_ggx;
 
 uniform vec3 deep_color : source_color = vec3(0.05, 0.05, 0.03);
@@ -275,12 +277,12 @@ void fragment() {
 		if (textureLod(water_mask, (p - mask_rect.xy) / mask_rect.zw, 0.0).r <= 0.001) {
 			discard;
 		}
-	} else {
-		// Lähiveden alueella piirtää lähivesi: läpikuultavaa vettä ei kahta kerrosta
-		vec2 d = abs(p - near_center);
-		if (max(d.x, d.y) < near_radius - 0.02) {
-			discard;
-		}
+	}
+	// Saumarajan sisällä piirtää lähivesi, ulkopuolella kaukainen järviverkko:
+	// läpikuultavaa vettä ei kahta kerrosta eikä rakoa
+	vec2 nd = abs(p - near_center);
+	if ((max(nd.x, nd.y) < near_seam()) != is_near) {
+		discard;
 	}
 	if (inside_boat(world_pos.xz)) {
 		discard;

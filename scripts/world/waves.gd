@@ -57,7 +57,8 @@ const GROW_TAU := 4.343 # peliminuuttia (10 / ln 10)
 const DECAY_TAU := 8.686
 const TURN_LIMIT := 0.349 # rad (20°)
 const TURN_TIME := 60.0 # s, vanha suunta häivytetään ristiin uuteen
-## Lähiveden reunalla siirtymä häivytetään nollaan (FADE_START × säde)
+## Lähiveden reunalla siirtymä häivytetään (FADE_START × säde) nollaan uloimman
+## verkkorivin sisäreunalla (säde - near_edge)
 const FADE_START := 0.8
 
 ## Aallokon tuuli (m/s): seuraa tuulen perusnopeutta hitaasti (ei puuskia)
@@ -75,6 +76,8 @@ static var gust_offset := Vector2.ZERO
 ## Lähiveden keskipiste ja säde: siirtymä häivyy reunalla (INF = ei häivytystä)
 static var near_center := Vector2.ZERO
 static var near_radius := INF
+## Lähiveden uloimman verkkorivin leveys (m): rivi on tasainen, ja sauma on sen keskellä
+static var near_edge := 0.0
 static var lake: LakeData
 ## Pyyhkäisymatkat suunnittain tekstuureina varjostimelle
 static var _fetch_textures: Array[ImageTexture] = []
@@ -302,7 +305,13 @@ static func near_fade(p: Vector2) -> float:
 	if is_inf(near_radius):
 		return 1.0
 	var d := (p - near_center).abs()
-	return 1.0 - smoothstep(FADE_START * near_radius, near_radius, maxf(d.x, d.y))
+	return 1.0 - smoothstep(FADE_START * near_radius, near_radius - near_edge, maxf(d.x, d.y))
+
+
+## Lähiveden ja kaukaisen järviverkon saumaraja (max(|dx|, |dz|) keskipisteestä,
+## sama kuin varjostimessa): uloimman tasaisen rivin keskellä
+static func near_seam() -> float:
+	return near_radius - 0.5 * near_edge
 
 
 ## Aaltoryhmän verhokäyrä suuntasarjalle s kohdassa x0 (keskimäärin 1 neliöllisesti)
@@ -385,6 +394,7 @@ static func apply(material: ShaderMaterial) -> void:
 	material.set_shader_parameter("gust_offset", gust_offset)
 	material.set_shader_parameter("near_center", near_center)
 	material.set_shader_parameter("near_radius", 1.0e6 if is_inf(near_radius) else near_radius)
+	material.set_shader_parameter("near_edge", near_edge)
 	material.set_shader_parameter("quality", 1 if Settings.water_quality == "korkea" else 0)
 	if lake == null or _fetch_textures.is_empty():
 		return

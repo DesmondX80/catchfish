@@ -15,6 +15,7 @@ var water_material: ShaderMaterial # kaukainen järviverkko (tasainen)
 var near_material: ShaderMaterial # kameraa seuraava lähivesi (aallot liikuttavat verkkoa)
 var near_water: MeshInstance3D
 var near_step := 0.3 # lähiveden siirtoaskel = verkon tihein verteksiväli (m)
+var near_edge := 6.0 # lähiveden uloimman verkkorivin leveys (m)
 var season := Season.from_day(165)
 var _plain_summer := true # keskikesällä maaston värejä ei tarvitse muuttaa
 
@@ -186,6 +187,8 @@ func _build_near_water() -> void:
 		var u := -1.0 + i * du
 		coords.append(NEAR_RADIUS * (a * u + (1.0 - a) * pow(u, 5.0)))
 		spacing.append(NEAR_RADIUS * (a + 5.0 * (1.0 - a) * pow(u, 4.0)) * du)
+	# Uloin rivi on tasainen (aallot häipyvät ennen sitä), ja sauma on sen keskellä
+	near_edge = coords[n - 1] - coords[n - 2]
 	var verts := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
@@ -238,6 +241,7 @@ func follow_camera(camera_pos: Vector3) -> void:
 	near_water.position = Vector3(c.x, 0.0, c.y)
 	Waves.near_center = c
 	Waves.near_radius = NEAR_RADIUS
+	Waves.near_edge = near_edge
 
 
 ## Lähiveden verteksien määrä (testit)

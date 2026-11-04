@@ -18,6 +18,7 @@ uniform float gust = 0.0; // puuskan voimakkuus (m/s)
 uniform vec2 gust_offset = vec2(0.0); // puuskalaikkujen siirtymä tuulen mukana
 uniform vec2 near_center = vec2(0.0); // lähiveden keskipiste
 uniform float near_radius = 1.0e6; // lähiveden säde: siirtymä häivyy reunalla
+uniform float near_edge = 0.0; // lähiveden uloimman verkkorivin leveys (m): rivi on tasainen
 uniform int quality = 1; // veden laatu: 1 = Korkea, 0 = Matala
 // Pyyhkäisymatkat: kummallekin suuntasarjalle kaksi lähintä suuntaa ja niiden sekoitus
 uniform vec4 fetch_rect = vec4(0.0, 0.0, 1.0, 1.0); // ruudukon alkukulma ja koko (m)
@@ -199,10 +200,16 @@ vec3 set_displacement(vec2 x0, int s, float weight, float lp, float c, float q, 
 	return d;
 }
 
-// Lähiveden reunalla siirtymä häivytetään nollaan (kaukainen vesi on tasainen)
+// Lähiveden reunalla siirtymä häivytetään nollaan (kaukainen vesi on tasainen):
+// uloin verkkorivi on kokonaan tasainen, jotta sauma voi olla sen sisällä
 float near_fade(vec2 p) {
 	vec2 d = abs(p - near_center);
-	return 1.0 - smoothstep(FADE_START * near_radius, near_radius, max(d.x, d.y));
+	return 1.0 - smoothstep(FADE_START * near_radius, near_radius - near_edge, max(d.x, d.y));
+}
+
+// Lähiveden ja kaukaisen järviverkon saumaraja: uloimman (tasaisen) rivin keskellä
+float near_seam() {
+	return near_radius - 0.5 * near_edge;
 }
 
 // Pinnan siirtymä (x, korkeus, z) siirtymättömässä kohdassa x0

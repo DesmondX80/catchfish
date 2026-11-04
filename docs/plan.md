@@ -164,6 +164,7 @@ godot --headless --fixed-fps 30 -- --day=180 --voicetest    # kalastajan puhe
 godot --headless --fixed-fps 30 -- --day=180 --audio-log --audiologtest # ääniloki
 godot --headless --fixed-fps 30 -- --day=180 --wavesoundtest # aaltojen ja tuulen äänet (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --wavetest     # aallokko: koko, suoja, harjat, kääntyminen, kasvu
+godot --headless --fixed-fps 30 -- --day=180 --seamtest     # lähiveden ja järviverkon sauma: tasainen reunarivi, saumaraja
 godot --headless --fixed-fps 30 -- --day=180 --otherboatstest # muut veneet: reitit, peräaalto, törmäys, väistö, ehdot (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
@@ -175,6 +176,7 @@ godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri t
 godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] [--watershots-only=01,19] # vesi eri tuulilla, laituri ja ruudun aika (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 godot --fixed-fps 30 -- --day=180 --otherboatshots=KANSIO   # muut veneet, vana ja peräaallon kallistus (ikkuna)
+godot --fixed-fps 30 -- --day=180 --seamshots=KANSIO [--waterquality=matala] # lähiveden sauma 120 m päässä, mittari (talvi: --day=30, ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
 
