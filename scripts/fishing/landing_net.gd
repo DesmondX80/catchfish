@@ -70,6 +70,11 @@ func active() -> bool:
 	return _active
 
 
+## Kalan paikka (siima kulkee vavan kärjestä kalaan)
+func fish_position() -> Vector3:
+	return _fish.global_position
+
+
 ## Haavi kalastajan käsissä (avovesi)
 func net_in_hands() -> bool:
 	return _active and not _on_ice

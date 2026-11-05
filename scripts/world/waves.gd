@@ -357,6 +357,37 @@ static func swell_height(p: Vector2) -> float:
 	return _displacement(x0, comps, phase).y
 
 
+## Monen pinnan korkeuden laskentaan (siima): aallot kerran kohdassa p
+## (pyyhkäisymatka muuttuu hitaasti), korkeus height_rates_with:llä
+static func sampler(p: Vector2) -> Array:
+	return _components(p)
+
+
+## Pinnan korkeus kohdassa p sekä sen ensimmäinen ja toinen aikaderivaatta
+## (m, m/s, m/s²) sampler()-tuloksella: kuten swell_height, mutta yksi
+## kiintopistekierros. Derivaatoilla korkeus ennustetaan näytteiden välissä
+## (aaltoryhmien hidas liike jätetään pois).
+static func height_rates_with(p: Vector2, comps: Array) -> Vector3:
+	if comps.is_empty():
+		return Vector3.ZERO
+	var phase := _phases()
+	var d := _displacement(p, comps, phase)
+	var x0 := p - Vector2(d.x, d.z)
+	var env := [group_envelope(0, x0, phase) if set_weight[0] > 0.0 else 0.0, group_envelope(1, x0, phase) if set_weight[1] > 0.0 else 0.0]
+	var out := Vector3.ZERO
+	for c in comps:
+		var j: int = c[0]
+		var dir: Vector2 = c[1]
+		var th := _k[j] * x0.dot(dir) - phase[j] + warp_phase(j, x0)
+		var amp: float = c[2] * env[c[4]] * wave_patch(j, x0, dir)
+		var w: float = _omega[j]
+		var sn := sin(th)
+		out.x += amp * sn
+		out.y -= amp * w * cos(th)
+		out.z -= amp * w * w * sn
+	return out * near_fade(x0)
+
+
 ## Paikallinen merkitsevä aallonkorkeus (m) kohdassa p
 static func local_hs(p: Vector2) -> float:
 	var e := 0.0

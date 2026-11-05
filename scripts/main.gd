@@ -331,6 +331,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/wave_test.gd").new())
 	elif "--seamtest" in args:
 		add_child(load("res://tests/seam_test.gd").new())
+	elif "--linetest" in args:
+		add_child(load("res://tests/line_test.gd").new())
 	elif "--otherboatstest" in args:
 		add_child(load("res://tests/other_boats_test.gd").new())
 	else:
@@ -355,6 +357,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/jitter_shots.gd").new())
 			elif arg.begins_with("--otherboatshots="):
 				add_child(load("res://tests/other_boats_shots.gd").new())
+			elif arg.begins_with("--lineshots="):
+				add_child(load("res://tests/line_shots.gd").new())
 			elif arg.begins_with("--seamshots="):
 				add_child(load("res://tests/seam_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):

@@ -26,8 +26,7 @@ const ROD_POWER := 1.4 # kg: tällä vedolla kärki taipuu n. 2/3 maksimistaan
 const ROD_MAX_BEND := 1.75 # rad, kärjen suurin taipuma
 const ROD_STIFFNESS := 160.0 # jousivakio taipuman dynamiikalle
 const ROD_DAMPING := 7.0 # pieni vaimennus: kärki värähtää hetken
-const LINE_WEIGHT := 0.004 # N/m: siiman paino ja tuulen työntö roikkumalle
-const LINE_STRENGTH := 6.5 # kg, 0,28 mm monofiili
+const LINE_STRENGTH := FishingLine.STRENGTH # kg; siiman arvot: fishing_line.gd
 const REEL_SPEED := 0.85 # m/s
 const REEL_SPEED_FAST := 1.6
 const CAST_ANGLE := deg_to_rad(32.0)
@@ -64,6 +63,7 @@ const ROD_VARS := [
 	"_landing_prompt", "_fish_known", "_rod_pivot", "_rod_pitch", "_rod_mesh", "_rod_points",
 	"_tip_world", "_bend", "_bend_vel", "_bend_dir", "_reel_handle", "_line_mesh",
 	"_lure_node", "_fish_node", "_bobber_node", "_worm_node", "float_depth",
+	"_line", "_line_piece", "_line_stretch", "_line_shock", "_line_steady", "_jerk_pending",
 ]
 
 var boat: Boat
@@ -153,7 +153,20 @@ var _bend := 0.0 # kärjen taipuma (rad)
 var _bend_vel := 0.0
 var _bend_dir := Vector3.DOWN
 var _reel_handle: Node3D
-var _line_mesh: ImmediateMesh
+var _line_mesh: ArrayMesh
+## Näkyvä siima (simulaatio, fishing_line.gd): oma olio jokaisella vavalla
+var _line: FishingLine
+## Katkennut pätkä roikkuu vavan kärjessä (poistuu, kun uusi uistin solmitaan)
+var _line_piece := false
+var _line_stretch := 0.0 # siiman venymä (vain ulkoasu)
+## Nykäyskuorma: huipun ylitys tasaisen jännityksen yli (kg, vaimenee) ja
+## edellinen tasainen jännitys; _jerk_pending = kalan veto kasvoi äkkiä
+var _line_shock := 0.0
+var _line_steady := 0.0
+var _jerk_pending := false
+## Nykäyskuorma käytössä (testi vertaa kalan väsymistä ilman sitä)
+var shock_load := true
+static var _line_shader: Shader
 var _lure_node: MeshInstance3D
 var _bobber_node: Node3D # koho-ongen koho
 var _worm_node: MeshInstance3D # ongen mato koukussa
@@ -168,6 +181,7 @@ const BOBBER_SCALE := 2.2 # koho hieman oikeaa isompi, jotta sen näkee kaukaa
 const BAIT_SINK_TIME := 1.0
 const BOTTOM_BAIT_HEIGHT := 0.5 # m: pohjaongen mato pohjan yläpuolella
 const BOTTOM_BAIT_MIN_DEPTH := 0.3 # m: matalassa mato pysyy pinnan alla
+const SHOCK_SNAP_TEXT := "Siima katkesi nykäisyyn! Löysää jarrua isolle kalalle"
 var _fish_node: MeshInstance3D
 
 
@@ -357,7 +371,7 @@ func _set_rod_visible(i: int, on: bool) -> void:
 	for v in ["_rod_pivot", "_lure_node"]:
 		_rod_get(i, v).visible = on
 	for v in ["_rod_mesh", "_line_mesh"]:
-		var mesh: ImmediateMesh = _rod_get(i, v)
+		var mesh = _rod_get(i, v) # ImmediateMesh tai ArrayMesh
 		if not on:
 			mesh.clear_surfaces()
 
@@ -575,6 +589,7 @@ func _let_out() -> void:
 	if not lake.is_water(at.x, at.y):
 		message.emit("Liian matalaa – souda vesille")
 		return
+	_tie_line()
 	lure_pos = Vector3(at.x, 0.0, at.y)
 	_prev_lure = lure_pos
 	line_out = tip.distance_to(lure_pos) + 0.5
@@ -621,6 +636,7 @@ func select_lure(id: String) -> String:
 	if not on_ice and not _lure_free(l):
 		return "%s on jo toisessa vavassa" % l["name"]
 	lure_index = lures().find(l)
+	_tie_line()
 	message.emit("Uistin: " + l["name"] + (" (%d kpl)" % lure_count() if limited else ""))
 	return ""
 
@@ -677,6 +693,7 @@ func _unhandled_input(event: InputEvent) -> void:
 	if event.is_action_pressed("cast"):
 		match state:
 			State.READY:
+				_tie_line()
 				state = State.CHARGING
 				power = 0.0
 			State.BITE:
@@ -842,7 +859,8 @@ func _process_rod(dt: float, in_hand: bool) -> void:
 			_fight(dt)
 	if not follower.is_empty() and follower["rod"] == _cur:
 		_update_follow(dt)
-	_update_visuals()
+	_step_line(dt, in_hand)
+	_update_visuals(false) # siima piirretään ruudun tahdissa (follow_boat)
 
 
 func _aim_angler(dt: float) -> void:
@@ -903,6 +921,10 @@ func follow_boat() -> void:
 		_tip_world = _rod_points[_rod_points.size() - 1]
 		if state in [State.READY, State.LANDED, State.CHARGING]:
 			lure_pos = move * lure_pos # uistin roikkuu vavan kärjessä
+			if _line.initialized:
+				_line.carry(move) # samoin lyhyt siima (tai katkennut pätkä)
+		if _line.initialized and _line_hole() == Vector3.INF:
+			_line.pin_start(_tip_world) # siima ruudulla näkyvään kärkeen
 		_update_visuals()
 	_swap_to(keep)
 	_landing_net.follow_boat()
@@ -947,6 +969,7 @@ func _fly(dt: float) -> void:
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
 		_leave_slack()
+		_line.uniform = true # löysä siima laskeutuu lentoreitille
 		sound_event.emit("lure_splash", lure_pos)
 		message.emit("Heitto %.0f m" % Vector2(lure_pos.x - boat.pos.x, lure_pos.z - boat.pos.y).length())
 	elif not in_water and lure_pos.y <= ground:
@@ -955,6 +978,7 @@ func _fly(dt: float) -> void:
 		state = State.RETRIEVING
 		_prev_lure = lure_pos
 		_leave_slack()
+		_line.uniform = true
 		voice.emit("shore")
 		var g := lake.ground_at(lure_pos.x, lure_pos.z)
 		if (g == LakeData.Ground.FOREST or g == LakeData.Ground.REEDS) and _rng.randf() < 0.5:
@@ -1364,6 +1388,9 @@ func _try_hook(chance: float, success_text: String) -> void:
 		_stamina = 1.0
 		_fish_pos = lure_pos
 		_run_timer = 0.0
+		_line_steady = tension # ensimmäinen ryntäys nykäisee tästä
+		_line_shock = 0.0
+		_jerk_pending = false
 		_slack_time = 0.0
 		_landing_prompt = false
 		_fish_known = false
@@ -1383,15 +1410,14 @@ func _fight(dt: float) -> void:
 	var fish_power: float = data["power"]
 	var tip := rod_tip()
 
+	# Nykäyksen huippu vaimenee (FishingLine.SHOCK_TAU)
+	_line_shock *= exp(-dt / FishingLine.SHOCK_TAU)
 	# Kalan käytös: pakoryntäyksiä ja lepoa
 	_run_timer -= dt
 	if _run_timer <= 0.0:
 		var away := Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).normalized()
 		if _stamina > 0.2 and _rng.randf() < 0.45 + 0.4 * _stamina:
-			_run_dir = away.rotated(_rng.randf_range(-1.6, 1.6))
-			_run_intensity = _rng.randf_range(0.5, 1.0)
-			_bend_vel += _run_intensity * 4.0 # ryntäys nykäisee vavan kärkeä
-			_run_timer = _rng.randf_range(1.5, 4.5)
+			_start_run(away.rotated(_rng.randf_range(-1.6, 1.6)), _rng.randf_range(0.5, 1.0), _rng.randf_range(1.5, 4.5))
 		else:
 			_run_dir = away.rotated(_rng.randf_range(-2.5, 2.5))
 			_run_intensity = 0.12
@@ -1422,26 +1448,41 @@ func _fight(dt: float) -> void:
 	var reel := _reel_speed()
 	var effort := 0.6 if reel > 0.0 else 0.0
 	var dist := tip_to_anchor + anchor.distance_to(_fish_pos)
+	# Nykäys: kalan veto kasvoi äkkiä (ryntäys alkoi tai kala pakeni haavin luota)
+	var peak := -1.0
+	if _jerk_pending:
+		_jerk_pending = false
+		if shock_load:
+			peak = _shock_peak(pull, effort, reel > 0.0)
 	drag_slipping = false
+	var steady := 0.0 # tasainen jännitys (kalan väsyminen lasketaan tästä)
 	if dist >= line_out:
 		var wanted := pull + effort
-		if wanted > drag_kg:
+		# Jarru luistaa, kun veto ylittää jarrun, myös nykäyksen huipussa
+		var shock_now := maxf(_line_shock, peak - wanted)
+		if wanted > drag_kg or wanted + shock_now > drag_kg:
 			drag_slipping = true
 			line_out = dist # jarru antaa siimaa
-			tension = drag_kg
+			steady = minf(wanted, drag_kg)
 		else:
 			_fish_pos = anchor + (_fish_pos - anchor).normalized() * (line_out - tip_to_anchor)
 			line_out = maxf(tip_to_anchor + 0.15 if on_ice else 0.5, line_out - reel * dt * clampf(1.0 - pull / drag_kg, 0.25, 1.0))
-			tension = wanted
+			steady = wanted
 		_slack_time = maxf(0.0, _slack_time - dt * 2.0)
 	else:
-		tension = 0.05
+		steady = 0.05
 		line_out = maxf(dist, line_out - reel * 2.0 * dt)
 		if line_out - dist > 0.8:
 			_slack_time += dt
+	if peak >= 0.0:
+		_line_shock = maxf(_line_shock, peak - steady)
+	tension = _shocked_tension(steady)
 
-	if tension > LINE_STRENGTH:
+	if steady > LINE_STRENGTH:
 		_lose_fish("Siima katkesi! Jarru oli liian kireällä", true)
+		return
+	if tension > LINE_STRENGTH:
+		_lose_fish(SHOCK_SNAP_TEXT, true)
 		return
 	if _slack_time > 1.5 and _rng.randf() < (0.5 if _fish["sp"] == "hauki" else 0.3) * dt:
 		_lose_fish("Kala irtosi löysällä siimalla", false)
@@ -1452,18 +1493,54 @@ func _fight(dt: float) -> void:
 		if Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).length() < IDENTIFY_SPLASH and not on_ice:
 			_recognize_fish()
 		_msg("%s rimpuilee pinnassa!" % fish_name())
-		if tension < 0.5 * weight and _rng.randf() < 0.3:
+		if steady < 0.5 * weight and _rng.randf() < 0.3:
 			_lose_fish("Kala ravisteli itsensä irti", false)
 			return
+		# Rimpuilu nykäisee siimaa
+		if shock_load and dist >= line_out:
+			var splash_peak := _shock_peak(pull + FishingLine.SHOCK_SPLASH * weight * fish_power, effort, reel > 0.0)
+			_line_shock = maxf(_line_shock, splash_peak - steady)
+			tension = _shocked_tension(steady)
+			if tension > drag_kg:
+				drag_slipping = true
+			if tension > LINE_STRENGTH:
+				_lose_fish(SHOCK_SNAP_TEXT, true)
+				return
 
 	_identify_fish(hole_dist)
-	_stamina = clampf(_stamina - (tension / maxf(weight, 0.2)) * 0.03 * dt / fish_power - _run_intensity * 0.006 * dt + (0.004 * dt if tension < 0.3 else 0.0), 0.0, 1.0)
+	_stamina = clampf(_stamina - (steady / maxf(weight, 0.2)) * 0.03 * dt / fish_power - _run_intensity * 0.006 * dt + (0.004 * dt if steady < 0.3 else 0.0), 0.0, 1.0)
 	lure_pos = _fish_pos
 	if on_ice:
 		_landing_prompt = line_out - tip_to_anchor < 0.8 and hole_dist < 0.5
 	else:
 		_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2
 	tension = maxf(tension, 0.0)
+
+
+## Ryntäys alkaa: kalan veto kasvaa äkkiä (nykäys)
+func _start_run(dir: Vector2, intensity: float, duration: float) -> void:
+	_run_dir = dir
+	_run_intensity = intensity
+	_bend_vel += _run_intensity * 4.0 # ryntäys nykäisee vavan kärkeä
+	_run_timer = duration
+	_jerk_pending = true
+
+
+## Nykäyksen huippujännitys: uusi veto + kelaus + vavan läpi menevä osa
+## nykäyksestä, enintään jarrun lähtökitkan verran yli jarrun (sitten jarru
+## lähtee luistamaan). Nykäys = vedon kasvu edellisestä tasaisesta jännityksestä.
+func _shock_peak(new_pull: float, effort: float, reeling: bool) -> float:
+	var jerk := maxf(0.0, new_pull - _line_steady)
+	var k := FishingLine.SHOCK_ROD_REELING if reeling else FishingLine.SHOCK_ROD
+	return minf(new_pull + effort + k * jerk, drag_kg * (1.0 + FishingLine.SHOCK_STARTUP))
+
+
+## Näytettävä jännitys: tasainen + nykäyksen jäljellä oleva osa (enintään
+## jarrun lähtökitkan raja). Tallentaa tasaisen jännityksen seuraavaa nykäystä varten.
+func _shocked_tension(steady: float) -> float:
+	_line_shock = clampf(_line_shock, 0.0, maxf(0.0, drag_kg * (1.0 + FishingLine.SHOCK_STARTUP) - steady))
+	_line_steady = steady
+	return steady + _line_shock
 
 
 ## Kalan laji selviää, kun kala tulee näkyviin
@@ -1520,6 +1597,8 @@ func _try_land() -> void:
 		_fish = {}
 		_landing_prompt = false
 		tension = 0.0
+		_line_shock = 0.0
+		_jerk_pending = false
 		state = State.LANDING # animaatio: haavi (avovesi) tai nosto avannosta (jää)
 		_landing_net.start(_fish_pos, sp, weight, on_ice, current_hole)
 		camera_rig.shot = _landing_net.camera_shot()
@@ -1528,6 +1607,7 @@ func _try_land() -> void:
 		_run_intensity = 1.0
 		_run_dir = Vector2(_fish_pos.x - boat.pos.x, _fish_pos.z - boat.pos.y).normalized()
 		_run_timer = 2.5
+		_jerk_pending = true # pakeneva kala nykäisee siimaa
 		sound_event.emit("fish_splash", _fish_pos)
 		message.emit("Kala on vielä pirteä ja pakenee haavin luota!")
 
@@ -1540,6 +1620,8 @@ func _lose_fish(text: String, lose_lure: bool) -> void:
 	_fish = {}
 	_landing_prompt = false
 	tension = 0.0
+	_line_shock = 0.0
+	_jerk_pending = false
 	if lose_lure:
 		_lose_lure(text)
 	else:
@@ -1560,6 +1642,9 @@ func _lose_lure(text: String) -> void:
 			text += " – %s loppui" % Lures.name_of(id) if has_lure() else " – uistimet loppuivat"
 	snagged = false
 	state = State.READY
+	# Vavan kärkeen jää roikkumaan katkennut pätkä, kunnes uusi uistin solmitaan
+	_line_piece = true
+	_line.cut(FishingLine.SNAP_PIECE)
 	voice.emit("snap")
 	_msg(text)
 
@@ -1628,15 +1713,21 @@ func _build_rod_visuals() -> void:
 	_rod_pivot.add_child(rod) # piilotetaan vavan mukana (top_level: sijainti maailmassa)
 	_build_reel()
 
-	_line_mesh = ImmediateMesh.new()
+	# Siima: kameraan päin kääntyvä nauha (shaders/fishing_line.gdshader),
+	# piirretään veden jälkeen (render_priority), ettei se poksahda näkyviin ja pois
+	_line = FishingLine.new(lake, boat)
+	_line_mesh = ArrayMesh.new()
 	var line := MeshInstance3D.new()
 	line.mesh = _line_mesh
 	line.top_level = true
 	line.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	var line_mat := StandardMaterial3D.new()
-	line_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	line_mat.albedo_color = Color(0.9, 0.9, 0.85, 0.8)
-	line_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	if _line_shader == null:
+		_line_shader = load("res://shaders/fishing_line.gdshader")
+	var line_mat := ShaderMaterial.new()
+	line_mat.shader = _line_shader
+	line_mat.render_priority = 1
+	line_mat.set_shader_parameter("line_color", FishingLine.COLOR)
+	line_mat.set_shader_parameter("opacity", FishingLine.OPACITY)
 	line.material_override = line_mat
 	_rod_pivot.add_child(line)
 
@@ -1658,7 +1749,7 @@ func _build_rod_visuals() -> void:
 	add_child(_fish_node)
 
 
-func _update_visuals() -> void:
+func _update_visuals(draw_line := true) -> void:
 	# Uistimen malli (LureModels) vaihtuu valitun mukaan; kärki osoittaa siimaa kohti
 	var id: String = lure()["id"]
 	if id != _lure_shown:
@@ -1672,17 +1763,18 @@ func _update_visuals() -> void:
 	var up := Vector3.UP if absf(to_tip.normalized().y) < 0.95 else Vector3(-sin(boat.yaw), 0, -cos(boat.yaw))
 	_lure_node.global_transform = Transform3D(Basis.looking_at(to_tip, up), lure_pos)
 	# Ongen syötti (mato) ei näy veden alla; vavan kärjessä se roikkuu koukussa
-	var shown := not (bait() and lure_pos.y < -0.02 and state in [State.RETRIEVING, State.BITE, State.FIGHT]) and not _rods_hidden_on_ice()
+	var shown := not (bait() and lure_pos.y < -0.02 and state in [State.RETRIEVING, State.BITE, State.FIGHT]) and not _rods_hidden_on_ice() and not _line_piece
 	_lure_node.visible = shown and not bait()
 	_worm_node.visible = shown and bait()
 	if _worm_node.visible:
 		var t := Time.get_ticks_msec() / 1000.0 + _cur * 1.7
 		_worm_node.global_transform = Transform3D(Basis(Vector3.UP, t * 0.8) * Basis(Vector3.RIGHT, sin(t * 2.3) * 0.25), lure_pos)
-	_bobber_node.visible = lure()["kind"] == "bobber" and not on_ice and not lure_on_land and state in [State.RETRIEVING, State.BITE, State.FIGHT]
+	_bobber_node.visible = _bobber_shown()
 	if _bobber_node.visible:
 		_bobber_node.global_transform = Transform3D(_bobber_tilt().scaled(Vector3.ONE * BOBBER_SCALE), _bobber_pos())
 	_draw_rod()
-	_draw_line()
+	if draw_line:
+		_draw_line()
 
 	# Koukussa oleva kala: lajin malli rimpuilee nopealla uintiliikkeellä.
 	# Humusvesi haalistaa syvällä olevan kalan (fish.gdshader).
@@ -1920,49 +2012,93 @@ func _build_bobber() -> void:
 	_bobber_node.add_child(stick)
 
 
-## Siima vavan kärjestä uistimelle (tai kalalle):
-## - roikkuma riippuu jännityksestä (kireä siima on suora)
-## - ylimääräinen siima (siimaa ulkona enemmän kuin välimatka) roikkuu kaarella
-## - tuuli taivuttaa löysää siimaa sivulle
-## - vedessä siima lepää pinnalla ja painuu suoraan uistimelle
-func _draw_line() -> void:
-	_line_mesh.clear_surfaces()
-	var tip := rod_tip()
-	var end := _bobber_pos() if _bobber_node.visible else lure_pos # koho-ongella siima kohoon (kohon alla oleva siima ei näy)
-	var span := tip.distance_to(end)
-	if span < 0.02:
+## Koho pinnalla (koho-onki vedessä)
+func _bobber_shown() -> bool:
+	return lure()["kind"] == "bobber" and not on_ice and not lure_on_land and state in [State.RETRIEVING, State.BITE, State.FIGHT]
+
+
+# --- Siima ------------------------------------------------------------------
+# Näkyvä siima on simulaatio (FishingLine) pelilogiikan päällä: vavan kärjestä
+# siiman päähän (uistin, koho tai kala). Se ei siirrä uistinta eikä muuta
+# jännitystä.
+
+## Jäällä siima kulkee avannon kautta: avanto on ketjun alku (Vector3.INF = ei)
+func _line_hole() -> Vector3:
+	if on_ice and current_hole != Vector3.INF and state in [State.RETRIEVING, State.BITE, State.FIGHT]:
+		return Vector3(current_hole.x, 0.0, current_hole.z)
+	return Vector3.INF
+
+
+## Siiman pää: koho (kohon alla oleva siima ei näy), haavinnassa kala, muuten uistin
+func _line_end() -> Vector3:
+	if state == State.LANDING and _landing_net.active():
+		return _landing_net.fish_position()
+	if _bobber_shown():
+		return _bobber_pos()
+	return lure_pos
+
+
+## Näkyvän siiman pituus (ketju alkaa jäällä avannosta)
+func _line_length(start: Vector3, end: Vector3) -> float:
+	if _line_piece:
+		return FishingLine.SNAP_PIECE
+	match state:
+		State.FLYING:
+			# Kelalta purkautuu hieman yli välimatkan: siima kaartuu lennossa.
+			# Laskeutuessa löysä siima (_leave_slack) jakautuu koko matkalle.
+			return line_out * 1.02
+		State.RETRIEVING, State.BITE, State.FIGHT:
+			var len := line_out
+			if _bobber_shown():
+				len -= _bobber_pos().distance_to(lure_pos)
+			if on_ice and start != rod_tip():
+				len -= rod_tip().distance_to(start)
+			# Kuormassa siima venyy: lepopituus lyhyempi (vain ulkoasu)
+			return maxf(len / (1.0 + _line_stretch), 0.05)
+		State.LANDING:
+			return start.distance_to(end) * 1.02 + 0.1
+	return maxf(start.distance_to(end), 0.02) # uistin roikkuu kärjessä
+
+
+func _step_line(dt: float, in_hand: bool) -> void:
+	if _rods_hidden_on_ice():
 		return
-	var in_water := state in [State.RETRIEVING, State.BITE, State.FIGHT] and not lure_on_land
-	var excess := 0.0
-	if state in [State.RETRIEVING, State.BITE, State.FIGHT]:
-		excess = maxf(0.0, line_out - span)
-	var tension_n := tension * 9.81 + 0.25
-	var sag := maxf(LINE_WEIGHT * span * span / (8.0 * tension_n), sqrt(3.0 * span * excess / 8.0))
-	sag = minf(sag, span * 0.45)
-	var chord := end - tip
-	var flat := Vector3(chord.x, 0, chord.z)
-	var perp := Vector3(-flat.z, 0, flat.x).normalized() if flat.length() > 0.01 else Vector3.ZERO
+	if _line_piece and (not in_hand or boat.angler.rod_stow_blend() > 0.5):
+		_tie_line() # vapa telineeseen tai pohjalle
+	var load := clampf(tension / FishingLine.STRENGTH, 0.0, 1.0)
+	_line_stretch = lerpf(_line_stretch, FishingLine.STRETCH * load, 1.0 - exp(-dt / 0.15))
+	var hole := _line_hole()
+	var start := hole if hole != Vector3.INF else rod_tip()
+	var end := _line_end()
 	var wind := weather.vector()
-	var bow := clampf(Vector3(wind.x, 0, wind.y).dot(perp) * 0.08 * sag, -span * 0.2, span * 0.2)
-	var n := 32
-	var entry_t := -1.0
-	_line_mesh.surface_begin(Mesh.PRIMITIVE_LINE_STRIP)
-	for i in n + 1:
-		var t := float(i) / n
-		var hump := 4.0 * t * (1.0 - t)
-		var p := tip.lerp(end, t)
-		p.y -= sag * hump
-		p += perp * bow * hump
-		if in_water:
-			if entry_t < 0.0 and p.y <= 0.0:
-				entry_t = t
-			if entry_t >= 0.0:
-				var u := (t - entry_t) / maxf(1.0 - entry_t, 0.001)
-				p.y = maxf(p.y, lerpf(0.0, end.y, u)) # pinnalta suoraan uistimelle
-		_line_mesh.surface_add_vertex(p)
-	_line_mesh.surface_end()
+	# Siima kiertää laidan yli, ellei sen pää ole veneessä (haavittu kala)
+	var hull := state != State.LANDING
+	# Nopeat tilanteet ja kireä siima täydellä tahdilla, muuten 30 Hz (kevyempi)
+	var active := state in [State.FLYING, State.FIGHT, State.LANDING, State.CHARGING] or tension > 0.05 or _reel_speed() > 0.0 or _line_piece
+	_line.min_dt = 0.0 if active else 1.0 / 30.0
+	_line.taut = tension >= 0.1
+	if state == State.FLYING:
+		# Lennossa siima kaartuu uistimen perässä (kinemaattinen muoto)
+		_line.fly(dt, start, end, _line_length(start, end), Vector3(wind.x, 0.0, wind.y))
+		return
+	_line.step(dt, start, end, _line_length(start, end), Vector3(wind.x, 0.0, wind.y), hull, hole, on_ice)
 
 
+## Uusi uistin solmitaan: katkennut pätkä pois, siima alusta
+func _tie_line() -> void:
+	if not _line_piece:
+		return
+	_line_piece = false
+	_line.tie()
+	_line.initialized = false
+
+
+func _draw_line() -> void:
+	if not _line.initialized or _rods_hidden_on_ice():
+		_line_mesh.clear_surfaces()
+		return
+	var hole := _line_hole()
+	_line.build_mesh(_line_mesh, rod_tip() if hole != Vector3.INF else Vector3.INF)
 
 
 # --- Pilkkiminen ----------------------------------------------------------------
@@ -1973,6 +2109,7 @@ func _ice_input(event: InputEvent) -> bool:
 	if event.is_action_pressed("cast") and state == State.READY:
 		var hole := hole_in_front()
 		if hole != Vector3.INF:
+			_tie_line()
 			current_hole = hole
 			state = State.RETRIEVING
 			lure_pos = Vector3(hole.x, -0.02, hole.z)

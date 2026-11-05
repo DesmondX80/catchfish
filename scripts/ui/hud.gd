@@ -471,7 +471,7 @@ func _process(delta: float) -> void:
 	var lure_name: String = l["name"]
 	if fishing.limited:
 		lure_name = "%s (%d kpl)" % [lure_name, fishing.lure_count()] if fishing.has_lure() else "Ei uistimia – osta kaupasta"
-	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [lure_name, fishing.drag_kg, Fishing.LINE_STRENGTH]
+	var info := "%s   •   Jarru %.2f kg (siima kestää %.1f kg)" % [lure_name, fishing.drag_kg, FishingLine.STRENGTH]
 	if fishing.hands_free():
 		info = "UISTELU – soutele ja odota tärppiä   •   Jarru %.2f kg\n%s" % [fishing.drag_kg, fishing.trolling_hint()]
 	for r in fishing.holder_rods():
@@ -533,7 +533,7 @@ func _process(delta: float) -> void:
 	_power_bar.value = fishing.power
 	var tension_visible := fishing.state in [Fishing.State.RETRIEVING, Fishing.State.BITE, Fishing.State.FIGHT]
 	_tension_bar.get_parent().visible = tension_visible
-	_tension_bar.value = clampf(fishing.tension / Fishing.LINE_STRENGTH, 0.0, 1.0)
+	_tension_bar.value = clampf(fishing.tension / FishingLine.STRENGTH, 0.0, 1.0)
 	_stamina_bar.get_parent().visible = fishing.state == Fishing.State.FIGHT
 	_stamina_bar.value = fishing.fish_stamina()
 
