@@ -139,9 +139,34 @@ func _lure(id: String) -> int:
 
 # --- Mittarit -------------------------------------------------------------------
 
+## Piirretty käyrä tasavälein (2 cm): taite mitataan näkyvästä muodosta,
+## eikä alle millin värähtely muutaman millin välipätkissä näy kulmana
+func _resampled(pts: PackedVector3Array, step := 0.02) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	if pts.size() < 2:
+		return pts
+	out.append(pts[0])
+	var carry := 0.0
+	for k in range(1, pts.size()):
+		var a: Vector3 = pts[k - 1]
+		var b: Vector3 = pts[k]
+		var seg := a.distance_to(b)
+		var t := step - carry
+		while t <= seg:
+			out.append(a.lerp(b, t / seg))
+			t += step
+		carry = seg - (t - step)
+	if out[out.size() - 1].distance_to(pts[pts.size() - 1]) > step * 0.25:
+		out.append(pts[pts.size() - 1])
+	return out
+
+
 ## Suurin taite piirretyssä käyrässä (sallitut kiinnekohdat pois)
 func _bend(i := -1) -> Dictionary:
-	var pts := FishingLine.curve_points(_mesh(i))
+	var raw := FishingLine.curve_points(_mesh(i))
+	var pts := _resampled(raw)
+	if raw.size() < 4:
+		pts = raw
 	var line := _line(i)
 	var hole := f._line_hole() if (i < 0 or i == f._cur) else Vector3.INF
 	var hull_inv := boat.hull.global_transform.affine_inverse()
@@ -165,7 +190,7 @@ func _bend(i := -1) -> Dictionary:
 		if ang > worst:
 			worst = ang
 			at = p
-	return {"deg": worst, "at": at, "points": pts.size(), "line": line}
+	return {"deg": worst, "at": at, "points": raw.size(), "line": line}
 
 
 func _near_gunwale(l: Vector3) -> bool:
@@ -556,7 +581,7 @@ func _test_under_boat() -> void:
 	main.camera_rig.yaw = boat.yaw + PI / 2.0
 	var inside := 0
 	var worst := 0.0
-	for k in 40:
+	for k in 60:
 		await _frames(1)
 		if f.state != Fishing.State.FIGHT:
 			break
@@ -565,7 +590,7 @@ func _test_under_boat() -> void:
 			var l: Vector3 = hull_inv * p
 			if FishingLine._inside_hull(l) and _hull_depth(l) > 0.005:
 				inside += 1
-		if k > 10:
+		if k > 25: # siirron jälkeen siima asettuu ensin
 			var bb := _bend()
 			if bb["deg"] > worst:
 				worst = bb["deg"]

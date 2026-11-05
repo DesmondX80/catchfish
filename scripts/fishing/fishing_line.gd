@@ -29,7 +29,7 @@ const DIAMETER := 0.00028 # m
 const STRENGTH := 6.5 # kg
 const MASS := 0.00007 # kg/m (nailon 1,14 g/cm³)
 const COLOR := Color(0.65, 0.82, 0.95) # läpikuultava vaalea sinertävä
-const OPACITY := 0.6
+const OPACITY := 0.8
 ## Venymä lujuuden kuormalla: vain ulkoasu (linjaus 1), ei vaikuta väsytykseen
 const STRETCH := 0.15
 ## Nykäyskuorma (linjaus 2): jarrun lähtökitka S, vavan läpi menevä osa
@@ -67,12 +67,14 @@ const MAX_ANGLE := deg_to_rad(12.0)
 ## Pinnalla ja maassa lepäävä siima liikkuu vedettäessä hitaammin (kitka):
 ## pituusrajoitteen korjauksesta sille tulee tämä osuus
 const REST_WEIGHT := 0.15
+const SMOOTH := 0.1 # tasoitus askelta kohti (vapaat pisteet)
 const JUMP := 6.0 # m: tätä isompi hyppy päässä aloittaa ketjun alusta (siirto)
 const SAMPLES_PER_STEP := 4 # pinnan korkeuden uudet näytteet askelta kohti (kiertävästi)
 const ICE_BOTTOM := -0.05 # jään alapinta siiman kannalta
 const HOLE_RADIUS := 0.075 # avannon säde
 const HULL_MARGIN := 0.05 # m: siima kulkee laidan ja reunalistan ulkopuolelta (myös keinuessa)
 const CONTACT_STEPS := 20 # askelta: laidalla ollut piste saa taittua vielä hetken
+const SHORT := 0.5 # m: tätä lyhyempi kiinnitetty siima on suora (uistin vavan kärjessä)
 
 var lake: LakeData
 var boat: Boat
@@ -101,6 +103,8 @@ var surf_acc := PackedFloat32Array()
 var ground := PackedFloat32Array()
 var ground_xz := PackedVector2Array()
 var initialized := false
+## Suora lyhyt siima (piirretään yhtenä välinä)
+var straight := false
 ## Seuraava pituuden muutos tasaisesti kaikkiin väleihin (heiton
 ## laskeutuminen: löysä siima jakautuu lentoreitille), muuten vavan päästä
 var uniform := false
@@ -223,6 +227,7 @@ func reset(a: Vector3, b: Vector3, len: float) -> void:
 		surf_time[i] = -1.0
 		ground_xz[i] = Vector2(INF, INF)
 	initialized = true
+	straight = false
 	for i in POINTS:
 		_sample(i, true)
 	_collide()
@@ -304,8 +309,12 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 	_pending_dt = 0.0
 	_hole = hole
 	_on_ice = on_ice
+	if len < SHORT and not free_end:
+		_straight(start, end, len) # uistin roikkuu kärjessä: suora
+		return
 	if not initialized or pos[0].distance_to(start) > JUMP or (not free_end and pos[POINTS - 1].distance_to(end) > JUMP):
 		reset(start, end, len)
+	straight = false # suorasta lyhyestä siimasta jatketaan sellaisenaan
 	# Laidan yli kiertyvä siima tarvitsee kiertomatkan verran lisää (vain ulkoasu:
 	# pelilogiikan siima on suora jänne)
 	set_length(len + _detour)
@@ -376,6 +385,7 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 	_w[0] = 0.0
 	if not free_end:
 		_w[POINTS - 1] = 0.0
+	_smooth()
 	# Rauhallinen siima (min_dt > 0) liikkuu hitaasti: vähemmän kierroksia
 	var iterations := ITERATIONS_CALM if min_dt > 0.0 else ITERATIONS
 	for it in iterations:
@@ -396,6 +406,33 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 		_detour = lerpf(_detour, clampf(measured_length() - len, 0.0, 2.0), 0.3)
 	else:
 		_detour = move_toward(_detour, 0.0, dt * 0.5)
+
+
+## Lyhyt siima (uistin vavan kärjessä) suorana kärjestä päähän
+func _straight(a: Vector3, b: Vector3, len: float) -> void:
+	_nominal(maxf(len, 0.01))
+	for i in POINTS:
+		var p := a.lerp(b, arc[i] / length)
+		prev[i] = p
+		pos[i] = p
+		wet[i] = 0
+		contact[i] = 0
+		ground_xz[i] = Vector2(INF, INF)
+		surf_time[i] = -1.0
+	_detour = 0.0
+	initialized = true
+	straight = true
+
+
+## Kevyt tasoitus vapaille pisteille: löysä siima muodostaa pehmeän kaaren
+## eikä nurjahda sahalaidaksi (pituusrajoitteet palauttavat pituuden)
+func _smooth() -> void:
+	var prev_p := pos[0]
+	for i in range(1, POINTS - 1):
+		var p := pos[i]
+		if _w[i] == 1.0 and contact[i] == 0:
+			pos[i] = p + ((prev_p + pos[i + 1]) * 0.5 - p) * SMOOTH
+		prev_p = p
 
 
 ## Veto lepääville pisteille: oma venymä tai, jos piste rajaa vapaan osan
@@ -575,6 +612,7 @@ func _sample_env(dt: float) -> void:
 	# Aaltopinta vain pinnan lähellä oleville pisteille (kaukana pinnasta
 	# korkeudella ei ole väliä), kiertävästi muutama askelta kohti
 	var done := 0
+	var samples := SAMPLES_PER_STEP + int(maxf(0.0, Waves.wind - 4.0) / 2.0) # isommat aallot kovalla tuulella
 	for k in POINTS:
 		var i := _cursor
 		_cursor = (_cursor + 1) % POINTS
@@ -582,7 +620,7 @@ func _sample_env(dt: float) -> void:
 		if water[i] == 1 and h < 0.3 and h > -0.2:
 			_sample(i, false)
 			done += 1
-			if done >= SAMPLES_PER_STEP:
+			if done >= samples:
 				break
 
 
@@ -707,6 +745,7 @@ func fly(dt: float, a: Vector3, b: Vector3, len: float, wind: Vector3) -> void:
 		wet[i] = 0
 		contact[i] = 0
 	initialized = true
+	straight = false
 	_time += dt
 	for i in POINTS:
 		ground_xz[i] = Vector2(INF, INF)
@@ -756,6 +795,15 @@ func build_mesh(mesh: ArrayMesh, lead := Vector3.INF) -> void:
 
 func _build(mesh: ArrayMesh, lead: Vector3) -> void:
 	mesh.clear_surfaces()
+	if straight:
+		_verts.resize(4)
+		_dirs.resize(4)
+		_uv2.resize(4)
+		var d := (pos[POINTS - 1] - pos[0]).normalized()
+		_emit(0, pos[0], d, -1.0)
+		_emit(1, pos[POINTS - 1], d, -1.0)
+		_finish_mesh(mesh, 2)
+		return
 	# Tangentit pisteissä: suuntien keskiarvo (päissä ja laidan yli taitteessa
 	# välin oma suunta)
 	for i in POINTS:
@@ -792,8 +840,8 @@ func _build(mesh: ArrayMesh, lead: Vector3) -> void:
 		var n := clampi(int(ceil(turn / SUB_ANGLE)), 1, MAX_SUB)
 		var wet0 := water[i] == 1
 		var wet1 := water[i + 1] == 1
-		var sh0 := surf[i] if wet0 else p0.y + 1.0
-		var sh1 := surf[i + 1] if wet1 else p1.y + 1.0
+		var sh0 := _shown_surface(i)
+		var sh1 := _shown_surface(i + 1)
 		var prev_p := p0
 		for k in range(1, n + 1):
 			var u := float(k) / n
@@ -814,6 +862,10 @@ func _build(mesh: ArrayMesh, lead: Vector3) -> void:
 			_uv2[kk] = depth
 			_uv2[kk + 1] = depth
 			count += 1
+	_finish_mesh(mesh, count)
+
+
+func _finish_mesh(mesh: ArrayMesh, count: int) -> void:
 	if count < 2:
 		return
 	_verts.resize(count * 2)
@@ -831,6 +883,15 @@ func _build(mesh: ArrayMesh, lead: Vector3) -> void:
 	arrays[Mesh.ARRAY_TEX_UV] = _uv
 	arrays[Mesh.ARRAY_TEX_UV2] = _uv2
 	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLE_STRIP, arrays)
+
+
+## Pinnan korkeus piirtoa varten (varjostin häivyttää syvyyden mukaan). Jään
+## alla siima ei näy: pinta nostetaan niin, että piste on syvällä.
+func _shown_surface(i: int) -> float:
+	var p := pos[i]
+	if _on_ice and _hole != Vector3.INF and p.y < -0.01 and Vector2(p.x - _hole.x, p.z - _hole.z).length() > HOLE_RADIUS:
+		return p.y + 1.0
+	return surf[i] if water[i] == 1 else p.y + 1.0
 
 
 ## Nauhan kärkipari: sama keskilinjan piste kummallekin puolelle
