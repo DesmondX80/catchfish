@@ -37,6 +37,7 @@ tests=(
 	"luretest|--fixed-fps 30 -- --day=180 --luretest"
 	"linetest|--fixed-fps 30 -- --day=180 --linetest"
 	"linetest-talvi|--fixed-fps 30 -- --day=40 --linetest"
+	"motorspeedtest|--fixed-fps 30 -- --day=180 --motorspeedtest"
 	"nettest|--fixed-fps 30 -- --day=180 --nettest"
 	"nettest-talvi|--fixed-fps 30 -- --day=40 --nettest"
 	"otherboatstest|--fixed-fps 30 -- --day=180 --otherboatstest"

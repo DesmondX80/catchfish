@@ -299,6 +299,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/overlap_test.gd").new())
 	elif "--synctest" in args:
 		add_child(load("res://tests/sync_test.gd").new())
+	elif "--motorspeedtest" in args:
+		add_child(load("res://tests/motor_speed_test.gd").new())
 	elif "--proptest" in args:
 		add_child(load("res://tests/prop_test.gd").new())
 	elif "--seasonfishtest" in args:
