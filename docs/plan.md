@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 4.11.2026. Nykyinen versio **0.52.3**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.52.3)).
+Päivitetty 5.11.2026. Nykyinen versio **0.53.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.53.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -771,7 +771,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (WSL-interop, Windowsin Godot-editorin konsoliversio), koska Mesa/D3D12 ei
   toista kaikkia vikoja.
 
-- **#86 Siima (myös #85 ja #81).** Suunnitelma `docs/suunnitelmat/CATCHFISH-86.md`.
+- **#86 Siima (myös #85 ja #81) – tehty (0.53.0).** Suunnitelma `docs/suunnitelmat/CATCHFISH-86.md`.
   Näkyvä siima on pistemassaketju pelilogiikan päällä (`fishing_line.gd`):
   löysä siima laskeutuu veteen loivana kaarena ja lepää aalloilla, kireä on
   suora (vesirajan V-taite poistui), tuuli kaartaa ilmassa olevaa osaa, siima
