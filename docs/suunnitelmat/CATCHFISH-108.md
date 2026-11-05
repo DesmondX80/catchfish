@@ -103,7 +103,10 @@ heti vapaalle (0 %), ettei W/S:llä tarvitse hakea nollaa.
 
 ## Päätökset (hyväksytty 5.11.2026)
 1. **Vieraat veneet:** oma vakio 420 N, kaikki täsmälleen ennallaan (Teemu, a).
-2. **Peruutus:** nopeus ennallaan noin 11,5 km/h, kaasuraja noin −19 % (Teemu, a).
+2. **Peruutus:** nopeus ennallaan noin 11,5 km/h (Teemu, a). Työnjohtajan
+   tarkennus: kaasun alue pysyy −0,4 .. 1, ja vain peruutuksen työntö skaalataan
+   niin, että −0,4 antaa saman 168 N kuin ennen (`Boat.REVERSE_THRUST`,
+   `Boat.motor_thrust()`). Peruutuksen ääni, potkurivaurio ja HUD pysyvät ennallaan.
 3. **Numeronäppäimistön 0 (KP_0):** toimii samoin kuin numerorivin 0 (työnjohtaja).
 4. **Ilmoitus 0:sta:** ei ilmoitusta, HUD näyttää "Moottori 0 %" (työnjohtaja).
 5. **Matalikkovaroitus:** ennallaan 1,3 m (Teemu).

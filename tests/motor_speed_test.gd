@@ -3,7 +3,7 @@ extends Node
 ## Tyynellä syvässä vedessä täydellä kaasulla huippu 27,5–28,5 km/h ja 50 %
 ## kaasulla noin 19–20 km/h. Näppäin 0 (toiminto motor_idle) vie kaasun heti
 ## vapaalle eteen- ja peruutuskaasulta ja moottorin käynnistyessä; moottori
-## sammuksissa ja jäällä se ei tee mitään. Peruutuksen työntö ennallaan 168 N.
+## sammuksissa ja jäällä se ei tee mitään. Peruutuskaasu −0,4 ja työntö 168 N ennallaan.
 
 const AREA := 30.0 # m: vene pidetään näin lähellä testipaikkaa
 
@@ -158,8 +158,8 @@ func _physics_process(delta: float) -> void:
 				_top = maxf(_top, boat.speed_kmh() if boat.velocity.dot(boat.forward()) < 0.0 else 0.0)
 			if _t > 30.0:
 				Input.action_release("boat_back")
-				_check("peruutuskaasu alarajalla %.3f (noin -0,19)" % boat.throttle, is_equal_approx(boat.throttle, Boat.REVERSE_THROTTLE) and absf(boat.throttle + 0.19) < 0.005)
-				_check("peruutuksen työntö %.1f N (ennallaan 168 N)" % (-boat.throttle * Boat.MOTOR_THRUST), absf(boat.throttle * Boat.MOTOR_THRUST + 168.0) < 0.01)
+				_check("peruutuskaasu alarajalla %.2f (ennallaan -0,4)" % boat.throttle, is_equal_approx(boat.throttle, -0.4))
+				_check("peruutuksen työntö %.1f N (ennallaan 168 N)" % -Boat.motor_thrust(boat.throttle), absf(Boat.motor_thrust(boat.throttle) + 168.0) < 0.01)
 				_check("peruutusnopeus %.2f km/h (noin 11,5)" % _top, _top >= 11.0 and _top <= 12.0)
 				_check("HUD näyttää peruutuksen", main.hud._status.text.contains("Moottori peruutus"))
 				_press_idle()

@@ -15,8 +15,10 @@ const LENGTH := 4.4
 const MASS := 260.0 # vene + kalastaja + moottori, kg
 const YAW_INERTIA := 650.0
 const MOTOR_THRUST := 880.0 # N täydellä kaasulla (huippunopeus tyynellä ~28 km/h)
-## Peruutuskaasun alaraja: sama 168 N:n työntö kuin ennen (peruutus ~11,5 km/h)
-const REVERSE_THROTTLE := -168.0 / MOTOR_THRUST
+const REVERSE_THROTTLE := -0.4 # peruutuskaasun alaraja
+## Peruutuksen työntö alarajalla: sama kuin ennen (peruutus ~11,5 km/h). Vain
+## työntö skaalataan, joten kaasu, ääni ja potkurivaurio pysyvät ennallaan.
+const REVERSE_THRUST := 168.0
 const ROW_FORCE := 150.0 # N vedon aikana
 const ROW_TURN := 320.0 # Nm, kun soudetaan vain toisella airolla
 const DRAFT := 0.3 # syväys metreinä
@@ -131,6 +133,11 @@ func forward() -> Vector2:
 
 func right() -> Vector2:
 	return Vector2(cos(yaw), -sin(yaw))
+
+
+## Ehjän potkurin työntö kaasulla: eteen MOTOR_THRUST, peruutus REVERSE_THRUST alarajalla
+static func motor_thrust(t: float) -> float:
+	return t * (MOTOR_THRUST if t >= 0.0 else REVERSE_THRUST / -REVERSE_THROTTLE)
 
 
 func speed_kmh() -> float:
@@ -343,7 +350,7 @@ func _simulate(dt: float) -> void:
 		throttle = clampf(throttle + drive * 0.6 * dt, REVERSE_THROTTLE, 1.0)
 		tiller = move_toward(tiller, steer, 2.5 * dt)
 		var angle := tiller * 0.6
-		var thrust := MOTOR_THRUST * throttle * (1.0 - 0.6 * prop_damage)
+		var thrust := motor_thrust(throttle) * (1.0 - 0.6 * prop_damage)
 		force += fwd * thrust * cos(angle)
 		torque += thrust * sin(angle) * 2.1 + v_fwd * tiller * 45.0
 		_rowing = false

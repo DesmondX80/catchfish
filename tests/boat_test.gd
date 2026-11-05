@@ -79,7 +79,9 @@ func _process(_delta: float) -> void:
 		_spin = boat._prop.rotation.z
 	if _frame == 30:
 		_check("vapaalla potkuri ei pyöri", is_equal_approx(boat._prop.rotation.z, _spin))
-		boat.throttle = 0.5
+		# 0,24 · 880 N ≈ vanha 0,5 · 420 N: isommalla työnnöllä vene ehtii laiturin
+		# vieressä kääntyä niin, että kalastaja on vinossa ja jalka laidan läpi
+		boat.throttle = 0.24
 	if _frame == 60:
 		_check("kaasulla potkuri pyörii", absf(boat._prop.rotation.z - _spin) > 1.0)
 		boat.throttle = 0.0

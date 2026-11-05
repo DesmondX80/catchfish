@@ -305,7 +305,8 @@ func _ram(label: String, other_heading: Vector2, approach: Vector2, mode: String
 	var start_other := b.pos
 	var worst := 0.0
 	var contact_t := INF
-	var toward := []
+	var rel_contact := 0.0 # pelaajan paikka toiseen veneeseen nähden lähestymissuunnassa kosketuksessa
+	var advance := -INF
 	var before_hit := 0.0
 	var at_hit := INF
 	var t := 0.0
@@ -317,10 +318,11 @@ func _ram(label: String, other_heading: Vector2, approach: Vector2, mode: String
 		if contact_t == INF and "boat_bump" in _sounds:
 			contact_t = t
 			at_hit = closing
+			rel_contact = (boat.pos - b.pos).dot(approach)
 		elif contact_t == INF:
 			before_hit = closing
 		if contact_t != INF and t > contact_t + 0.5 and t < contact_t + 1.5:
-			toward.append((boat.velocity - b.velocity).dot(approach))
+			advance = maxf(advance, (boat.pos - b.pos).dot(approach) - rel_contact)
 		if t > 4.0:
 			boat.throttle = 0.0
 	_check("%s: ääriviivat eivät mene päällekkäin (%.3f m)" % [label, worst], worst <= 0.1)
@@ -328,9 +330,9 @@ func _ram(label: String, other_heading: Vector2, approach: Vector2, mode: String
 	_check("%s: viesti \"Kolahdus! Vene törmäsi toiseen veneeseen\"" % label, _messages.has("Kolahdus! Vene törmäsi toiseen veneeseen"))
 	_check("%s: nopeus kohti venettä pysähtyy iskussa (%.2f -> %.2f m/s)" % [label, before_hit, at_hit], at_hit < before_hit * 0.5)
 	if mode == "push":
-		# Täydellä kaasulla pelaaja työntää liikkuvaa venettä edellään: suhteellinen nopeus pysähtyy
-		var mean: float = toward.reduce(func(a, v): return a + v, 0.0) / maxi(1, toward.size())
-		_check("%s: pelaaja työntää venettä, ei mene läpi (suhteellinen nopeus %.2f m/s)" % [label, mean], mean < 0.3)
+		# Täydellä kaasulla pelaaja työntää venettä edellään (tai kolkuttaa ankkurissa
+		# olevan kylkeä): pelaaja ei etene toiseen veneeseen nähden kosketuskohdasta
+		_check("%s: pelaaja työntää venettä, ei mene läpi (etenee %.3f m kosketuskohdasta)" % [label, advance], advance > -INF and advance <= 0.1)
 	if anchored:
 		_check("%s: ankkurissa oleva vene ei liiku (%.3f m)" % [label, b.pos.distance_to(start_other)], b.pos.distance_to(start_other) < 0.05)
 	if mode == "slide":
