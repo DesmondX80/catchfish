@@ -184,8 +184,22 @@ painuu, hauki hyppää).
 - **Kalastajan puhe**: kalastaja kommentoi tapahtumia lyhyillä
   repliikeillä ("No nyt tärppäs!", "Ei perhana tule mitään."), ja repliikki
   näkyy myös tekstityksenä.
+- **Siima**: läpikuultava vaalea sinertävä 0,28 mm monofiili, joka taipuu
+  kuin lanka. Lennossa siima kaartuu uistimen perässä, heiton jälkeen löysä
+  siima laskeutuu veteen loivana kaarena ja lepää aaltojen pinnalla, ja
+  kelatessa se nousee pinnalta ja oikenee vavan päästä alkaen. Kireä siima
+  on suora, tuuli kaartaa ilmassa olevaa osaa, ja siima kiertää veneen laidan
+  yli, kun kala on veneen alla. Pinnan alla siima häipyy humusveteen noin
+  puolessa metrissä. Jäällä siima kulkee vavan kärjestä avantoon ja jään alla
+  kalalle.
 - **Väsytys**: kala ryntäilee ja lepää, jarru antaa siimaa, liian kireä
-  jarru katkaisee siiman ja löysä siima päästää kalan irti. Kalan lajin
+  jarru katkaisee siiman ja löysä siima päästää kalan irti. Ison kalan
+  äkillinen ryntäys nykäisee siimaa: jarru ei ehdi heti luistaa, joten
+  nykäys voi katkaista siiman jo alle siiman lujuuden (6,5 kg), jos jarru on
+  kireällä tai kelaat ryntäyksen aikana. Jarrulla 5 kg tai löysemmällä
+  nykäys ei katkaise siimaa, eivätkä pienet kalat katkaise sitä. Katkenneen
+  siiman pätkä jää roikkumaan vavan kärkeen, kunnes heität, vaihdat uistimen
+  tai lasket vavan telineeseen tai pohjalle. Kalan lajin
   näkee vasta, kun kala tulee tummassa humusvedessä näkyviin veneen
   lähelle tai rimpuilee pinnassa.
 - **Kalakirja** (alkuvalikko tai Esc-valikko): jokaisella lajilla on oma sivu,

@@ -16,7 +16,7 @@ Käyttöohje ja ohjaus ovat [README.md](../README.md):ssä.
 |---|---|
 | Vene | Oma vesifysiikka, soutu, mela ja perämoottori, ankkuri, tuuli ajelehdittaa, pohjakosketus, törmäys laitureihin (kolahdus, liukuu laituria pitkin) |
 | Maailma | MML-aineistosta tehty järvi ja maasto, aallokko tuulen ja pyyhkäisymatkan mukaan (terävät harjat, suoja rannoilla, puuskalaikut, vaahtopäät), Veden laatu -asetus (Korkea / Matala), metsässä mäntyjä, kuusia ja koivuja, taivaalla lintuja (varis, korppi, sorsa, hanhi, lokki, merikotka), vuodenajat todellisen päivämäärän mukaan, sää (tuuli, pilvet, sade, lumi), todellinen sää ja kellonaika valinnaisina |
-| Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi) omina 3D-malleinaan, valinta kalapakista (L; talvella pilkkirasia), taipuva vapa ja fysiikkaan perustuva siima, jarru ja väsytys, haavinta omana animaationaan omalla kameralla |
+| Kalastus | Virveli ja uistimet (lusikka, vaaput, lippa, jigi) omina 3D-malleinaan, valinta kalapakista (L; talvella pilkkirasia), taipuva vapa ja fysiikkaan perustuva siima (pistemassaketju: taipuu kuin lanka, tuuli kaartaa, lepää aalloilla, kiertää veneen laidan yli, jäällä avannon kautta; läpikuultava sininen monofiili), jarru, nykäyskuorma ja väsytys, haavinta omana animaationaan omalla kameralla |
 | Uistimet | Lusikka ui kelatessa ja uistellessa 1,5 m:ssä (nopeasti kelatessa 1 m) ja vajoaa pohjaan vedon pysähtyessä; vaaput kelluvat ja uivat tavoitesyvyydessään |
 | Vetouistelu | Kaksi vapaa ja vapatelineet perälaudassa (R), tärppi telineeseen, veneen vauhti koukuttaa |
 | Onki | Koho-onki (syvyys F/G ennen heittoa) ja pohjaonki (mato 0,5 m pohjasta), tärpissä koho nykii ja uppoaa, kamera zoomaa kohoon |
@@ -104,6 +104,7 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 |---|---|
 | `scripts/main.gd` | Pelin käynnistys, järjestelmien kytkentä, testien valinta komentoriviltä |
 | `scripts/fishing/fishing.gd` | Kalastuksen tilakone (heitto, uinti, tärppi, väsytys), kaksi vapaa (`ROD_VARS` vaihdetaan käsiteltävän vavan mukaan), tähtäin, koho ja mato |
+| `scripts/fishing/fishing_line.gd`, `shaders/fishing_line.gdshader` | Siima: arvot yhdessä paikassa (0,28 mm, lujuus 6,5 kg, nykäysmallin S, K ja aikavakio, katkenneen pätkän pituus) ja näkyvä siima pistemassaketjuna (Verlet, 32 pistettä, pituus- ja taivutusrajat, pitkät rajoitteet, lepokitka pinnalla ja maassa, rungon kierto). Vapakohtainen olio (`_line` `ROD_VARS`issa); fysiikka-askel `Fishing._step_line`, piirto ruudun tahdissa (`follow_boat`). Varjostin: kameraan päin kääntyvä nauha (vähintään 2 px, peittävyys ohuemmalla siimalla), valo langan suunnan mukaan, häivytys pinnan alla; pinnan alla oleva siima siirretään katsesädettä pitkin pinnan yläpuolelle, ettei vesi peitä sitä |
 | `scripts/fishing/landing_net.gd` | Haavinta-animaatio ja sen kamerakuva |
 | `scripts/fishing/lures.gd` | Uistimet ja syöttivälineet (kind: sink, dive, bobber, bottom) |
 | `scripts/fishing/lure_models.gd`, `scripts/boat/tackle_box.gd` | Uistinten 3D-mallit ja kalapakki (L) / pilkkirasia |
@@ -167,8 +168,9 @@ godot --headless --fixed-fps 30 -- --day=180 --wavetest     # aallokko: koko, su
 godot --headless --fixed-fps 30 -- --day=180 --seamtest     # lähiveden ja järviverkon sauma: tasainen reunarivi, saumaraja
 godot --headless --fixed-fps 30 -- --day=180 --otherboatstest # muut veneet: reitit, peräaalto, törmäys, väistö, ehdot (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
+godot --headless --fixed-fps 30 -- --day=180 --linetest     # siima: muoto, taitteet, pinta, tuuli, runko, tilan vaihdot, pätkä, nykäyskuorma (talvi: --day=40)
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
-godot --headless --fixed-fps 30 -- --perftest               # suorituskyky
+godot --headless --fixed-fps 30 -- --perftest [--perftest-lines] # suorituskyky (kaksi siimaa vedessä)
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
@@ -176,6 +178,7 @@ godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri t
 godot --fixed-fps 30 -- --day=180 --watershots=KANSIO [--waterquality=matala] [--watershots-only=01,19] # vesi eri tuulilla, laituri ja ruudun aika (ikkuna)
 godot --fixed-fps 30 -- --day=180 --shadowshots=KANSIO      # veneen varjo eri kellonaikoina (ikkuna)
 godot --fixed-fps 30 -- --day=180 --otherboatshots=KANSIO   # muut veneet, vana ja peräaallon kallistus (ikkuna)
+godot --fixed-fps 30 --disable-vsync -- --day=180 --lineshots=KANSIO # siima: suunnitelman tilanteet, pätkä, välke (talvi: --day=40, ikkuna)
 godot --fixed-fps 30 -- --day=180 --seamshots=KANSIO [--waterquality=matala] # lähiveden sauma 120 m päässä, mittari (talvi: --day=30, ikkuna)
 godot --fixed-fps 60 --resolution 480x270 -- --day=180 --jittershots=KANSIO  # välke ja nykiminen (ikkuna)
 ```
@@ -767,6 +770,22 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   Näkyvät varjostinmuutokset kannattaa kuvata myös Windowsin ajurilla
   (WSL-interop, Windowsin Godot-editorin konsoliversio), koska Mesa/D3D12 ei
   toista kaikkia vikoja.
+
+- **#86 Siima (myös #85 ja #81).** Suunnitelma `docs/suunnitelmat/CATCHFISH-86.md`.
+  Näkyvä siima on pistemassaketju pelilogiikan päällä (`fishing_line.gd`):
+  löysä siima laskeutuu veteen loivana kaarena ja lepää aalloilla, kireä on
+  suora (vesirajan V-taite poistui), tuuli kaartaa ilmassa olevaa osaa, siima
+  kiertää veneen laidan yli ja kulkee jäällä avannon kautta. Lennossa siima on
+  kinemaattinen kaari uistimen perässä; laskeutuessa löysä siima jakautuu
+  lentoreitille. Lyhyt roikkuva siima (alle 0,5 m) piirretään suorana.
+  Rauhallinen siima simuloidaan 30 Hz:llä (lento, väsytys, kelaus ja kireä
+  siima täydellä tahdilla). Uusi pelimekaniikka: nykäyskuorma (`Fishing._shock_peak`):
+  ryntäyksen alussa, haavin luota paetessa ja pinnassa rimpuillessa huippu
+  `min(veto + kelaus + K·nykäys, jarru·1,25)` vaimenee 0,2 s:ssa, ja siima
+  katkeaa, jos huippu ylittää 6,5 kg. Väsyminen lasketaan tasaisesta
+  jännityksestä. Katkenneen siiman 2,5 m pätkä roikkuu kärjessä, kunnes uusi
+  uistin solmitaan. Testi `--linetest` (myös talvi), kuvat `--lineshots=KANSIO`,
+  `--perftest-lines`.
 
 ## Huomioita ja avoimia kysymyksiä
 

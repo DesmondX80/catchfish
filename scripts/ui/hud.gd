@@ -244,6 +244,7 @@ func help_text(start_hint := true) -> String:
 		"  Oikea hiiri  kelaa (Shift = nopeasti)",
 		"  Välilyönti   nykäisy (jigi, lippa)",
 		"  E / C        jarru kireämmälle / löysemmälle",
+		"               iso kala: löysää jarrua, älä kelaa ryntäyksessä (nykäys katkaisee siiman)",
 		"  L            kalapakki: valitse uistin tai syöttiväline hiirellä (talvella pilkkirasia)",
 		"  F / G        kohon syvyys matalammalle / syvemmälle (ennen heittoa)",
 		"  R            vetouistelu: heitetty vapa telineeseen ja toinen käteen,",
