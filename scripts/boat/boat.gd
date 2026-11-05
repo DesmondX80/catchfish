@@ -14,7 +14,9 @@ signal voice(event: String) # kalastajan repliikki (angler_voice.gd)
 const LENGTH := 4.4
 const MASS := 260.0 # vene + kalastaja + moottori, kg
 const YAW_INERTIA := 650.0
-const MOTOR_THRUST := 420.0 # N täydellä kaasulla (~5 hv, huippunopeus ~20 km/h)
+const MOTOR_THRUST := 880.0 # N täydellä kaasulla (huippunopeus tyynellä ~28 km/h)
+## Peruutuskaasun alaraja: sama 168 N:n työntö kuin ennen (peruutus ~11,5 km/h)
+const REVERSE_THROTTLE := -168.0 / MOTOR_THRUST
 const ROW_FORCE := 150.0 # N vedon aikana
 const ROW_TURN := 320.0 # Nm, kun soudetaan vain toisella airolla
 const DRAFT := 0.3 # syväys metreinä
@@ -42,7 +44,7 @@ var yaw_rate := 0.0
 
 var motor_running := false
 var motor_starting := 0.0
-var throttle := 0.0 # -0.4 (peruutus) .. 1
+var throttle := 0.0 # REVERSE_THROTTLE (peruutus) .. 1
 var tiller := 0.0 # -1 .. 1
 ## Ankkurissa: ankkuri on pohjassa (anchor_point), köyttä anchor_rope metriä
 var anchored := false
@@ -194,6 +196,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			paddling = false
 			sound_event.emit("motor_start", _stern_position())
 			message.emit("Airot veneeseen ja nykäiset käynnistysnarusta...")
+	elif event.is_action_pressed("motor_idle"):
+		# 0: kaasu heti vapaalle, vene jatkaa liukuen; soudettaessa ei mitään
+		if motor_running or motor_starting > 0.0:
+			throttle = 0.0
 	elif event.is_action_pressed("anchor_toggle"):
 		toggle_anchor()
 	elif event.is_action_pressed("paddle_toggle"):
@@ -334,7 +340,7 @@ func _simulate(dt: float) -> void:
 	var effort := 1.0 + clampf((headwind - 3.0) / 7.0, 0.0, 1.2)
 
 	if motor_running:
-		throttle = clampf(throttle + drive * 0.6 * dt, -0.4, 1.0)
+		throttle = clampf(throttle + drive * 0.6 * dt, REVERSE_THROTTLE, 1.0)
 		tiller = move_toward(tiller, steer, 2.5 * dt)
 		var angle := tiller * 0.6
 		var thrust := MOTOR_THRUST * throttle * (1.0 - 0.6 * prop_damage)

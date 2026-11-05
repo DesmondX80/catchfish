@@ -8,6 +8,7 @@ const KEYS := {
 	"boat_left": [KEY_A, KEY_LEFT],
 	"boat_right": [KEY_D, KEY_RIGHT],
 	"motor_toggle": [KEY_Q],
+	"motor_idle": [KEY_0, KEY_KP_0],
 	"anchor_toggle": [KEY_X],
 	"paddle_toggle": [KEY_V],
 	"net_toggle": [KEY_N],

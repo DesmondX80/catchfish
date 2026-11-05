@@ -787,6 +787,16 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   uistin solmitaan. Testi `--linetest` (myös talvi), kuvat `--lineshots=KANSIO`,
   `--perftest-lines`.
 
+- **#108 Moottorilla ajaminen nopeammaksi – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-108.md`.
+  Perämoottorin työntö 420 → 880 N (`Boat.MOTOR_THRUST`): täydellä kaasulla
+  tyynellä huippu noin 28 km/h (ennen 19 km/h), 50 % kaasulla noin 19 km/h.
+  Peruutuksen työntö ennallaan 168 N (`Boat.REVERSE_THROTTLE` noin −19 %,
+  peruutus noin 11,5 km/h). Vieraat veneet käyttävät omaa 420 N:n vakiota
+  (`OtherBoat.MOTOR_THRUST`) eivätkä muuttuneet. Uusi näppäin 0 (myös
+  numeronäppäimistön 0, toiminto `motor_idle`) vie kaasun heti vapaalle, kun
+  moottori käy tai käynnistyy; muuten ja jäällä se ei tee mitään. Testi
+  `--motorspeedtest`.
+
 ## Huomioita ja avoimia kysymyksiä
 
 - **Järven syvyydet** tulevat veden alle jääneistä maastotietokannan korkeuskäyristä (15 m ja 12,5 m, #10). Syvin kohta (7 m) on paikallistieto; sen tarkkaa paikkaa ei tiedetä, joten se on vanhan jokiuoman syvänteen keskellä pohjoisosassa.

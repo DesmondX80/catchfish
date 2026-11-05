@@ -12,6 +12,7 @@ signal sound_event(sound: String, at: Vector3)
 
 enum State { STARTING, TRAVEL, ANCHORING, FISHING, DOCKED }
 
+const MOTOR_THRUST := 420.0 # N täydellä kaasulla; vieraiden veneiden oma vakio, ei seuraa pelaajan moottoria
 const CRUISE_THROTTLE := 0.7 # matkanopeus noin 4,4 m/s
 const MOTOR_CRUISE := 4.4 # m/s
 const ROW_CRUISE := 1.5 # m/s, pelaajan soutuvauhti
@@ -206,13 +207,13 @@ func _simulate(dt: float) -> void:
 		var target := 0.0
 		if motor_running and state == State.TRAVEL:
 			# Kaasu vastuksen mukaan (13 v² + 10 v) ja korjaus nopeuserosta
-			target = clampf((13.0 * want * want + 10.0 * want) / Boat.MOTOR_THRUST + (want - v_fwd) * 0.3, -0.4, 1.0)
+			target = clampf((13.0 * want * want + 10.0 * want) / MOTOR_THRUST + (want - v_fwd) * 0.3, -0.4, 1.0)
 			if want <= 0.0:
 				target = clampf(-v_fwd * 0.3, -0.4, 0.0) # jarrutus peruutuksella
 		throttle = move_toward(throttle, target, 0.6 * dt)
 		tiller = move_toward(tiller, clampf(err * 1.8 - yaw_rate * 0.8, -1.0, 1.0) if motor_running else 0.0, 2.5 * dt)
 		var angle := tiller * 0.6
-		var thrust := Boat.MOTOR_THRUST * throttle if motor_running else 0.0
+		var thrust := MOTOR_THRUST * throttle if motor_running else 0.0
 		force += fwd * thrust * cos(angle)
 		torque += thrust * sin(angle) * 2.1 + v_fwd * tiller * 45.0
 	else:

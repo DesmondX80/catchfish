@@ -224,6 +224,7 @@ func help_text(start_hint := true) -> String:
 		"  W / S        kaasu (moottori) tai soutu eteen/taakse",
 		"  A / D        ohjaus",
 		"  Q            perämoottori käyntiin / sammuksiin (sammuksissa soudetaan)",
+		"  0            kaasu vapaalle (moottori)",
 		"  X            ankkuri alas / ylös. Ankkuria laskiessa ja nostaessa kalastaja on keulassa",
 		"               köyden kimpussa, joten moottori on vapaalla eikä soutaa voi.",
 		"  V            mela käteen / pois (laiturin vieressä, kun airot eivät mahdu)",
