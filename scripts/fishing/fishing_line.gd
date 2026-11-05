@@ -396,6 +396,7 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 		if it >= iterations - (1 if min_dt > 0.0 else 2):
 			_collide()
 	_surface_rules(start_pos)
+	_straighten()
 	if _use_hull:
 		_collide() # pintaan asettunut piste ei saa jäädä rungon sisään
 	var touching := false
@@ -434,6 +435,23 @@ func _smooth() -> void:
 		if _w[i] == 1.0 and contact[i] == 0:
 			pos[i] = p + ((prev_p + pos[i + 1]) * 0.5 - p) * SMOOTH
 		prev_p = p
+
+
+## Kireä siima (pelilogiikan jännitys, jänne vähintään siiman pituinen) on
+## suora: veden vastus ei jätä vesirajaan notkoa. Kun siima löystyy (kala
+## kääntyy kohti venettä), se kaartuu taas vapaasti.
+func _straighten() -> void:
+	if not taut or free_end:
+		return
+	var a := pos[0]
+	var chord := pos[POINTS - 1] - a
+	if chord.length() < length * 0.999:
+		return
+	for i in POINTS:
+		if contact[i] > 0:
+			return # laidan yli kiertävä siima ei ole suora
+	for i in range(1, POINTS - 1):
+		pos[i] = a + chord * (arc[i] / length)
 
 
 ## Veto lepääville pisteille: oma venymä tai, jos piste rajaa vapaan osan
@@ -767,7 +785,10 @@ func carry(move: Transform3D) -> void:
 func pin_start(tip: Vector3) -> void:
 	pos[0] = tip
 	prev[0] = tip
-	for i in range(1, POINTS):
+	if taut and not free_end and tip.distance_to(pos[POINTS - 1]) >= length * 0.999:
+		_straighten() # kireä siima pysyy suorana (pää on kiinni uistimessa tai kalassa)
+		return
+	for i in range(1, POINTS if free_end else POINTS - 1):
 		var d := pos[i] - tip
 		var dist := d.length()
 		if dist > arc[i] + 1e-4:

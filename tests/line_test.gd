@@ -567,14 +567,25 @@ func _test_fight() -> void:
 	await _frames(3)
 	_hook("hauki", 2.0, boat.forward() * 6.0, -1.5, 4.0)
 	var steep := 0.0
+	var was_taut := false
 	for k in 40:
 		await _frames(1)
-		if k > 25 and f.state == Fishing.State.FIGHT:
+		# Kireä siima tässä ja edellisessä ruudussa (piirto on edellisen ruudun lopusta)
+		var taut_now := f.state == Fishing.State.FIGHT and f.tension >= 0.5
+		var both := taut_now and was_taut
+		was_taut = taut_now
+		if k > 25 and both:
 			var bb := _bend()
 			if bb["deg"] > steep:
 				steep = bb["deg"]
 				if steep > MAX_BEND and OS.has_environment("LINEDEBUG"):
-					print("    jyrkkä ruutu %d" % k)
+					var ln := _line()
+					print("    jyrkkä ruutu %d, jännitys %.2f, taut %s, jänne %.3f, pituus %.3f, tila %s" % [k, f.tension, ln.taut, ln.pos[0].distance_to(ln.pos[FishingLine.POINTS - 1]), ln.length, Fishing.State.keys()[f.state]])
+					var raw := FishingLine.curve_points(_mesh())
+					for q in raw.size():
+						if raw[q].distance_to(bb["at"]) < 0.3:
+							print("      piirto %d %s" % [q, raw[q]])
+					print("      kärki %s, pää %s, ketju p0 %s" % [f.rod_tip(), ln.pos[FishingLine.POINTS - 1], ln.pos[0]])
 					_dump(bb["line"], bb["at"])
 	_check("väsytys, jyrkkä siima pinnan läpi: suurin taite %.1f° (≤ %.0f°)" % [steep, MAX_BEND], steep <= MAX_BEND)
 	f.shock_load = true
@@ -992,6 +1003,39 @@ func _test_shock() -> void:
 			snaps += 1 if r["snap"] == Fishing.SHOCK_SNAP_TEXT else 0
 			_stop_fight()
 		_check("nykäys: %s %.1f kg, jarru 10 kg, kelaten 60 s: ei nykäyskatkeamisia (%d)" % [fish[0], fish[1], snaps], snaps == 0)
+	# 4b) Löysä → kireä: nykäys ei jää löysän siiman ajaksi odottamaan eikä
+	# katkaise siimaa, kun siima kiristyy (hauki 3,0 ja 3,5 kg, jarru 10 kg,
+	# kelaus jaksoittain, siima löystyy välillä; 20 siementä)
+	for w: float in [3.0, 3.5]:
+		snaps = 0
+		var slack_steps := 0
+		var shown_slack := 0.0
+		for sd in 20:
+			_fight_setup("hauki", w, 10.0, 100 + sd)
+			f._run_timer = 0.0
+			_messages.clear()
+			var t := 0.0
+			while t < 40.0 and f.state == Fishing.State.FIGHT:
+				if fmod(t, 1.5) < DT:
+					if fmod(t, 3.0) < 1.5:
+						Input.action_press("reel")
+					else:
+						Input.action_release("reel")
+				if fmod(t, 4.0) < DT:
+					f.line_out += 1.5 # kala ui kohti venettä: siima löystyy
+				f._fight(DT)
+				var dist := f.rod_tip().distance_to(f._fish_pos)
+				if f.state == Fishing.State.FIGHT and dist < f.line_out - 0.01:
+					slack_steps += 1
+					shown_slack = maxf(shown_slack, f.tension)
+				t += DT
+			Input.action_release("reel")
+			for m in _messages:
+				if m.begins_with("Siima katkesi"):
+					snaps += 1
+			_stop_fight()
+		_check("nykäys: löysä → kireä, hauki %.1f kg, jarru 10 kg, kelaus jaksoittain, 20 toistoa: ei katkeamisia (%d)" % [w, snaps], snaps == 0)
+		_check("nykäys: löysällä siimalla jännityspalkki ei näytä huippua (suurin %.2f kg, %d löysää askelta)" % [shown_slack, slack_steps], slack_steps > 0 and shown_slack <= 0.05 + 1e-4)
 	# 5) Jarru 5,0 kg: hauki 14 kg kelaten ei katkea
 	snaps = 0
 	for s in SEEDS:

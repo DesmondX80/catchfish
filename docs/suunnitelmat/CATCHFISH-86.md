@@ -217,8 +217,10 @@ pirteä kala):
 | 2 kg | mikä tahansa | enintään 2,8 | enintään 3,7, ei katkea |
 
 Pienen kalan raja: huippu on enintään noin `1,57 · paino · power + 0,6`
-kg, joten hauki alle 3,7 kg ei voi katkaista siimaa nykäyksellä millään
-jarrulla. Muilla lajeilla raja on suurempi, koska `power` on pienempi
+kg, joten hauki alle 3,7 kg ei voi katkaista siimaa ryntäyksen nykäyksellä
+millään jarrulla. Pinnassa rimpuilun nykäys (+0,5 · paino · power) laskee
+rajan kelatessa ja jarrulla yli 5,2 kg noin 3,3 kg:aan (ks. Työnjohtajan
+päätökset). Muilla lajeilla raja on suurempi, koska `power` on pienempi
 (esim. `power` 0,8 → noin 4,7 kg). Käytännössä ahven, särki ja muut pienet
 eivät katkaise siimaa koskaan.
 
@@ -378,7 +380,7 @@ ja talvi (`--day=40`: pilkki avannossa ja kala jään alla 4 m avannosta).
 - [ ] Taitekulma: piirretyn käyrän peräkkäisten osien välinen kulma on
       kaikissa tilanteissa enintään 5°. Poikkeuksia ovat vain fyysiset
       kiinnekohdat: vavan kärki, uistin tai koho, avannon reuna ja veneen
-      laita.
+      laita, sekä yli 0,5 m syvyydessä häivytetyt (näkymättömät) pisteet.
 - [ ] Pituus: ketjun pituus on `line_out` ± 2 % (ja venymä, enintään 15 %
       · jännitys / lujuus).
 - [ ] Kireä siima (jännitys ≥ 0,5 kg ja `line_out` ≈ jänneväli): ilmassa
@@ -515,3 +517,13 @@ Tärkeimmät: `11-fpv-kirea` ja `25-uistelu-fpv-taakse` (V-taite),
 - Perftest-raja: kahdella siimalla vedessä +0,45 ms/ruutu mainiin verrattuna
   (main 3,98 ms, haara 4,43 ms, 6+6 ajoa) hyväksytty; siimaa ei kevennetä
   pisteitä tai simulaatiotaajuutta vähentämällä.
+- Nykäyskuorman raja: pinnassa rimpuilun nykäys voi kelatessa ja jarrulla yli
+  5,2 kg katkaista siiman jo noin 3,3 kg:n hauelta (ryntäyksen raja 3,7 kg).
+  Hyväksytty; jarrulla enintään 5,2 kg nykäys ei katkaise siimaa koskaan.
+- Nykäys vain kireällä siimalla: ryntäyksen alkaessa löysällä siimalla nykäys
+  odottaa, kunnes siima kiristyy, ja lasketaan edellisestä kireän siiman
+  tasaisesta jännityksestä. Löysällä siimalla nykäystä ei ole eikä
+  jännityspalkki näytä huippua. Jarru lähtee luistamaan nykäyksestä vasta,
+  kun huippu ylittää jarru · (1 + S) (suunnitelman kohta 3).
+- Taitemittari: yli 0,5 m syvyydessä häivytetyt pisteet eivät kuulu
+  taitekriteeriin. Taite mitataan piirretystä käyrästä 2 cm:n välein.

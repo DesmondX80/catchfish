@@ -1448,19 +1448,22 @@ func _fight(dt: float) -> void:
 	var reel := _reel_speed()
 	var effort := 0.6 if reel > 0.0 else 0.0
 	var dist := tip_to_anchor + anchor.distance_to(_fish_pos)
-	# Nykäys: kalan veto kasvoi äkkiä (ryntäys alkoi tai kala pakeni haavin luota)
+	# Nykäys: kalan veto kasvoi äkkiä (ryntäys alkoi tai kala pakeni haavin
+	# luota). Löysä siima ei välitä nykäystä: se odottaa, kunnes siima kiristyy.
+	var taut := dist >= line_out
+	var limit := drag_kg * (1.0 + FishingLine.SHOCK_STARTUP)
 	var peak := -1.0
-	if _jerk_pending:
+	if _jerk_pending and taut:
 		_jerk_pending = false
 		if shock_load:
 			peak = _shock_peak(pull, effort, reel > 0.0)
 	drag_slipping = false
 	var steady := 0.0 # tasainen jännitys (kalan väsyminen lasketaan tästä)
-	if dist >= line_out:
+	if taut:
 		var wanted := pull + effort
-		# Jarru luistaa, kun veto ylittää jarrun, myös nykäyksen huipussa
-		var shock_now := maxf(_line_shock, peak - wanted)
-		if wanted > drag_kg or wanted + shock_now > drag_kg:
+		# Jarru luistaa, kun tasainen veto ylittää jarrun tai nykäyksen huippu
+		# jarrun lähtökitkan (jarru · (1 + S))
+		if wanted > drag_kg or peak > limit:
 			drag_slipping = true
 			line_out = dist # jarru antaa siimaa
 			steady = minf(wanted, drag_kg)
@@ -1475,8 +1478,8 @@ func _fight(dt: float) -> void:
 		if line_out - dist > 0.8:
 			_slack_time += dt
 	if peak >= 0.0:
-		_line_shock = maxf(_line_shock, peak - steady)
-	tension = _shocked_tension(steady)
+		_line_shock = maxf(_line_shock, minf(peak, limit) - steady)
+	tension = _shocked_tension(steady, taut)
 
 	if steady > LINE_STRENGTH:
 		_lose_fish("Siima katkesi! Jarru oli liian kireällä", true)
@@ -1497,11 +1500,11 @@ func _fight(dt: float) -> void:
 			_lose_fish("Kala ravisteli itsensä irti", false)
 			return
 		# Rimpuilu nykäisee siimaa
-		if shock_load and dist >= line_out:
+		if shock_load and taut:
 			var splash_peak := _shock_peak(pull + FishingLine.SHOCK_SPLASH * weight * fish_power, effort, reel > 0.0)
-			_line_shock = maxf(_line_shock, splash_peak - steady)
-			tension = _shocked_tension(steady)
-			if tension > drag_kg:
+			_line_shock = maxf(_line_shock, minf(splash_peak, limit) - steady)
+			tension = _shocked_tension(steady, taut)
+			if splash_peak > limit:
 				drag_slipping = true
 			if tension > LINE_STRENGTH:
 				_lose_fish(SHOCK_SNAP_TEXT, true)
@@ -1526,18 +1529,23 @@ func _start_run(dir: Vector2, intensity: float, duration: float) -> void:
 	_jerk_pending = true
 
 
-## Nykäyksen huippujännitys: uusi veto + kelaus + vavan läpi menevä osa
-## nykäyksestä, enintään jarrun lähtökitkan verran yli jarrun (sitten jarru
-## lähtee luistamaan). Nykäys = vedon kasvu edellisestä tasaisesta jännityksestä.
+## Nykäyksen huippujännitys ilman jarrun rajaa: uusi veto + kelaus + vavan
+## läpi menevä osa nykäyksestä. Nykäys = vedon kasvu edellisestä kireän siiman
+## tasaisesta jännityksestä. Kutsuja rajaa huipun jarrun lähtökitkaan
+## (jarru · (1 + S)); sen ylittävä huippu saa jarrun luistamaan.
 func _shock_peak(new_pull: float, effort: float, reeling: bool) -> float:
 	var jerk := maxf(0.0, new_pull - _line_steady)
 	var k := FishingLine.SHOCK_ROD_REELING if reeling else FishingLine.SHOCK_ROD
-	return minf(new_pull + effort + k * jerk, drag_kg * (1.0 + FishingLine.SHOCK_STARTUP))
+	return new_pull + effort + k * jerk
 
 
-## Näytettävä jännitys: tasainen + nykäyksen jäljellä oleva osa (enintään
-## jarrun lähtökitkan raja). Tallentaa tasaisen jännityksen seuraavaa nykäystä varten.
-func _shocked_tension(steady: float) -> float:
+## Näytettävä jännitys: kireällä siimalla tasainen + nykäyksen jäljellä oleva
+## osa (enintään jarrun lähtökitkan raja), ja tasainen jännitys jää seuraavan
+## nykäyksen pohjaksi. Löysällä siimalla nykäystä ei ole eikä sitä näytetä.
+func _shocked_tension(steady: float, taut := true) -> float:
+	if not taut:
+		_line_shock = 0.0
+		return steady
 	_line_shock = clampf(_line_shock, 0.0, maxf(0.0, drag_kg * (1.0 + FishingLine.SHOCK_STARTUP) - steady))
 	_line_steady = steady
 	return steady + _line_shock
