@@ -512,3 +512,6 @@ Tärkeimmät: `11-fpv-kirea` ja `25-uistelu-fpv-taakse` (V-taite),
   sanamuotoa, kunhan merkitys pysyy.
 - Näkyvät muutokset kuvataan sekä WSL:ssä että Windowsin NVIDIA-ajurilla
   (WSL-interop, kansio C:\Users\teeka\AppData\Local\Temp\siima\…).
+- Perftest-raja: kahdella siimalla vedessä +0,45 ms/ruutu mainiin verrattuna
+  (main 3,98 ms, haara 4,43 ms, 6+6 ajoa) hyväksytty; siimaa ei kevennetä
+  pisteitä tai simulaatiotaajuutta vähentämällä.
