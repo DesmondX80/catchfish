@@ -11,8 +11,8 @@ shader_type spatial;
 // UV.x = puoli (−1 / 1).
 render_mode blend_mix, depth_draw_never, cull_disabled, shadows_disabled, skip_vertex_transform;
 
-uniform vec3 line_color : source_color = vec3(0.65, 0.82, 0.95);
-uniform float opacity = 0.6;
+uniform vec3 line_color : source_color = vec3(0.52, 0.70, 0.92);
+uniform float opacity = 0.75;
 // Näkyvä paksuus (m): kiilto ja valon taittuminen levittävät ohutta siimaa
 uniform float apparent_diameter = 0.0006;
 uniform float min_pixels = 2.0;
@@ -21,8 +21,8 @@ uniform vec3 water_color : source_color = vec3(0.07, 0.065, 0.035);
 uniform float fade_start = 0.05; // m pinnan alla
 uniform float fade_end = 0.45;
 uniform float surface_lift = 0.03; // m: pinnan yläpuolelle katsesädettä pitkin
-uniform float glint = 0.5;
-uniform float glint_sharpness = 24.0;
+uniform float glint = 0.2;
+uniform float glint_sharpness = 64.0;
 
 varying vec3 v_tangent;
 varying float v_cover;
@@ -66,6 +66,7 @@ void fragment() {
 	float fade = 1.0 - smoothstep(fade_start, fade_end, v_depth);
 	ALBEDO = mix(line_color, water_color, under * 0.85);
 	ROUGHNESS = 0.4;
+	SPECULAR = 0.1;
 	ALPHA = opacity * v_cover * fade;
 }
 

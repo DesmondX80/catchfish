@@ -28,8 +28,8 @@ const NAME := "0,28 mm monofiili"
 const DIAMETER := 0.00028 # m
 const STRENGTH := 6.5 # kg
 const MASS := 0.00007 # kg/m (nailon 1,14 g/cm³)
-const COLOR := Color(0.65, 0.82, 0.95) # läpikuultava vaalea sinertävä
-const OPACITY := 0.8
+const COLOR := Color(0.52, 0.70, 0.92) # läpikuultava vaalea sinertävä
+const OPACITY := 0.75
 ## Venymä lujuuden kuormalla: vain ulkoasu (linjaus 1), ei vaikuta väsytykseen
 const STRETCH := 0.15
 ## Nykäyskuorma (linjaus 2): jarrun lähtökitka S, vavan läpi menevä osa
@@ -341,7 +341,7 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 	var start_pos := pos.duplicate()
 	for i in POINTS:
 		_w[i] = 1.0
-		_resting[i] = 1 if ((water[i] == 1 and wet[i] == 1 and pos[i].y >= surf[i] - FLOAT_BAND) or (water[i] == 0 and pos[i].y <= ground[i] + 0.01)) else 0
+		_resting[i] = 1 if ((water[i] == 1 and wet[i] == 1 and pos[i].y >= surf[i] - FLOAT_BAND and not taut) or (water[i] == 0 and pos[i].y <= ground[i] + 0.01)) else 0
 	# Siiman pää pinnalla (uistin tai koho) on kuin lepäävä piste
 	var e := pos[POINTS - 1]
 	if not free_end and absf(e.y - surf[POINTS - 1]) < 0.05:
@@ -353,8 +353,9 @@ func step(dt: float, start: Vector3, end: Vector3, len: float, wind: Vector3, us
 		prev[i] = p
 		var resting := false
 		if water[i] == 1 and wet[i] == 1:
-			if p.y >= surf[i] - FLOAT_BAND:
+			if p.y >= surf[i] - FLOAT_BAND and not taut:
 				# Pinnalla: kitka hidastaa, pintavirta kuljettaa hitaasti
+				# (kireä siima ei lepää pinnalla vaan menee sen läpi)
 				var h := drift + (Vector3(v.x, 0.0, v.z) - drift) * k_surface
 				v = Vector3(h.x, surf_rate[i], h.z)
 				resting = true
@@ -586,12 +587,13 @@ func _surface_rules(start_pos: PackedVector3Array) -> void:
 				s = surf[i]
 			if p.y < s:
 				wet[i] = 1
-				if start_pos[i].y >= s - 0.01 and s - p.y < 0.3:
+				if start_pos[i].y >= s - 0.01 and s - p.y < 0.3 and not taut:
 					p.y = s # osui pintaan ylhäältä: jää pinnalle
 					prev[i].y = s
 		elif p.y > s + LIFT:
 			wet[i] = 0 # nousi pinnalta
-		elif p.y > s - FLOAT_BAND:
+		elif p.y > s - FLOAT_BAND and not taut:
+			# Kelluu pinnalla; kireä siima menee pinnan läpi suoraan (ei taitetta)
 			p.y = s
 			prev[i].y = s
 		pos[i] = p

@@ -269,30 +269,84 @@ func _points(mesh: ArrayMesh) -> PackedVector3Array:
 
 
 ## Suurin taitekulma peräkkäisten siimasegmenttien välillä
+## Suurin taitekulma piirretyssä siimassa (2 cm:n välein kuten --linetest).
+## Erikseen kaikki taitteet ja suurin taite sallittujen kiinnekohtien
+## ulkopuolella: vavan kärki ja siiman pää (0,15 m), veneen laita (0,25 m
+## rungosta), avanto ja yli 0,5 m syvyys (häivytetty näkymättömiin).
+## Hyväksymiskriteeri koskee vain jälkimmäistä ("muualla").
 func _report(name: String) -> void:
+	var hull_inv: Transform3D = main.boat.hull.global_transform.affine_inverse()
+	var hole := f._line_hole()
 	for i in f.rod_count():
 		var mesh: ArrayMesh = f._rod_get(i, "_line_mesh")
-		var pts := _points(mesh)
+		var pts := _resampled(_points(mesh))
 		if pts.size() < 3:
 			continue
 		var worst := 0.0
 		var at := 0
+		var why := ""
+		var free := 0.0
+		var free_at := 0
 		for k in range(1, pts.size() - 1):
 			var a: Vector3 = pts[k] - pts[k - 1]
 			var b: Vector3 = pts[k + 1] - pts[k]
 			if a.length() < 1e-4 or b.length() < 1e-4:
 				continue
 			var ang := rad_to_deg(a.angle_to(b))
+			var reason := _allowed(pts, k, hull_inv, hole)
 			if ang > worst:
 				worst = ang
 				at = k
+				why = reason
+			if reason == "" and ang > free:
+				free = ang
+				free_at = k
 		var below := 0
 		for p in pts:
 			if p.y < -0.01:
 				below += 1
-		print(">> %s vapa %d: pisteitä %d, suurin taite %.1f° pisteessä %d/%d (%.2f, %.2f, %.2f), vedessä %d pistettä, line_out %.1f, jännitys %.2f kg, tila %s" % [
-			name, i + 1, pts.size(), worst, at, pts.size() - 1, pts[at].x, pts[at].y, pts[at].z, below,
+		print(">> %s vapa %d: pisteitä %d, suurin taite %.1f° pisteessä %d/%d (%.2f, %.2f, %.2f)%s; muualla suurin %.1f° pisteessä %d (%s), vedessä %d pistettä, line_out %.1f, jännitys %.2f kg, tila %s" % [
+			name, i + 1, pts.size(), worst, at, pts.size() - 1, pts[at].x, pts[at].y, pts[at].z,
+			" [sallittu: %s]" % why if why != "" else "", free, free_at, "OK" if free <= 5.0 else "YLI 5°", below,
 			f._rod_get(i, "line_out"), f._rod_get(i, "tension"), Fishing.State.keys()[f._rod_get(i, "state")]])
+
+
+## Miksi taite kohdassa k on sallittu (tyhjä = ei sallittu)
+func _allowed(pts: PackedVector3Array, k: int, hull_inv: Transform3D, hole: Vector3) -> String:
+	var p: Vector3 = pts[k]
+	if p.distance_to(pts[0]) < 0.15:
+		return "vavan kärki"
+	if p.distance_to(pts[pts.size() - 1]) < 0.15:
+		return "siiman pää"
+	if hole != Vector3.INF and p.distance_to(hole) < 0.02:
+		return "avanto"
+	var l := hull_inv * p
+	if absf(l.z) <= 2.45 and l.y <= 0.9 and l.y >= -0.55:
+		var h := Boat._hull_at(clampf(l.z, -2.2, 2.2))
+		if absf(l.x) < h.x + 0.25 and l.y < h.y + 0.25 and l.y > h.z - 0.25:
+			return "veneen laita"
+	if not f.on_ice and p.y < -0.5 and main.lake.is_water(p.x, p.z):
+		return "syvällä, häivytetty"
+	return ""
+
+
+func _resampled(pts: PackedVector3Array, step := 0.02) -> PackedVector3Array:
+	if pts.size() < 4:
+		return pts
+	var out := PackedVector3Array([pts[0]])
+	var carry := 0.0
+	for k in range(1, pts.size()):
+		var a: Vector3 = pts[k - 1]
+		var b: Vector3 = pts[k]
+		var seg := a.distance_to(b)
+		var t := step - carry
+		while t <= seg:
+			out.append(a.lerp(b, t / seg))
+			t += step
+		carry = seg - (t - step)
+	if out[out.size() - 1].distance_to(pts[pts.size() - 1]) > step * 0.25:
+		out.append(pts[pts.size() - 1])
+	return out
 
 
 func _reset_rod() -> void:

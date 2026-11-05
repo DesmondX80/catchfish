@@ -562,6 +562,21 @@ func _test_fight() -> void:
 	_check_length("väsytys, hauki 4 kg", f.line_out)
 	var dev := _taut_deviation()
 	_check("väsytys: kireä siima ilmassa suora (poikkeama %.1f cm, ≤ 5 cm)" % (dev * 100.0), dev <= 0.05)
+	# Jyrkkä kireä siima pinnan läpi: hauki 2 kg 6 m päässä 1,5 m syvyydessä
+	_reset_rod()
+	await _frames(3)
+	_hook("hauki", 2.0, boat.forward() * 6.0, -1.5, 4.0)
+	var steep := 0.0
+	for k in 40:
+		await _frames(1)
+		if k > 25 and f.state == Fishing.State.FIGHT:
+			var bb := _bend()
+			if bb["deg"] > steep:
+				steep = bb["deg"]
+				if steep > MAX_BEND and OS.has_environment("LINEDEBUG"):
+					print("    jyrkkä ruutu %d" % k)
+					_dump(bb["line"], bb["at"])
+	_check("väsytys, jyrkkä siima pinnan läpi: suurin taite %.1f° (≤ %.0f°)" % [steep, MAX_BEND], steep <= MAX_BEND)
 	f.shock_load = true
 	f.drag_kg = 3.0
 	_reset_rod()
