@@ -305,24 +305,28 @@ func _ram(label: String, other_heading: Vector2, approach: Vector2, mode: String
 	var start_other := b.pos
 	var worst := 0.0
 	var contact_t := INF
-	var rel_contact := 0.0 # pelaajan paikka toiseen veneeseen nähden lähestymissuunnassa kosketuksessa
-	var advance := -INF
+	var window_overlap := 0.0 # suurin päällekkäisyys 0,5–1,5 s kosketuksesta
+	var crossed := false # pelaajan keskipiste toisen veneen keskiviivan yli sen rungon kohdalla
 	var before_hit := 0.0
 	var at_hit := INF
 	var t := 0.0
 	while t < 9.0:
 		await _frame()
 		t += 1.0 / 60.0
-		worst = maxf(worst, (Boat.hull_push(boat.pos, boat.yaw, b.pos, b.yaw)[0] as Vector2).length())
+		var overlap := (Boat.hull_push(boat.pos, boat.yaw, b.pos, b.yaw)[0] as Vector2).length()
+		worst = maxf(worst, overlap)
+		# Kyljen ohi liukuminen ja keulan tai perän kiertäminen ei ole läpimeno:
+		# ylitys lasketaan vain toisen rungon pituuden kohdalla
+		var other_axis := Vector2(-sin(b.yaw), -cos(b.yaw))
+		crossed = crossed or ((boat.pos - b.pos).dot(approach) >= 0.0 and absf((boat.pos - b.pos).dot(other_axis)) < Boat.LENGTH * 0.5)
 		var closing := (boat.velocity - b.velocity).dot(approach)
 		if contact_t == INF and "boat_bump" in _sounds:
 			contact_t = t
 			at_hit = closing
-			rel_contact = (boat.pos - b.pos).dot(approach)
 		elif contact_t == INF:
 			before_hit = closing
 		if contact_t != INF and t > contact_t + 0.5 and t < contact_t + 1.5:
-			advance = maxf(advance, (boat.pos - b.pos).dot(approach) - rel_contact)
+			window_overlap = maxf(window_overlap, overlap)
 		if t > 4.0:
 			boat.throttle = 0.0
 	_check("%s: ääriviivat eivät mene päällekkäin (%.3f m)" % [label, worst], worst <= 0.1)
@@ -330,9 +334,15 @@ func _ram(label: String, other_heading: Vector2, approach: Vector2, mode: String
 	_check("%s: viesti \"Kolahdus! Vene törmäsi toiseen veneeseen\"" % label, _messages.has("Kolahdus! Vene törmäsi toiseen veneeseen"))
 	_check("%s: nopeus kohti venettä pysähtyy iskussa (%.2f -> %.2f m/s)" % [label, before_hit, at_hit], at_hit < before_hit * 0.5)
 	if mode == "push":
-		# Täydellä kaasulla pelaaja työntää venettä edellään (tai kolkuttaa ankkurissa
-		# olevan kylkeä): pelaaja ei etene toiseen veneeseen nähden kosketuskohdasta
-		_check("%s: pelaaja työntää venettä, ei mene läpi (etenee %.3f m kosketuskohdasta)" % [label, advance], advance > -INF and advance <= 0.1)
+		# Täydellä kaasulla pelaaja ei mene toisen veneen läpi. Mitataan rungon läpimenoa
+		# suoraan: ääriviivat eivät mene päällekkäin kosketuksen jälkeen, eikä pelaajan
+		# keskipiste ylitä toisen veneen keskiviivaa rungon kohdalla. Hylätyt mittarit (CATCHFISH-108,
+		# 880 N): suhteellinen nopeus, koska vene kimpoaa, kiihtyy takaisin ja kolkuttaa
+		# kylkeä (keskiarvo positiivinen ilman läpimenoa); keskipisteen siirtymä, koska
+		# vene kääntyy ja liukuu kapenevaa kylkeä pitkin, jolloin keskipisteet
+		# lähestyvät, vaikka rungot eivät ole sisäkkäin.
+		_check("%s: pelaaja ei mene läpi kosketuksen jälkeen (päällekkäin %.3f m)" % [label, window_overlap], contact_t != INF and window_overlap <= 0.02)
+		_check("%s: pelaaja ei ylitä toisen veneen keskiviivaa rungon kohdalla" % label, not crossed)
 	if anchored:
 		_check("%s: ankkurissa oleva vene ei liiku (%.3f m)" % [label, b.pos.distance_to(start_other)], b.pos.distance_to(start_other) < 0.05)
 	if mode == "slide":
