@@ -18,6 +18,8 @@ extends Node
 ##     peräpeiliin ylettyvä viiksi jatkuu sivuaaltoon ilman alfa-aukkoa (PÄÄTÖS 7)
 ## 12) viiksi harjanteen päällä
 ## 13) piilotettu vana (jäällä) piilottaa harjanteen ja roiskeen
+## 14) pelin vene: Boat._simulate välittää Wakelle nopeuden eteenpäin (peruutus
+##     negatiivinen, ei keula-aaltoa; eteenpäin keula-aalto syntyy)
 
 const DT := 1.0 / 30.0
 const START := Vector2(40.0, -25.0)
@@ -223,7 +225,27 @@ func _run() -> void:
 	_check("3) peruutus: roiske ei emittoi", not w.spray[0].emitting and not w.spray[1].emitting)
 	_check("9) peruutus: harjanteen kärkiä %d (0)" % _g.ridge.size(), _g.ridge.is_empty())
 	w.queue_free()
+	await _check_game_boat()
 	_finish()
+
+
+## 14) Pelin oikea vene: set_hull-kutsu boat.gd:ssä antaa nopeuden eteenpäin
+func _check_game_boat() -> void:
+	var boat: Boat = get_parent().boat
+	for dir in [-1.0, 1.0]:
+		for i in 3:
+			boat.velocity = boat.forward() * 3.2 * dir
+			await get_tree().physics_frame
+		var hs := boat.wake._hull_speed
+		var fs := boat.velocity.dot(boat.forward())
+		var k := boat.wake.bow_strength()
+		if dir < 0.0:
+			_check("14) pelin vene peruuttaa: Wake saa nopeuden eteenpäin %.2f (vene %.2f), k %.2f (0)" % [hs, fs, k],
+				hs < 0.0 and absf(hs - fs) < 0.3 and k == 0.0)
+		else:
+			_check("14) pelin vene eteenpäin: Wake saa nopeuden %.2f (vene %.2f), k %.2f (> 0)" % [hs, fs, k],
+				hs > 0.0 and absf(hs - fs) < 0.3 and k > 0.0)
+	boat.velocity = Vector2.ZERO
 
 
 ## 9–11) Harjanteen korkeus, sijainti ja reunojen alfa
