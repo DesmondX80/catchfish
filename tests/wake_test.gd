@@ -21,6 +21,7 @@ extends Node
 ## 14) pelin vene: Boat._simulate välittää Wakelle nopeuden eteenpäin (peruutus
 ##     negatiivinen, ei keula-aaltoa; eteenpäin keula-aalto syntyy)
 ## 15) vanan vanhin pää alkaa alfasta 0 (häivytys 1,2 m, PÄÄTÖS 10)
+## 16) aukon (vene siirtyi yli 2,8 m näytteiden välillä) jälkeinen alku alfasta 0 (PÄÄTÖS 10)
 
 const DT := 1.0 / 30.0
 const START := Vector2(40.0, -25.0)
@@ -203,6 +204,25 @@ func _run() -> void:
 	# 13) Jäällä vana piilossa: harjanne ja roiske samoin
 	w.visible = false
 	_check("13) piilotettu vana piilottaa harjanteen ja roiskeen", not w.ridge.is_visible_in_tree() and not w.spray[0].is_visible_in_tree() and not w.spray[1].is_visible_in_tree())
+	w.queue_free()
+
+	# 16) Aukko vanassa: vene siirtyy 10 m eteenpäin kesken ajon (esim. laiturisiirto)
+	w = _new_wake()
+	_drive(w, 7.8, 3.0)
+	_pos += _fwd * 10.0
+	var gap_start := _stern()
+	_drive(w, 7.8, 3.0)
+	var best := INF
+	var gap_a := -1.0
+	for i in _g.verts.size() - 1:
+		if _g.uv2s[i].x == Wake.TYPE_CHANNEL and _g.uvs[i].x == -1.0 and i < w._verts.size():
+			var m := (_xz(_g.verts[i]) + _xz(_g.verts[i + 1])) * 0.5
+			if m.distance_to(gap_start) < best:
+				best = m.distance_to(gap_start)
+				gap_a = maxf(_g.colors[i].a, _g.colors[i + 1].a)
+				for j in range(i + 2, i + 6):
+					gap_a = maxf(gap_a, _g.colors[j].a)
+	_check("16) aukon jälkeisen alun alfa %.3f %.2f m:n päässä aukosta (0)" % [gap_a, best], best < 0.3 and gap_a == 0.0)
 	w.queue_free()
 
 	# --- Vieraan moottoriveneen vauhti 4,4 m/s ---
