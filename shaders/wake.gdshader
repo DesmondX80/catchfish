@@ -36,9 +36,12 @@ float edge_noise(vec2 p) {
 }
 
 void vertex() {
-	foam_uv = VERTEX.xz;
+	// Peräaalto on maailman koordinaateissa, viikset veneen koordinaatistossa
+	// (vain kierto pystyakselin ympäri, joten VERTEX.y on myös maailman korkeus)
+	vec2 world_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+	foam_uv = world_xz;
 	strip = vec3(UV, UV2.x);
-	VERTEX.y += surface_height(VERTEX.xz) + 0.025;
+	VERTEX.y += surface_height(world_xz) + 0.025;
 }
 
 void fragment() {

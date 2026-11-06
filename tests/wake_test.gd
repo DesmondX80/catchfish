@@ -29,6 +29,8 @@ var _log: Array[String] = []
 var _pos := START
 var _fwd := Vector2(-sin(YAW), -cos(YAW))
 var _right := Vector2(cos(YAW), -sin(YAW))
+## Viimeisimmän ajon kärjet maailmassa: peräaalto ja viikset yhdessä, harjanne erikseen
+var _g := {}
 
 
 func _ready() -> void:
@@ -54,6 +56,13 @@ func _drive(w: Wake, v: float, seconds: float) -> void:
 		w.track(_stern(), _right, absf(v))
 		w.set_hull(_pos, _fwd, v)
 		w._process(DT)
+	_snap(w)
+
+
+func _snap(w: Wake) -> void:
+	var wh := w.whisker_world()
+	_g = {"verts": w._verts + wh["verts"], "colors": w._colors + wh["colors"],
+		"uvs": w._uvs + wh["uvs"], "uv2s": w._uv2s + wh["uv2s"], "ridge": w.ridge_world()}
 
 
 func _stern() -> Vector2:
@@ -79,8 +88,8 @@ func _local(p: Vector2) -> Vector2:
 ## Nauhatyypin kärkien indeksit
 func _of_type(w: Wake, type: float) -> Array[int]:
 	var out: Array[int] = []
-	for i in w._verts.size():
-		if w._uv2s[i].x == type:
+	for i in _g.verts.size():
+		if _g.uv2s[i].x == type:
 			out.append(i)
 	return out
 
@@ -88,7 +97,7 @@ func _of_type(w: Wake, type: float) -> Array[int]:
 func _max_alpha(w: Wake, idx: Array[int]) -> float:
 	var m := 0.0
 	for i in idx:
-		m = maxf(m, w._colors[i].a)
+		m = maxf(m, _g.colors[i].a)
 	return m
 
 
@@ -105,7 +114,7 @@ func _run() -> void:
 	var right := 0
 	var inside := 0
 	for i in wh:
-		var p := _xz(w._verts[i])
+		var p := _xz(_g.verts[i] as Vector3)
 		var l := _local(p)
 		var d := _outline_dist(p)
 		if d < -0.001:
@@ -132,20 +141,20 @@ func _run() -> void:
 	var peak := _max_alpha(w, ch)
 	var at15 := INF
 	for i in ch:
-		var d: float = w._uvs[i].y
+		var d: float = _g.uvs[i].y
 		min_d = minf(min_d, d)
 		if d <= 0.1:
-			near_alpha = maxf(near_alpha, w._colors[i].a)
-			near_half = maxf(near_half, _xz(w._verts[i]).distance_to(stern))
+			near_alpha = maxf(near_alpha, _g.colors[i].a)
+			near_half = maxf(near_half, _xz(_g.verts[i]).distance_to(stern))
 		if d >= 1.4 and d <= 1.6:
-			at15 = minf(at15, w._colors[i].a)
+			at15 = minf(at15, _g.colors[i].a)
 	_check("5) kulku-uoma alkaa %.3f m:n päästä peräpeilistä (≤ 0,1)" % min_d, min_d <= 0.1)
 	_check("5) kulku-uoman alfa perässä %.3f (≤ 0,05)" % near_alpha, near_alpha <= 0.05)
 	_check("5) kulku-uoman alfa 1,5 m perässä %.3f, huippu %.3f (≥ 90 %%)" % [at15, peak], at15 != INF and at15 >= 0.9 * peak)
 	_check("6) kulku-uoman leveys perässä %.2f m (≤ 1,1)" % (near_half * 2.0), near_half > 0.0 and near_half * 2.0 <= 1.1)
 	var bad_u := 0
 	for i in ch + _of_type(w, Wake.TYPE_KELVIN):
-		if not is_equal_approx(absf(w._uvs[i].x), 1.0):
+		if not is_equal_approx(absf(_g.uvs[i].x), 1.0):
 			bad_u += 1
 	_check("7) kulku-uoman ja sivuaaltojen kärjet reunoilla |u| = 1 (poikkeavia %d)" % bad_u, bad_u == 0)
 
@@ -156,20 +165,20 @@ func _run() -> void:
 	# PÄÄTÖS 7: viiksi jatkuu peräpeilistä sivuaaltoon ilman aukkoa
 	var end_s := 0.0
 	for i in wh:
-		end_s = maxf(end_s, w._uv2s[i].y)
+		end_s = maxf(end_s, _g.uv2s[i].y)
 	var end_alpha := 0.0
 	var end_pts: Array[Vector2] = []
 	for i in wh:
-		if w._uv2s[i].y >= end_s - 0.001 and w._colors[i].a > 0.0:
-			end_alpha = maxf(end_alpha, w._colors[i].a)
-			end_pts.append(_xz(w._verts[i]))
+		if _g.uv2s[i].y >= end_s - 0.001 and _g.colors[i].a > 0.0:
+			end_alpha = maxf(end_alpha, _g.colors[i].a)
+			end_pts.append(_xz(_g.verts[i]))
 	var kel_alpha := 0.0
 	var kel_gap := INF
 	for i in _of_type(w, Wake.TYPE_KELVIN):
-		if w._uvs[i].y <= 0.1:
-			kel_alpha = maxf(kel_alpha, w._colors[i].a)
+		if _g.uvs[i].y <= 0.1:
+			kel_alpha = maxf(kel_alpha, _g.colors[i].a)
 			for p in end_pts:
-				kel_gap = minf(kel_gap, p.distance_to(_xz(w._verts[i])))
+				kel_gap = minf(kel_gap, p.distance_to(_xz(_g.verts[i])))
 	_check("11) viiksen loppu peräpeilissä (z %.2f), alfa %.2f, sivuaalto alkaa alfalla %.2f %.2f m:n päästä" % [
 		_local(end_pts[0]).y if not end_pts.is_empty() else 0.0, end_alpha, kel_alpha, kel_gap],
 		not end_pts.is_empty() and _local(end_pts[0]).y > 2.1 and end_alpha >= 0.5 and kel_alpha >= 0.5 and kel_gap <= 0.35)
@@ -177,7 +186,7 @@ func _run() -> void:
 	# 8) Pysähdys: 1 s paikallaan
 	_drive(w, 0.0, 1.0)
 	_check("8) pysähdyksen jälkeen viiksen kärkiä %d (0)" % _of_type(w, Wake.TYPE_WHISKER).size(), _of_type(w, Wake.TYPE_WHISKER).is_empty())
-	_check("9) paikallaan harjanteen kärkiä %d (0)" % w._ridge_verts.size(), w._ridge_verts.is_empty())
+	_check("9) paikallaan harjanteen kärkiä %d (0)" % _g.ridge.size(), _g.ridge.is_empty())
 	_check("4) paikallaan roiske ei emittoi", not w.spray[0].emitting and not w.spray[1].emitting)
 	# 13) Jäällä vana piilossa: harjanne ja roiske samoin
 	w.visible = false
@@ -204,7 +213,7 @@ func _run() -> void:
 	w = _new_wake()
 	_drive(w, 1.0, 4.0)
 	_check("2) 1,0 m/s: viiksen kärkiä %d (0)" % _of_type(w, Wake.TYPE_WHISKER).size(), _of_type(w, Wake.TYPE_WHISKER).is_empty())
-	_check("9) 1,0 m/s: harjanteen kärkiä %d (0)" % w._ridge_verts.size(), w._ridge_verts.is_empty())
+	_check("9) 1,0 m/s: harjanteen kärkiä %d (0)" % _g.ridge.size(), _g.ridge.is_empty())
 	w.queue_free()
 
 	# --- Peruutus 3,2 m/s ---
@@ -212,7 +221,7 @@ func _run() -> void:
 	_drive(w, -3.2, 5.0)
 	_check("3) peruutus: viiksen kärkiä %d (0)" % _of_type(w, Wake.TYPE_WHISKER).size(), _of_type(w, Wake.TYPE_WHISKER).is_empty())
 	_check("3) peruutus: roiske ei emittoi", not w.spray[0].emitting and not w.spray[1].emitting)
-	_check("9) peruutus: harjanteen kärkiä %d (0)" % w._ridge_verts.size(), w._ridge_verts.is_empty())
+	_check("9) peruutus: harjanteen kärkiä %d (0)" % _g.ridge.size(), _g.ridge.is_empty())
 	w.queue_free()
 	_finish()
 
@@ -224,8 +233,8 @@ func _check_ridge(w: Wake, label: String, h_min: float, h_max: float, full: bool
 	var dmax := -INF
 	var edge_bad := 0
 	var crest := 0.0
-	for i in w._ridge_verts.size():
-		var v := w._ridge_verts[i]
+	for i in _g.ridge.size():
+		var v: Vector3 = _g.ridge[i]
 		var a := w._ridge_colors[i].a
 		var d := _outline_dist(_xz(v))
 		top = maxf(top, v.y)
@@ -247,13 +256,13 @@ func _check_whisker_edges(w: Wake, label: String, free_end: bool) -> void:
 	var wh := _of_type(w, Wake.TYPE_WHISKER)
 	var end_s := 0.0
 	for i in wh:
-		end_s = maxf(end_s, w._uv2s[i].y)
+		end_s = maxf(end_s, _g.uv2s[i].y)
 	var bad := 0
 	for i in wh:
-		var col: float = w._uvs[i].y
-		var s: float = w._uv2s[i].y
+		var col: float = _g.uvs[i].y
+		var s: float = _g.uv2s[i].y
 		var edge := col == 0.0 or col == 1.0 or s == 0.0 or (free_end and s >= end_s - 0.001)
-		if edge and w._colors[i].a > 1e-6:
+		if edge and _g.colors[i].a > 1e-6:
 			bad += 1
 	_check("11) %s: viiksen reuna- ja kärki%s kärkiä alfa > 0: %d (0)" % [label, "- ja loppupään" if free_end else "pään", bad], not wh.is_empty() and bad == 0)
 
@@ -263,9 +272,9 @@ func _check_whisker_edges(w: Wake, label: String, free_end: bool) -> void:
 func _check_on_ridge(w: Wake) -> void:
 	var under := 0
 	var tested := 0
-	var rv := w._ridge_verts
+	var rv: PackedVector3Array = _g.ridge
 	for i in _of_type(w, Wake.TYPE_WHISKER):
-		var v := w._verts[i]
+		var v: Vector3 = _g.verts[i]
 		var p := _xz(v)
 		for t in range(0, rv.size(), 3):
 			var a := _xz(rv[t])

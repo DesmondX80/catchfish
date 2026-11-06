@@ -16,8 +16,9 @@ uniform vec3 sky_color : source_color = vec3(0.55, 0.65, 0.75);
 varying vec2 ridge_xz;
 
 void vertex() {
-	ridge_xz = VERTEX.xz;
-	VERTEX.y += surface_height(VERTEX.xz) + 0.004;
+	// Mesh on veneen koordinaatistossa (vain kierto pystyakselin ympäri)
+	ridge_xz = (MODEL_MATRIX * vec4(VERTEX, 1.0)).xz;
+	VERTEX.y += surface_height(ridge_xz) + 0.004;
 }
 
 void fragment() {
