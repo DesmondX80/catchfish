@@ -14,6 +14,8 @@ const SIDE_FROM := 10.0 # m laituripaikasta: sivujen syvyys mitataan tästä alk
 const PROP_MARGIN := 0.02 # m: perän kohdalla vähintään Boat.PROP_DEPTH + tämä
 const SLOPE_MAX := 0.2 # pohjan kaltevuus vierekkäisten solujen välillä
 const SLOPE_RADIUS := 15.0 # m keskilinjasta
+const BANK_DIST := 4.0 # m: rantatörmä (rantaan enintään tämän verran) ei muutu
+const BANK_MAX := 0.7 # m: törmäsolun suurin syvyys (luonnostaan enintään 0,63 m)
 const DRIVE_LIMIT := 240.0 # s laiturilta väylän päähän
 
 var main: Node
@@ -135,10 +137,18 @@ func _check_slope() -> void:
 	var r1 := ceili((hi.y + SLOPE_RADIUS - lake.origin_z) / lake.cell_size)
 	var worst := 0.0
 	var at := Vector2.ZERO
+	var bank_deepest := 0.0
+	var bank_at := Vector2.ZERO
+	var bank_cells := 0
 	for r in range(r0, r1 + 1):
 		for c in range(c0, c1 + 1):
 			if not lake.cell_is_water(c, r) or not _near_line(_cell_point(c, r), SLOPE_RADIUS):
 				continue
+			if lake.cell_shore_distance(c, r) <= BANK_DIST:
+				bank_cells += 1
+				if -lake.cell_height(c, r) > bank_deepest:
+					bank_deepest = -lake.cell_height(c, r)
+					bank_at = _cell_point(c, r)
 			for nb in [Vector2i(c + 1, r), Vector2i(c, r + 1)]:
 				if not lake.cell_is_water(nb.x, nb.y) or not _near_line(_cell_point(nb.x, nb.y), SLOPE_RADIUS):
 					continue
@@ -147,6 +157,9 @@ func _check_slope() -> void:
 					worst = slope
 					at = _cell_point(c, r)
 	_check("väylän pohjassa ei pystyseinää (jyrkin kaltevuus %.3f kohdassa %.0f, %.0f)" % [worst, at.x, at.y], worst <= SLOPE_MAX + 1e-4)
+	# Rantatörmä ennallaan (päätös 6): törmäsolut ovat luonnostaan alle BANK_MAX
+	# syviä (ennen ruoppausta enintään 0,63 m), ruopattu törmä olisi syvempi
+	_check("rantatörmä ennallaan (%d törmäsolua, syvin %.2f m kohdassa %.0f, %.0f)" % [bank_cells, bank_deepest, bank_at.x, bank_at.y], bank_cells > 0 and bank_deepest <= BANK_MAX)
 
 
 ## Solun korkeuden kohta (LakeData.height_at: solun kulma)
