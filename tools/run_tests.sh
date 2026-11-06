@@ -63,6 +63,7 @@ tests=(
 	"tubtest|--fixed-fps 30 -- --day=180 --tubtest"
 	"tubtest-talvi|--fixed-fps 30 -- --day=40 --tubtest"
 	"voicetest|--fixed-fps 30 -- --day=180 --voicetest"
+	"waketest|--fixed-fps 30 -- --day=180 --waketest"
 	"wavesoundtest|--fixed-fps 30 -- --day=180 --wavesoundtest"
 	"wavesoundtest-talvi|--fixed-fps 30 -- --day=40 --wavesoundtest"
 	"wavetest|--fixed-fps 30 -- --day=180 --wavetest"

@@ -80,6 +80,11 @@ painuu, hauki hyppää).
   moottorilla: väylän keskellä potkuri ei osu pohjaan. Laiturissa perän alla
   on vähän yli metri vettä, joten matalasta varoitetaan lähtiessä kerran.
   Väylä näkyy kartalla hieman tummempana syvyysvärinä.
+  Kovassa vauhdissa keulasta lähtee kylkiä pitkin vaahtoviiksi matalan
+  läpikuultavan vesiharjanteen päällä, ja yli 18 km/h:ssa keulaolkapäiltä
+  roiskuu pisaroita. Peräaalto alkaa peräpeilistä pehmeästi, ja sen reunat
+  ovat rikkonaiset. Keula-aalto näkyy myös vieraiden moottoriveneiden
+  keulassa, mutta ei peruuttaessa eikä hitaasti soudettaessa.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee. Aallokon koko riippuu tuulesta ja
   pyyhkäisymatkasta eli siitä, kuinka pitkän matkan tuuli on puhaltanut
