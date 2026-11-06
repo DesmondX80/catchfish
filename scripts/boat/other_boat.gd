@@ -267,6 +267,7 @@ func _simulate(dt: float) -> void:
 	var stern := pos - fwd * Boat.LENGTH * 0.5
 	var speed := velocity.length()
 	wake.track(stern, side, speed)
+	wake.set_hull(pos, forward(), velocity.dot(forward())) # keula-aalto nopeudesta eteenpäin
 	_record_wave(stern, side, speed)
 	if state == State.TRAVEL:
 		_stuck = _stuck + dt if speed < 0.2 and _pause <= 0.0 else 0.0

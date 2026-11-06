@@ -339,6 +339,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/other_boats_test.gd").new())
 	elif "--channeltest" in args:
 		add_child(load("res://tests/channel_test.gd").new())
+	elif "--waketest" in args:
+		add_child(load("res://tests/wake_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):
@@ -367,6 +369,8 @@ func _start_game(start_index: int, career := false) -> void:
 				add_child(load("res://tests/seam_shots.gd").new())
 			elif arg.begins_with("--channelshots="):
 				add_child(load("res://tests/channel_shots.gd").new())
+			elif arg.begins_with("--wakeshots="):
+				add_child(load("res://tests/wake_shots.gd").new())
 			elif arg.begins_with("--audio-preview="):
 				add_child(load("res://tests/audio_preview.gd").new())
 
@@ -467,17 +471,23 @@ func _process(delta: float) -> void:
 	for mat in waters:
 		Waves.apply(mat)
 	Waves.apply(boat.wake.material)
+	Waves.apply(boat.wake.ridge_material)
 	# Veneen sisällä ei piirretä vettä eikä vanaa (jäällä ei venettä)
 	for mat in waters:
 		mat.set_shader_parameter("ice", 1.0 if boat.on_ice else 0.0)
 		mat.set_shader_parameter("sky_color", sky.horizon_color)
 		mat.set_shader_parameter("rain", weather.rain)
 	waters.append(boat.wake.material)
+	waters.append(boat.wake.ridge_material)
+	boat.wake.ridge_material.set_shader_parameter("sky_color", sky.horizon_color)
 	# Vieraiden veneiden sisällä ei myöskään vettä eikä vanaa (ruudulla näkyvä asento)
 	var others := PackedVector4Array()
 	for other in other_boats.boats:
 		Waves.apply(other.wake.material)
+		Waves.apply(other.wake.ridge_material)
+		other.wake.ridge_material.set_shader_parameter("sky_color", sky.horizon_color)
 		waters.append(other.wake.material)
+		waters.append(other.wake.ridge_material)
 		if others.size() < 2:
 			others.append(Vector4(other.position.x, other.position.z, other.rotation.y, 0.0))
 	var other_count := others.size()

@@ -461,6 +461,7 @@ func _simulate(dt: float) -> void:
 	if motor_running:
 		_check_propeller(stern)
 	wake.track(stern, side, velocity.length())
+	wake.set_hull(pos, forward(), velocity.dot(forward())) # keula-aalto nopeudesta eteenpäin
 	_animate(dt)
 	_apply_transform()
 	anchor.update(dt) # rungon uuden asennon mukaan
