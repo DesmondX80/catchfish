@@ -834,7 +834,9 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   leveä ja sen alfa nousee 0:sta täyteen 1,2 m:n matkalla; kulku-uoman ja
   sivuaaltojen reunat häivytetään varjostimessa UV:n ja maailman
   koordinaattien kohinan mukaan. Vieraat veneet samoin. Vana on nyt
-  ArrayMesh (yksi kutsu ruudussa). Testi `--waketest`, kuvat
+  indeksoitu ArrayMesh, ja viikset ja harjanne ovat veneen koordinaatistossa
+  (rakennetaan uudelleen vain voimakkuuden muuttuessa): kolme vanaa täydessä
+  vauhdissa 1,4 ms/ruutu (ennen 5,0 ms). Testi `--waketest`, kuvat
   `--wakeshots=KANSIO`.
 
 ## Huomioita ja avoimia kysymyksiä
