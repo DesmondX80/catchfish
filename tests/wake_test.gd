@@ -242,6 +242,9 @@ func _run() -> void:
 ## 14) Pelin oikea vene: set_hull-kutsu boat.gd:ssä antaa nopeuden eteenpäin
 func _check_game_boat() -> void:
 	var boat: Boat = get_parent().boat
+	if boat.on_ice:
+		_check("14) pelin vene jäällä: vana piilossa", not boat.wake.is_visible_in_tree())
+		return
 	for dir in [-1.0, 1.0]:
 		for i in 3:
 			boat.velocity = boat.forward() * 3.2 * dir
