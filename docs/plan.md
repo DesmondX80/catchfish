@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 5.11.2026. Nykyinen versio **0.53.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.53.0)).
+Päivitetty 6.11.2026. Nykyinen versio **0.54.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.54.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -787,7 +787,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   uistin solmitaan. Testi `--linetest` (myös talvi), kuvat `--lineshots=KANSIO`,
   `--perftest-lines`.
 
-- **#108 Moottorilla ajaminen nopeammaksi – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-108.md`.
+- **#108 Moottorilla ajaminen nopeammaksi – tehty (0.54.0).** Suunnitelma `docs/suunnitelmat/CATCHFISH-108.md`.
   Perämoottorin työntö 420 → 880 N (`Boat.MOTOR_THRUST`): täydellä kaasulla
   tyynellä huippu noin 28 km/h (ennen 19 km/h), 50 % kaasulla noin 19 km/h.
   Peruutus ennallaan: kaasu −0,4 antaa saman 168 N kuin ennen
