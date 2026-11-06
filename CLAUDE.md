@@ -125,6 +125,9 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
 - Työnjohtaja ei välitä Teemulle tiimin välivaiheita, vaan vain
   epäselvyydet, poikkeamat ja julkaisuraportit.
 - Teemu voi milloin tahansa puhua kenelle tahansa tiimiläiselle suoraan.
+- Viestien sävy on ronski ja kiroileva joka viestissä, myös tiimiläisillä
+  toisilleen (ks. osio *Sävy* tiedostoissa `.claude/agents/*.md`). Tiedostoihin
+  kirjoitettava teksti (koodi, commitit, README, suunnitelmat) pysyy asiallisena.
 
 ## Testaus
 
