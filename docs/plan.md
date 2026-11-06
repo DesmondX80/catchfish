@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 6.11.2026. Nykyinen versio **0.55.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.55.0)).
+Päivitetty 6.11.2026. Nykyinen versio **0.56.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.56.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -821,7 +821,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   moottori käy tai käynnistyy; muuten ja jäällä se ei tee mitään. Testi
   `--motorspeedtest`.
 
-- **#134 Keula-aalto ja pehmeämpi peräaalto kovassa vauhdissa – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-134.md`.
+- **#134 Keula-aalto ja pehmeämpi peräaalto kovassa vauhdissa – tehty (0.56.0).** Suunnitelma `docs/suunnitelmat/CATCHFISH-134.md`.
   `Wake` saa joka fysiikkaruudulla veneen nykyisen asennon ja nopeuden
   eteenpäin (`Wake.set_hull`). Keula-aallon voimakkuus k = 0 → 1 välillä
   1,2–6,5 m/s (peruutuksessa 0): keulasta (z −1,9 → −1,5) kylkeä pitkin

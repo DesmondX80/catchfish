@@ -64,6 +64,7 @@ tests=(
 	"tubtest-talvi|--fixed-fps 30 -- --day=40 --tubtest"
 	"voicetest|--fixed-fps 30 -- --day=180 --voicetest"
 	"waketest|--fixed-fps 30 -- --day=180 --waketest"
+	"waketest-talvi|--fixed-fps 30 -- --day=40 --waketest"
 	"wavesoundtest|--fixed-fps 30 -- --day=180 --wavesoundtest"
 	"wavesoundtest-talvi|--fixed-fps 30 -- --day=40 --wavesoundtest"
 	"wavetest|--fixed-fps 30 -- --day=180 --wavetest"
