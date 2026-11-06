@@ -325,3 +325,5 @@ Kaikki ratkaistu 6.11.2026, ks. *Päätökset*. Alkuperäiset vaihtoehdot alla.
 - PÄÄTÖS 3: Ei uutta ääntä (3a).
 - PÄÄTÖS 4: Vieraat veneet saavat saman keula-aallon (myös harjanteen) ja pehmeän peräaallon (4a).
 - PÄÄTÖS 5: Peräaallon alku 0 → täysi 1,2 m:n matkalla (5a).
+- PÄÄTÖS 6 (työnjohtaja): Harjanteen harjan alfa = 0,6 · min(1, k / 0,3), eli täysi 0,6 vasta k ≥ 0,3 (≈ 2,8 m/s). Perustelu: soudussa harjanteen ei pidä näkyä läikkänä. Testi 11 (alfa 0,55–0,65 täydessä vauhdissa) ennallaan.
+- PÄÄTÖS 7 (työnjohtaja): Viiksen loppupää häivytetään 0,3 m:n matkalla vain, kun viiksi loppuu ennen peräpeiliä (häivytys pienenee jatkuvasti k:n mukaan); peräpeiliin asti ylettyvä viiksi jatkuu täydellä alfalla Kelvinin sivuaaltoon ilman aukkoa. Testi 11 tarkistaa kärjen, reunat ja vapaan loppupään; lisätarkistus: k = 1:llä viiksen ja Kelvinin aallon liitoskohdassa ei alfa-aukkoa.
