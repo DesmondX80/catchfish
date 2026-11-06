@@ -156,7 +156,7 @@ func _run() -> void:
 	_speed = 1.5
 	Input.action_press("boat_forward")
 	await _wait(6.0)
-	await _shot("07-soutu-ylhaalta", Vector3(0.0, 12.0, -4.0), Vector3(0, 0, -4.0))
+	await _shot("07-soutu-ylhaalta", Vector3(0.0, 12.0, -3.0), Vector3(0, 0, -4.0))
 	Input.action_release("boat_forward")
 
 	# Peruutus: peruutuskaasu −0,4
