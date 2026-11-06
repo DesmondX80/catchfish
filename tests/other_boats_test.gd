@@ -76,6 +76,7 @@ func _run() -> void:
 		return
 	_find_spot()
 	await _motor_route()
+	await _motor_channel()
 	await _row_route()
 	await _wake_passes()
 	await _collisions()
@@ -166,9 +167,11 @@ func _follow(b: OtherBoat, goal: int, limit_s: float, deep_min: float, label: St
 
 ## 1. Moottorivene laiturilta toiselle laiturille, moottorin ääni
 func _motor_route() -> void:
-	var docks := ob.usable_docks(OtherBoats.Kind.MOTOR)
-	var ids := docks.map(func(i): return lake.starts[i]["id"])
-	_check("moottoriveneiden laiturit %s: uimalaituri ja veneenlasku, ei kotaa" % str(ids), ids.size() == 2 and "uimalaituri" in ids and "veneenlasku" in ids)
+	var all := ob.usable_docks(OtherBoats.Kind.MOTOR)
+	var ids := all.map(func(i): return lake.starts[i]["id"])
+	_check("moottoriveneiden laiturit %s: kaikki kolme laituria" % str(ids), ids.size() == 3 and "kota" in ids and "uimalaituri" in ids and "veneenlasku" in ids)
+	# Uimalaiturilta veneenlaskupaikalle (kodan väylä erikseen: _motor_channel)
+	var docks := all.filter(func(i): return lake.starts[i]["id"] != "kota")
 	if docks.size() < 2:
 		return
 	var route := ob.dock_route(OtherBoats.Kind.MOTOR, docks[0], docks[1])
@@ -188,6 +191,57 @@ func _motor_route() -> void:
 	_check("ääniloki kirjaa vieraan moottorin", main.audio.log_lines.any(func(l): return l.contains("loop_start motor_loop (vieras vene)")))
 	main.audio.log_enabled = false
 	_clear_boats()
+
+
+## 1a. Moottorivene kodalta väylää pitkin toiselle laiturille ja takaisin
+## (CATCHFISH-101): rungon alla vähintään Boat.PROP_DEPTH koko matkan (paitsi
+## toisen laiturin matalassa lähivedessä, kuten kohdassa 1), väylällä hitaasti,
+## kodalla kannen länsipuolella vieraiden veneiden laituripaikalla
+func _motor_channel() -> void:
+	var docks := ob.usable_docks(OtherBoats.Kind.MOTOR)
+	var kota := -1
+	var other := -1
+	for i in docks:
+		if lake.starts[i]["id"] == "kota":
+			kota = i
+		elif lake.starts[i]["id"] == "veneenlasku":
+			other = i
+	_check("moottoriveneelle kodan ja veneenlaskupaikan laiturit (%d, %d)" % [kota, other], kota >= 0 and other >= 0)
+	if kota < 0 or other < 0:
+		return
+	var line: PackedVector2Array = ob._channels[kota]
+	var channel_end := line[line.size() - 1]
+	for leg in [[kota, other], [other, kota]]:
+		var from: int = leg[0]
+		var to: int = leg[1]
+		var route := ob.dock_route(OtherBoats.Kind.MOTOR, from, to)
+		var label := "moottorivene %s → %s" % [lake.starts[from]["id"], lake.starts[to]["id"]]
+		_check("%s: reitti (%d pistettä, %.0f m)" % [label, route.size(), OtherBoats.route_length(route)], route.size() >= 2)
+		if route.is_empty():
+			continue
+		_place_player(_spot, _dir)
+		var b := ob.spawn(OtherBoats.Kind.MOTOR, route, to, ob.lake_berth_yaw(from))
+		var hull := [INF]
+		var hull_at := [Vector2.ZERO]
+		var channel_speed := [0.0]
+		await _follow(b, OtherBoat.State.DOCKED, OtherBoats.route_length(route) / 1.4 + 120.0, 0.0, label, func():
+			if _hull_depth(b) < hull[0] and b.pos.distance_to(ob.berth_of(other)) > OtherBoats.APPROACH_RADIUS:
+				hull[0] = _hull_depth(b)
+				hull_at[0] = b.pos
+			# Väylällä, kun vene on ehtinyt hidastaa (ei laiturin eikä väylän pään lähellä)
+			if ob.in_channel(b.pos) and b.pos.distance_to(ob.berth_of(kota)) > 30.0 and b.pos.distance_to(channel_end) > 50.0:
+				channel_speed[0] = maxf(channel_speed[0], b.velocity.length()))
+		_check("%s: rungon alla vähintään %.1f m (matalin %.2f m kohdassa %.0f, %.0f)" % [label, Boat.PROP_DEPTH, hull[0], hull_at[0].x, hull_at[0].y], hull[0] >= Boat.PROP_DEPTH)
+		_check("%s: väylällä hitaasti (suurin %.1f m/s)" % [label, channel_speed[0]], channel_speed[0] > 0.5 and channel_speed[0] <= OtherBoat.SLOW_SPEED + 0.3)
+		if to == kota:
+			# Kannen vieressä eri puolella kuin pelaajan aloituspaikka
+			var end := route[route.size() - 1]
+			var dock: Dictionary = lake.docks[kota]
+			var side: float = (end - dock["center"]).dot(dock["x_axis"])
+			var player_side: float = (Vector2(lake.starts[kota]["x"], lake.starts[kota]["z"]) - dock["center"]).dot(dock["x_axis"])
+			_check("%s: laituripaikka kannen vieressä pelaajan aloituspaikan vastapuolella (%.1f m / %.1f m laiturin keskilinjasta)" % [label, side, player_side],
+				end == ob.berth_of(kota) and not lake.near_dock(end, 0.3) and lake.near_dock(end, 2.5) and signf(side) != signf(player_side))
+		_clear_boats()
 
 
 ## 1b. Soutuvene laiturilta kalapaikalle, kalastaa ja palaa laiturille

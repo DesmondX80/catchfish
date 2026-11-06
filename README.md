@@ -75,6 +75,11 @@ painuu, hauki hyppää).
   Perämoottorin potkuri ulottuu lähes metrin syvyyteen: matalassa se osuu
   pohjaan ja vääntyy, ja liian monesta osumasta se menee rikki, jolloin
   loppureissu soudetaan. Matalasta varoitetaan, ja vapaalla potkuri ei pyöri.
+  Kodan laiturilta järvelle kulkee kapeaa lahtea pitkin noin 515 m pitkä
+  ruopattu väylä (pohja 1,5 m, noin 10 m leveä), jota pitkin pääsee
+  moottorilla: väylän keskellä potkuri ei osu pohjaan. Laiturissa perän alla
+  on vähän yli metri vettä, joten matalasta varoitetaan lähtiessä kerran.
+  Väylä näkyy kartalla hieman tummempana syvyysvärinä.
 - **Aika ja sää**: aurinko liikkuu Raahen leveysasteella kesäkuussa,
   tuuli vaihtelee ja puuskittelee. Aallokon koko riippuu tuulesta ja
   pyyhkäisymatkasta eli siitä, kuinka pitkän matkan tuuli on puhaltanut
@@ -218,8 +223,10 @@ painuu, hauki hyppää).
 - **Muut veneet**: avovesikaudella valoisaan aikaan järvellä liikkuu silloin
   tällöin muita kalastajia, enintään kaksi venettä kerrallaan: moottorivene
   ajaa laiturilta toiselle laiturille tai kalapaikalle, ja soutuvene soutaa
-  kalapaikalle, kalastaa ankkurissa 5–15 minuuttia ja palaa (kodan matalalta
-  laiturilta lähtee vain soutuveneitä). Ensimmäinen vene
+  kalapaikalle, kalastaa ankkurissa 5–15 minuuttia ja palaa. Kodalle
+  moottorivene ajaa ruopattua väylää pitkin hitaasti, eikä se mahdu
+  kiertämään sinua väylällä, vaan pysähtyy, kunnes väistät. Kodalla vieraat
+  veneet kiinnittyvät laiturin toiselle puolelle kuin sinun veneesi. Ensimmäinen vene
   lähtee 2–6 minuutin kuluttua pelin alusta ja seuraava 4–12 minuutin välein
   (todellista aikaa); yksi vene voi olla järvellä jo alussa. Kovalla tuulella
   (yli 8 m/s) ja rankkasateella ei lähdetä, ja hämärän tullen veneet palaavat
@@ -261,7 +268,9 @@ käyristä**: 15 m:n käyrä on 3,3 m:n ja 12,5 m:n käyrä 5,8 m:n syvyydessä
 (vedenpinta 18,3 m), ja niiden välillä syvyys interpoloidaan. Vanhan jokiuoman
 syvänteet (12,5 m:n käyrien sisällä) syvenevät enintään 7 metriin, joka on
 paikallistiedon mukaan altaan syvin kohta. Rannoilla vesi syvenee heti noin
-0,8 metriin, ja maatuvat vesialueet ovat matalia.
+0,8 metriin, ja maatuvat vesialueet ovat matalia. Kodan lahteen
+`build_lake.py` ruoppaa väylän (`MML_CHANNELS`): keskilinjalla 1,5 m, reunat
+loivenevat lahden pohjaan, eikä rantatörmä muutu. Väylän keskilinja on `lake.json`:ssa (`channels`).
 
 Raakadataa ei ole versionhallinnassa (`.gitignore`).
 

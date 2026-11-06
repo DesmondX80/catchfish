@@ -45,9 +45,10 @@ const NARROW_CLEARANCE := 6.0 # m rannasta
 const DOCK_CLEARANCE := 5.0 # m: reitti ei kulje laiturin kannen vierestä (paitsi laituriin)
 const NET_CLEARANCE := 10.0 # m verkkojen pyykeistä
 const NET_LINE_CLEARANCE := 6.0 # m verkon linjasta: verkon yli ei ajeta
-## Moottoriveneet käyttävät vain näitä laitureita: kodan laiturilta on noin 600 m
-## matalaa vettä, joten sieltä kulkevat vain soutuveneet
-const MOTOR_DOCKS := ["uimalaituri", "veneenlasku"]
+## Ruopattu väylä (LakeData.channels): moottorivene kulkee laiturin ja syvän
+## veden välin väylän keskilinjaa pitkin hitaasti (SLOW_SPEED), kun se on
+## näin lähellä keskilinjaa
+const CHANNEL_SLOW := 15.0 # m
 const LOS_STEP := 2.0 # m: suoran reitinosan tarkistusväli
 const LINE_SWAY := 1.5 # m: matalassa vedessä suoran sivuilla on myös vettä näin kauas
 const LOS_MAX := 150.0 # m: suoristettu reitinosa enintään
@@ -100,6 +101,7 @@ var _wake_cache_p := Vector2.INF
 var _wake_cache: Array = []
 var _next_variant := 0
 var _berths := {} # laiturin indeksi -> laituripaikka
+var _channels := {} # laiturin indeksi -> väylän keskilinja laituripaikalta syvään veteen
 
 
 func setup(boat_node: Boat, camera_node: Camera3D, sky_time: SkyTime, weather_node: Weather, lake_data: LakeData, net_control: NetControl, is_winter: bool) -> void:
@@ -115,6 +117,14 @@ func setup(boat_node: Boat, camera_node: Camera3D, sky_time: SkyTime, weather_no
 	_timer = _rng.randf_range(FIRST_SPAWN.x, FIRST_SPAWN.y)
 	_gcols = lake.cols / 2
 	_grows = lake.rows / 2
+	_channels.clear()
+	for ch in lake.channels:
+		for i in lake.starts.size():
+			if lake.starts[i].get("id", "") == ch.get("dock", ""):
+				var line := PackedVector2Array()
+				for p in ch["points"]:
+					line.append(Vector2(p[0], p[1]))
+				_channels[i] = line
 
 
 ## Saako järvelle lähteä: avovesikausi, valoisaa, ei kovaa tuulta eikä rankkasadetta
@@ -231,11 +241,11 @@ func dock_route(kind: int, from: int, to: int, spot := Vector2.INF, via := Vecto
 	var route := find_path(kind, start, dest) if via == Vector2.INF else _join(find_path(kind, start, via), find_path(kind, via, dest))
 	if route.is_empty():
 		return route
-	var out := _berth_path(from)
+	var out := _berth_path(from, kind)
 	out.reverse()
 	route = out + route
 	if to >= 0:
-		route.append_array(_berth_path(to))
+		route.append_array(_berth_path(to, kind))
 	return route
 
 
@@ -308,7 +318,7 @@ func send_home(b: OtherBoat, exclude := -1) -> void:
 	if route.is_empty():
 		b.home_retry = 10.0 # yritetään hetken päästä uudelleen
 		return
-	route.append_array(_berth_path(target))
+	route.append_array(_berth_path(target, b.kind))
 	b.set_route(route, target)
 
 
@@ -358,6 +368,13 @@ func berth_of(i: int) -> Vector2:
 	var dock_yaw := LakeData.dock_yaw(lake.starts[i])
 	var side := Vector2(cos(dock_yaw), -sin(dock_yaw))
 	p += (away.normalized() if away != Vector2.ZERO else side) * BERTH_GAP
+	if _channels.has(i):
+		# Väylän laiturilla (kota) vieras vene on kannen toisella puolella kuin
+		# pelaajan aloituspaikka: aloituspaikka on kapeassa taskussa, johon
+		# vene ei käänny väylältä eikä lahdelta
+		var d: Dictionary = lake.docks[i]
+		var x_axis: Vector2 = d["x_axis"]
+		p -= x_axis * 2.0 * (p - d["center"]).dot(x_axis)
 	_berths[i] = p
 	return p
 
@@ -375,9 +392,14 @@ func leave_of(i: int) -> Vector2:
 	return p
 
 
-## Laiturin vieren ja lähtöpisteen väliset reittipisteet tullessa: [lähtöpaikka, laituri]
-func _berth_path(i: int) -> PackedVector2Array:
+## Laiturin vieren ja lähtöpisteen väliset reittipisteet tullessa: [lähtöpaikka, laituri].
+## Moottoriveneellä väylän laiturille ensin väylän keskilinja syvästä vedestä.
+func _berth_path(i: int, kind: int) -> PackedVector2Array:
 	var path := PackedVector2Array()
+	if kind == Kind.MOTOR and _channels.has(i):
+		var line: PackedVector2Array = _channels[i]
+		for k in range(line.size() - 1, 0, -1): # ensimmäinen piste on laituripaikka
+			path.append(line[k])
 	if leave_of(i) != berth_of(i):
 		path.append(leave_of(i))
 	path.append(berth_of(i))
@@ -481,15 +503,18 @@ func _build_grid_step() -> void:
 
 ## Laitureiden lähtöpisteet: lähin kulkukelpoinen ruutu, jonne pääsee suoraan lähtöpaikasta (leave_of)
 ## laiturin vierestä kannen ohi ja josta pääsee syvään veteen. Laituri on
-## käytössä vain, jos sellainen löytyy. Moottoriveneille vain MOTOR_DOCKS.
+## käytössä vain, jos sellainen löytyy. Moottoriveneellä väylän laiturilta
+## lähtöpiste haetaan väylän päästä.
 func _finish_grid() -> void:
 	for kind in [Kind.MOTOR, Kind.ROW]:
 		_usable[kind] = []
 		_exits[kind] = {}
 		for i in lake.starts.size():
-			if kind == Kind.MOTOR and not lake.starts[i].get("id", "") in MOTOR_DOCKS:
-				continue
-			var exit := _dock_exit(kind, leave_of(i))
+			var from := leave_of(i)
+			if kind == Kind.MOTOR and _channels.has(i):
+				var line: PackedVector2Array = _channels[i]
+				from = line[line.size() - 1]
+			var exit := _dock_exit(kind, from)
 			if exit != Vector2.INF:
 				_usable[kind].append(i)
 				_exits[kind][i] = exit
@@ -554,9 +579,19 @@ func navigable(kind: int, p: Vector2) -> bool:
 	return _class(kind, cell_of(p)) != 0
 
 
-## Laiturin ja syvän veden välinen matala lähivesi: ajetaan hitaasti
+## Laiturin ja syvän veden välinen matala lähivesi tai moottoriveneellä
+## ruopattu väylä: ajetaan hitaasti
 func in_approach(kind: int, p: Vector2) -> bool:
-	return _class(kind, cell_of(p)) == 2
+	return _class(kind, cell_of(p)) == 2 or kind == Kind.MOTOR and in_channel(p)
+
+
+## Onko piste ruopatulla väylällä (alle CHANNEL_SLOW keskilinjasta)
+func in_channel(p: Vector2) -> bool:
+	for line: PackedVector2Array in _channels.values():
+		for k in line.size() - 1:
+			if Geometry2D.get_closest_point_to_segment(p, line[k], line[k + 1]).distance_to(p) < CHANNEL_SLOW:
+				return true
+	return false
 
 
 ## Reitti pisteestä a pisteeseen b: A* ruudukossa verkkojen ympäri, suoristettuna.

@@ -31,6 +31,7 @@ tests=(
 	"boattest|--fixed-fps 30 -- --day=180 --boattest"
 	"booktest|-- --day=180 --booktest"
 	"casttest|--fixed-fps 30 -- --day=180 --casttest"
+	"channeltest|--fixed-fps 30 -- --day=180 --channeltest"
 	"docktest|--fixed-fps 30 -- --day=180 --docktest"
 	"headwindtest|--fixed-fps 30 -- --day=180 --headwindtest"
 	"icetest|--fixed-fps 30 -- --day=40 --icetest"

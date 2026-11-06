@@ -165,7 +165,10 @@ func _run() -> void:
 
 	# 6) Vene laiturilla (uimalaituri tai muu moottoriveneiden laituri)
 	var docks := ob.usable_docks(OtherBoats.Kind.MOTOR)
-	var d: int = docks[0] if not docks.is_empty() else 1
+	var d := 1
+	for i in docks:
+		if ob.lake.starts[i]["id"] == "uimalaituri":
+			d = i
 	var berth := ob.berth_of(d)
 	ob.set_process(false) # pelaaja on kaukana: laiturissa oleva vene muuten katoaisi
 	b = ob.spawn(OtherBoats.Kind.MOTOR, PackedVector2Array([berth]), -1, ob.lake_berth_yaw(d))

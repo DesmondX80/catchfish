@@ -49,6 +49,28 @@ MML_STARTS = [
      'e': 380396, 'n': 7169095, 'ramp': True},
 ]
 
+# Ruopatut väylät: laiturilta syvään veteen ruopattu tasapohjainen väylä.
+# Keskilinjan ensimmäinen piste on laiturin aloituspaikka (start_near), loput
+# pisteet (ETRS-TM35FIN, noin 15 m välein) on hiottu kulkemaan lahden keskeltä
+# niin, että keskellä on vähintään 1,4 m, 3 m sivuilla 1,3 m ja 5 m sivuilla
+# 1,0 m vettä 10 m:stä laiturista alkaen (tests/channel_test.gd). depth = väylän pohjan syvyys (m).
+MML_CHANNELS = [
+    {'id': 'kodan_vayla', 'dock': 'kota', 'depth': 1.5,
+     'points': [(380121.0, 7167945.0), (380117.0, 7167952.0), (380115.5, 7167964.0), (380117.5, 7167975.9),
+                (380122.2, 7167989.4), (380128.2, 7168002.7), (380134.0, 7168015.8), (380139.2, 7168029.1),
+                (380144.5, 7168044.4), (380149.5, 7168060.0), (380154.7, 7168075.4), (380160.1, 7168090.7),
+                (380166.0, 7168105.9), (380173.6, 7168120.2), (380181.2, 7168132.3), (380188.0, 7168144.8),
+                (380194.3, 7168157.5), (380201.5, 7168170.0), (380211.4, 7168180.8), (380224.1, 7168186.5),
+                (380239.3, 7168184.6), (380251.0, 7168178.2), (380262.0, 7168169.5), (380273.0, 7168160.8),
+                (380284.8, 7168153.9), (380300.2, 7168149.5), (380312.0, 7168148.5), (380323.7, 7168150.0),
+                (380337.7, 7168154.7), (380351.2, 7168161.4), (380363.4, 7168169.8), (380374.4, 7168179.2),
+                (380384.8, 7168189.4), (380395.2, 7168199.6), (380405.6, 7168209.8), (380416.0, 7168220.0)]},
+]
+CHANNEL_FLAT = 5.0     # m keskilinjasta: täysi syvyys (noin 10 m tasapohja)
+CHANNEL_EDGE = 13.0    # m keskilinjasta: reuna loivenee nykyiseen pohjaan (8 m)
+CHANNEL_BANK = 4.0     # m: rantatörmä (rantaan enintään tämän verran) jää ennalleen
+CHANNEL_STEP = 0.8    # m: vierekkäisten vesisolujen suurin syvyysero väylän rinteessä (kaltevuus enintään 0,2)
+
 MML_GROUND_LAYERS = [
     ('suo', GROUND_BOG),
     ('soistuma', GROUND_BOG),
@@ -285,11 +307,21 @@ def mml_lake(folder):
                        'dock_width': spot.get('dock_width', 1.8), 'parking': spot.get('parking', False),
                        'ramp': spot.get('ramp', False)})
     start = starts[0]
+    # Väylät ruopataan aloituspaikkojen jälkeen, jotta laituripaikat pysyvät ennallaan
+    channels = []
+    for spec in MML_CHANNELS:
+        dock = next(s for s in starts if s['id'] == spec['dock'])
+        points = [(dock['x'], dock['z'])] + [tuple(round(v, 1) for v in to_world(e, n)) for e, n in spec['points']]
+        changed = dredge_channel(heights, water, shore_dist_water, cell, points, spec['depth'])
+        print(f"  väylä {spec['id']}: {changed} solua syvennetty")
+        channels.append({'id': spec['id'], 'dock': spec['dock'], 'depth': spec['depth'],
+                         'points': [[x, z] for x, z in points]})
     map_image(heights, water, ground, cell, vec, gt, ds.GetProjection())
     lake_area = water.sum() * cell * cell
     return heights, water, ground, cell, start, rocks, {
         **extras,
         'starts': starts,
+        'channels': channels,
         'name': 'Haapajärven tekoallas, Raahe',
         'source': 'mml',
         'attribution': 'Sisältää Maanmittauslaitoksen Maastotietokannan ja Korkeusmalli 2 m -aineistoa (CC BY 4.0)',
@@ -301,6 +333,66 @@ def mml_lake(folder):
 
 
 MAX_DEPTH = 7.0  # m: altaan syvin kohta (paikallistieto)
+
+
+def polyline_distance(px, pz, points):
+    """Etäisyys (m) pisteistä (px, pz) murtoviivaan points [(x, z), ...]."""
+    best = np.full(px.shape, np.inf)
+    for (ax, az), (bx, bz) in zip(points[:-1], points[1:]):
+        dx, dz = bx - ax, bz - az
+        if dx == 0 and dz == 0:
+            continue
+        t = np.clip(((px - ax) * dx + (pz - az) * dz) / (dx * dx + dz * dz), 0.0, 1.0)
+        best = np.minimum(best, np.hypot(px - (ax + t * dx), pz - (az + t * dz)))
+    return best
+
+
+def dredge_channel(heights, water, shore_dist_water, cell, points, target):
+    """Ruoppaa väylän keskilinjaa points (maailman x, z) pitkin: täysi syvyys
+    target CHANNEL_FLAT metriin keskilinjasta, sitten smoothstep nykyiseen
+    pohjaan CHANNEL_EDGE metrissä. Rantatörmä (rantaan enintään CHANNEL_BANK)
+    jää ennalleen. Vierekkäisten vesisolujen syvyysero on enintään
+    CHANNEL_STEP, jottei pohjaan synny pystyseinää. Väylä vain syventää.
+    Muuttaa heights-taulukkoa paikallaan ja palauttaa muuttuneiden solujen
+    määrän."""
+    rows, cols = heights.shape
+    xs = [p[0] for p in points]
+    zs = [p[1] for p in points]
+    pad = int(CHANNEL_EDGE / cell) + 3
+    c0 = max(0, int(min(xs) / cell + cols / 2) - pad)
+    c1 = min(cols, int(max(xs) / cell + cols / 2) + pad)
+    r0 = max(0, int(min(zs) / cell + rows / 2) - pad)
+    r1 = min(rows, int(max(zs) / cell + rows / 2) + pad)
+    rr, cc = np.mgrid[r0:r1, c0:c1]
+    # Solun korkeus on solun kulmassa (sama kuin LakeData.height_at)
+    off = polyline_distance((cc - cols / 2) * cell, (rr - rows / 2) * cell, points)
+    t = np.clip((off - CHANNEL_FLAT) / (CHANNEL_EDGE - CHANNEL_FLAT), 0.0, 1.0)
+    w = 1.0 - t * t * (3.0 - 2.0 * t)
+    depth = -heights[r0:r1, c0:c1].astype(np.float64)
+    wet = water[r0:r1, c0:c1]
+    bank = wet & (shore_dist_water[r0:r1, c0:c1] <= CHANNEL_BANK)
+    goal = np.where(wet & ~bank, np.maximum(depth, depth + (target - depth) * w), depth)
+    # Rinne törmästä väylään: syvyys saa kasvaa vesisolusta toiseen enintään
+    # CHANNEL_STEP (toistetaan, kunnes raja on voimassa koko alueella)
+    new = depth.copy()
+    while True:
+        limit = np.full(new.shape, np.inf)
+        for dr, dc in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            nb = np.full(new.shape, np.inf)
+            nb_wet = np.zeros(new.shape, bool)
+            dst = (slice(max(0, dr), new.shape[0] + min(0, dr)), slice(max(0, dc), new.shape[1] + min(0, dc)))
+            src = (slice(max(0, -dr), new.shape[0] + min(0, -dr)), slice(max(0, -dc), new.shape[1] + min(0, -dc)))
+            nb[dst] = new[src]
+            nb_wet[dst] = wet[src]
+            limit = np.minimum(limit, np.where(nb_wet, nb + CHANNEL_STEP, np.inf))
+        step = np.maximum(depth, np.minimum(goal, limit))
+        if np.array_equal(step, new):
+            break
+        new = step
+    block = heights[r0:r1, c0:c1]
+    changed = int(np.count_nonzero(-new.astype(np.float32) != block))
+    heights[r0:r1, c0:c1] = (-new).astype(np.float32)
+    return changed
 
 
 def rasterize_contours(vec, rows, cols, gt, projection, water_level):

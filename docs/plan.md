@@ -709,9 +709,9 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   ≥ 1,3 m, soutuvene ≥ 0,6 m, 15 m rannasta, laiturin kansi kierretään,
   laiturin matala lähivesi 120 m:n säteellä hitaasti, verkkojen pyykit 10 m
   ja verkon linja kierretään); ruudukko rakennetaan pelin alussa noin 2 ms
-  ruutua kohti. Kodan laiturilta on noin 600 m matalaa vettä, joten
-  moottoriveneet käyttävät vain uimalaituria ja veneenlaskupaikkaa ja kodalla
-  käyvät vain soutuveneet. Soutuvene pääsee kodan lahdesta kapeaa vettä
+  ruutua kohti. Kodan laiturilta oli noin 600 m matalaa vettä, joten
+  moottoriveneet käyttivät aluksi vain uimalaituria ja veneenlaskupaikkaa;
+  #101:stä lähtien ne ajavat kodalle ruopattua väylää pitkin. Soutuvene pääsee kodan lahdesta kapeaa vettä
   pitkin (≥ 0,6 m, rantaan ≥ 6 m, reittihaku välttää painolla 4); soudettava
   matka kalapaikalle on enintään 600 m. Vieras vene on laiturissa kannen
   suuntaisena ja lähtee ensin 5 m suoraan eteenpäin kannen pään ohi. Moottorivene ajaa 4,4 m/s (pelaajan
@@ -786,6 +786,27 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   jännityksestä. Katkenneen siiman 2,5 m pätkä roikkuu kärjessä, kunnes uusi
   uistin solmitaan. Testi `--linetest` (myös talvi), kuvat `--lineshots=KANSIO`,
   `--perftest-lines`.
+
+- **#101 Kodan rannan väylä syvemmäksi moottoriveneille – tehty.** Suunnitelma
+  `docs/suunnitelmat/CATCHFISH-101.md`. `tools/build_lake.py` ruoppaa kodan
+  laiturilta syvään veteen noin 515 m väylän (`MML_CHANNELS`, keskilinja
+  ETRS-TM35FIN-pisteinä, ensimmäinen piste on kodan laituripaikka):
+  tasapohja 1,5 m 5 m:iin keskilinjasta, smoothstep lahden pohjaan 13 m:iin.
+  Rantatörmä (rantaan ≤ 4 m) ei muutu, ja vierekkäisten vesisolujen
+  syvyysero on enintään 0,8 m (kaltevuus ≤ 0,2). Keskilinja on hiottu
+  15 m:n pisteväleiksi niin, että keskellä on ≥ 1,4 m ja 10 m:stä laiturista
+  alkaen ±3 m ≥ 1,3 m ja ±5 m ≥ 1,0 m. Laiturissa perän alla on noin 1,07 m,
+  joten kaasua antaessa tulee kerran matalan varoitus, mutta potkuri ei osu. Väylä vain syventää, ja se tehdään
+  aloituspaikkojen laskun jälkeen, joten laituripaikat eivät muutu;
+  `heights.bin`, `map.png` ja `lake.json` (`channels`) muuttuivat. Ei
+  merkintää (ei kartan viivaa eikä viittoja), F1-ohje ennallaan. Vieraat
+  moottoriveneet käyttävät kaikkia kolmea laituria: kodalle reitti kulkee
+  väylän keskilinjaa pitkin (`OtherBoats._berth_path`, lähtöpiste väylän
+  päästä), ja väylällä (alle 15 m keskilinjasta) ajetaan 1,5 m/s
+  (`in_channel`). Kodalla vieraat veneet (myös soutuveneet) kiinnittyvät
+  kannen länsipuolelle (`berth_of`), koska pelaajan aloituspaikka kannen
+  itäpuolella on kapeassa taskussa, johon vene ei käänny väylältä.
+  Testi `--channeltest`, kuvat `--channelshots=KANSIO`.
 
 - **#108 Moottorilla ajaminen nopeammaksi – tehty (0.54.0).** Suunnitelma `docs/suunnitelmat/CATCHFISH-108.md`.
   Perämoottorin työntö 420 → 880 N (`Boat.MOTOR_THRUST`): täydellä kaasulla

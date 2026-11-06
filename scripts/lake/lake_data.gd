@@ -26,6 +26,9 @@ var start_index := 0
 var docks: Array = [] # laiturien kannet törmäystarkistukseen: [{center, x_axis, z_axis, half}]
 var buildings: Array = [] # [{points: [[x, z], ...], height}]
 var towers: Array = []
+## Ruopatut väylät laiturilta syvään veteen: [{id, dock, depth, points: [[x, z], ...]}],
+## ensimmäinen piste on laituripaikka (tools/build_lake.py)
+var channels: Array = []
 
 var heights := PackedFloat32Array()
 var water := PackedByteArray()
@@ -62,6 +65,7 @@ static func load_from(dir: String) -> LakeData:
 	lake.starts = meta.get("starts", [meta["start"]])
 	lake.buildings = meta.get("buildings", [])
 	lake.towers = meta.get("towers", [])
+	lake.channels = meta.get("channels", [])
 	lake._build_docks()
 
 	lake.heights = FileAccess.get_file_as_bytes(dir.path_join("heights.bin")).to_float32_array()

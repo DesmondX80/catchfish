@@ -272,7 +272,8 @@ Teemu valitsi kohdat 1, 3, 7 ja 9; muut työnjohtaja ratkaisi suosituksen mukaan
 13. Moottorivene ei säikytä kaloja (työnjohtaja).
 14. Kodan laiturilta on noin 600 m matalaa vettä, joten moottoriveneet
     käyttävät vain uimalaituria ja veneenlaskupaikkaa; kodalta kulkevat vain
-    soutuveneet (työnjohtaja).
+    soutuveneet (työnjohtaja). *Kumottu CATCHFISH-101:ssä:* kodan lahteen
+    ruopattiin väylä, ja moottoriveneet ajavat kodalle sitä pitkin.
 15. Soutuveneille kapea vesi (syvyys ≥ 0,6 m, rantaan ≥ 6 m) on kulkukelpoinen,
     mutta reittihaku välttää sitä painolla 4, jotta soutuvene pääsee kodan
     lahdesta järvelle. Kalapaikat pysyvät ≥ 15 m rannasta, moottoriveneisiin
