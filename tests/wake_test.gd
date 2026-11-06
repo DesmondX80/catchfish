@@ -3,7 +3,7 @@ extends Node
 ##   godot --headless --fixed-fps 30 -- --day=180 --waketest
 ## Erillinen Wake-solmu saa suoran ajon fysiikkaruuduittain (track + set_hull),
 ## ja testi tarkistaa vaahtonauhojen ja vesiharjanteen kärjet:
-## 1) 7,8 m/s: viikset keulassa molemmin puolin, alfa 0,55–0,65, ei rungon sisällä
+## 1) 7,8 m/s: viikset keulassa molemmin puolin, alfa 0,80–0,90 (PÄÄTÖS 8), ei rungon sisällä
 ## 2) 1,0 m/s: ei viiksiä; 1,5 m/s: alfa ≤ 0,05
 ## 3) peruutus 3,2 m/s: ei viiksiä eikä roisketta
 ## 4) roiske 7,8 m/s:ssa, ei 4,4 m/s:ssa
@@ -20,6 +20,7 @@ extends Node
 ## 13) piilotettu vana (jäällä) piilottaa harjanteen ja roiskeen
 ## 14) pelin vene: Boat._simulate välittää Wakelle nopeuden eteenpäin (peruutus
 ##     negatiivinen, ei keula-aaltoa; eteenpäin keula-aalto syntyy)
+## 15) vanan vanhin pää alkaa alfasta 0 (häivytys 1,2 m, PÄÄTÖS 10)
 
 const DT := 1.0 / 30.0
 const START := Vector2(40.0, -25.0)
@@ -128,9 +129,12 @@ func _run() -> void:
 				left += 1
 	var wa := _max_alpha(w, wh)
 	_check("1) 7,8 m/s: viiksen kärkiä keulan etupuoliskolla vasemmalla %d, oikealla %d" % [left, right], left > 0 and right > 0)
-	_check("1) 7,8 m/s: viiksen suurin alfa %.3f (0,55–0,65)" % wa, wa >= 0.55 and wa <= 0.65)
+	_check("1) 7,8 m/s: viiksen suurin alfa %.3f (0,80–0,90)" % wa, wa >= 0.80 and wa <= 0.90)
 	_check("1) 7,8 m/s: viiksen kärkiä rungon sisällä %d (0)" % inside, inside == 0)
 	_check("4) roiske emittoi 7,8 m/s:ssa", w.spray[0].emitting and w.spray[1].emitting)
+	var drop_a: float = (w.spray[0].mesh.material as StandardMaterial3D).albedo_color.a
+	_check("4) roiskeessa aina %d pisaraa/kylki, elinaika %.2f s, alfa %.2f (PÄÄTÖKSET 9–10: 40, 0,3, 0,55)" % [w.spray[0].amount, w.spray[0].lifetime, drop_a],
+		w.spray[0].amount == 40 and w.spray[1].amount == 40 and is_equal_approx(w.spray[0].lifetime, 0.3) and absf(drop_a - 0.55) < 0.01)
 	_check("4) roiske on keulaolkapäillä (%.2f m keskipisteestä)" % _xz(w.spray[0].global_position).distance_to(_pos),
 		_local(_xz(w.spray[0].global_position)).y < -1.0 and _local(_xz(w.spray[1].global_position)).y < -1.0)
 
@@ -185,6 +189,12 @@ func _run() -> void:
 		_local(end_pts[0]).y if not end_pts.is_empty() else 0.0, end_alpha, kel_alpha, kel_gap],
 		not end_pts.is_empty() and _local(end_pts[0]).y > 2.1 and end_alpha >= 0.5 and kel_alpha >= 0.5 and kel_gap <= 0.35)
 
+	# 15) Vanan vanhin pää häivytetty 1,2 m:n matkalla (PÄÄTÖS 10): ensimmäisen
+	# kohdan kärjet alfa 0, 1,2 m:n päässä siitä jo täysi
+	var first_a := 0.0
+	for i in 6:
+		first_a = maxf(first_a, _g.colors[i].a)
+	_check("15) vanan vanhimman pään alfa %.3f (0)" % first_a, first_a == 0.0)
 	# 8) Pysähdys: 1 s paikallaan
 	_drive(w, 0.0, 1.0)
 	_check("8) pysähdyksen jälkeen viiksen kärkiä %d (0)" % _of_type(w, Wake.TYPE_WHISKER).size(), _of_type(w, Wake.TYPE_WHISKER).is_empty())
@@ -199,7 +209,7 @@ func _run() -> void:
 	w = _new_wake()
 	_drive(w, 4.4, 6.0)
 	wa = _max_alpha(w, _of_type(w, Wake.TYPE_WHISKER))
-	_check("4,4 m/s: viiksen alfa %.3f (heikompi, n. 0,36)" % wa, wa > 0.3 and wa < 0.42)
+	_check("4,4 m/s: viiksen alfa %.3f (heikompi, n. 0,51)" % wa, wa > 0.45 and wa < 0.58)
 	_check("4) roiske ei emittoi 4,4 m/s:ssa", not w.spray[0].emitting and not w.spray[1].emitting)
 	_check_ridge(w, "4,4 m/s", 0.05, 0.07, false)
 	_check_whisker_edges(w, "4,4 m/s", true)

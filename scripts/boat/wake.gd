@@ -30,7 +30,7 @@ const KELVIN_WIDTH := 0.3 # sivuaallon puolileveys alussa (m)
 # Keula-aalto: voimakkuus k = 0 → 1 nopeudella eteenpäin BOW_MIN → BOW_FULL
 const BOW_MIN := 1.2 # m/s
 const BOW_FULL := 6.5 # m/s
-const WHISKER_ALPHA := 0.6
+const WHISKER_ALPHA := 0.85 # PÄÄTÖS 8
 const RIDGE_HEIGHT := 0.10 # harjanteen korkeus täydessä vauhdissa (m)
 const RIDGE_ALPHA := 0.6
 const RIDGE_SEGMENTS := 10
@@ -194,9 +194,10 @@ func _trail() -> void:
 		pts = _samples.duplicate()
 		pts.append(_live)
 	var stern: Vector2 = _live["p"] if not _live.is_empty() else pts[-1]["p"]
-	var prev := -1
 	var a: Dictionary = pts[0]
-	prev = _trail_point(a["p"], a["right"], a["speed"], _time - a["t"], a["p"].distance_to(stern))
+	# run = matka vanan vanhimmasta päästä tai aukon jälkeisestä alusta (häivytys, PÄÄTÖS 10)
+	var run := 0.0
+	var prev := _trail_point(a["p"], a["right"], a["speed"], _time - a["t"], a["p"].distance_to(stern), run)
 	for i in range(1, pts.size()):
 		var b: Dictionary = pts[i]
 		var pa: Vector2 = a["p"]
@@ -204,40 +205,43 @@ func _trail() -> void:
 		var gap := pa.distance_to(pb)
 		var db := pb.distance_to(stern)
 		if gap > SAMPLE_DISTANCE * 4.0:
-			# aukko vanassa (vene pysähtyi välillä)
-			prev = _trail_point(pb, b["right"], b["speed"], _time - b["t"], db)
+			# aukko vanassa (vene pysähtyi välillä): uusi alku
+			run = 0.0
+			prev = _trail_point(pb, b["right"], b["speed"], _time - b["t"], db, run)
 			a = b
 			continue
 		var n := 1
-		if minf(pa.distance_to(stern), db) < START_FADE + 0.5:
+		if minf(pa.distance_to(stern), db) < START_FADE + 0.5 or run < START_FADE + 0.5:
 			n = maxi(1, ceili(gap / 0.2))
 		for j in range(1, n + 1):
+			var f := float(j) / n
 			var cur: int
 			if j == n:
-				cur = _trail_point(pb, b["right"], b["speed"], _time - b["t"], db)
+				cur = _trail_point(pb, b["right"], b["speed"], _time - b["t"], db, run + gap)
 			else:
-				var f := float(j) / n
 				var p := pa.lerp(pb, f)
 				cur = _trail_point(p, (a["right"] as Vector2).lerp(b["right"], f).normalized(),
-					lerpf(a["speed"], b["speed"], f), _time - lerpf(a["t"], b["t"], f), p.distance_to(stern))
+					lerpf(a["speed"], b["speed"], f), _time - lerpf(a["t"], b["t"], f), p.distance_to(stern), run + gap * f)
 			_trail_link(prev, cur)
 			prev = cur
+		run += gap
 		a = b
 
 
 ## Kohdan kärjet: kulku-uoma (vasen, oikea), vasen ja oikea sivuaalto.
 ## Palauttaa ensimmäisen kärjen indeksin.
-func _trail_point(p: Vector2, right: Vector2, speed: float, age: float, d: float) -> int:
+func _trail_point(p: Vector2, right: Vector2, speed: float, age: float, d: float, run: float) -> int:
 	var base := _verts.size()
+	var tail := smoothstep(0.0, START_FADE, run) # vanhin pää ja aukon jälkeinen alku
 	# Kulku-uoma perän takana: alkaa peräpeilin levyisenä, levenee ja haalenee
 	var w := CHANNEL_WIDTH + age * (0.1 + 0.02 * speed)
-	var alpha := clampf((speed - 0.8) / 4.0, 0.0, 0.75) * exp(-age / 4.0) * smoothstep(0.0, START_FADE, d)
+	var alpha := clampf((speed - 0.8) / 4.0, 0.0, 0.75) * exp(-age / 4.0) * smoothstep(0.0, START_FADE, d) * tail
 	_edge(p - right * w, alpha, -1.0, d, TYPE_CHANNEL)
 	_edge(p + right * w, alpha, 1.0, d, TYPE_CHANNEL)
 	# Kelvinin aallot molemmille sivuille: leviävät iän ja nopeuden mukaan
 	var off := KELVIN_OFFSET + age * speed * KELVIN_SPREAD
 	var wk := KELVIN_WIDTH + age * 0.04
-	var ak := clampf((speed - 0.6) / 3.5, 0.0, 0.55) * exp(-age / 5.0)
+	var ak := clampf((speed - 0.6) / 3.5, 0.0, 0.55) * exp(-age / 5.0) * tail
 	for side in [-1.0, 1.0]:
 		var c: Vector2 = p + right * (side * off)
 		_edge(c - right * wk, ak, -1.0, d, TYPE_KELVIN)
@@ -391,7 +395,8 @@ static func ridge_alpha(k: float, s: float, o: float) -> float:
 ## Viikset ja harjanne veneen koordinaatistossa (x oikealle, z perään):
 ## rakennetaan uudelleen, kun voimakkuus muuttuu, ja siirretään joka ruutu veneen mukana
 func _rebuild_bow(k: float) -> void:
-	var kq := snappedf(k, 0.01)
+	# Alaspäin pyöristys: hidas soutu ei kirkastu pyöristyksen takia
+	var kq := floorf(k * 100.0) / 100.0
 	if k > 0.0 and kq <= 0.0:
 		kq = 0.01
 	bow.visible = kq > 0.0
@@ -496,7 +501,7 @@ func _whisker(side: float, k: float) -> void:
 		var s := length * i / steps
 		var ol := outline_at(start.x + s)
 		var n: Vector2 = ol["n"]
-		var dc := lerpf(0.05, 0.2, s / side_len) # nauhan keskiviiva ääriviivasta
+		var dc := lerpf(0.10, 0.2, s / side_len) # nauhan keskiviiva ääriviivasta (PÄÄTÖS 8)
 		var o_in := maxf(dc - hw, 0.0)
 		var o_out := dc + hw
 		# Kärki pyöristetään 0,3 m:n matkalla. Ennen peräpeiliä loppuva viiksi
@@ -551,22 +556,25 @@ func _make_spray(side: float) -> CPUParticles3D:
 	p.top_level = true
 	p.local_coords = true # pisarat seuraavat keulaa: lentävät ulos ja vähän taakse
 	p.emitting = false
-	p.amount = SPRAY_AMOUNT
-	p.lifetime = 0.5
+	p.amount = SPRAY_AMOUNT # aina sama: määrän muutos nollaisi pisarat (PÄÄTÖS 9)
+	p.lifetime = 0.3 # pisara häipyy ennen kuin putoaa veteen (PÄÄTÖS 10)
 	p.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	p.emission_shape = CPUParticles3D.EMISSION_SHAPE_SPHERE
 	p.emission_sphere_radius = 0.04
-	# Paikallisesti x oikealle, y ylös, z perään: n. 0,8–1,8 m/s sivulle, 0,5–1,2 m/s ylös
-	p.direction = Vector3(side * 1.3, 0.85, 0.3).normalized()
+	# Paikallisesti x oikealle, y ylös, z perään: ulos, ylös ja vähän taakse
+	p.direction = Vector3(side * 1.3, 1.1, 0.3).normalized()
 	p.spread = 15.0
-	p.initial_velocity_min = 1.0
-	p.initial_velocity_max = 2.1
+	p.initial_velocity_min = 1.2
+	p.initial_velocity_max = 2.2
 	p.gravity = Vector3(0, -9.8, 0)
 	p.scale_amount_min = 0.6
 	p.scale_amount_max = 1.3
+	# Alfa täysi 35 %:iin elinajasta, poissa 65 %:ssa (0,195 s)
 	var fade := Gradient.new()
 	fade.set_color(0, Color(1, 1, 1, 1))
 	fade.set_color(1, Color(1, 1, 1, 0))
+	fade.set_offset(1, 0.65)
+	fade.add_point(0.35, Color(1, 1, 1, 1))
 	p.color_ramp = fade
 	var drop := SphereMesh.new()
 	drop.radius = 0.01
@@ -584,23 +592,23 @@ func _make_spray(side: float) -> CPUParticles3D:
 	return p
 
 
-## Roiske keula-aallon alkupisteestä kummaltakin keulaolkapäältä.
-## CPUParticles3D:ssä ei ole määräsuhdetta, joten määrä vaihtuu 4 pisaran askelin.
+## Roiske keula-aallon alkupisteestä kummaltakin keulaolkapäältä. Määrä pysyy
+## samana; voimakkuus tulee pisaroiden alfasta ja koosta (PÄÄTÖS 9).
 func _update_spray() -> void:
 	var r := spray_strength()
 	var on := r > 0.0
-	var amount := maxi(4, roundi(SPRAY_AMOUNT * r / 4.0) * 4)
 	var ol := outline_at(bow_start(bow_strength()).x)
 	var yaw := atan2(-_hull_fwd.x, -_hull_fwd.y)
 	for i in spray.size():
 		var p := spray[i]
-		if on and p.amount != amount:
-			p.amount = amount
 		if p.emitting != on:
 			p.emitting = on
 		if not on:
 			continue
+		var mat: StandardMaterial3D = p.mesh.material
+		mat.albedo_color.a = 0.55 * (0.3 + 0.7 * r)
+		p.scale_amount_max = 1.3 * (0.6 + 0.4 * r)
 		var local: Vector2 = ol["p"] + ol["n"] * 0.08
 		local.x *= -1.0 if i == 0 else 1.0
 		var w := _to_world(local)
-		p.global_transform = Transform3D(Basis.from_euler(Vector3(0.0, yaw, 0.0)), Vector3(w.x, Waves.swell_height(w) + 0.05, w.y))
+		p.global_transform = Transform3D(Basis.from_euler(Vector3(0.0, yaw, 0.0)), Vector3(w.x, Waves.swell_height(w) + 0.08, w.y))

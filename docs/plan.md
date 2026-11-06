@@ -825,15 +825,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   `Wake` saa joka fysiikkaruudulla veneen nykyisen asennon ja nopeuden
   eteenpäin (`Wake.set_hull`). Keula-aallon voimakkuus k = 0 → 1 välillä
   1,2–6,5 m/s (peruutuksessa 0): keulasta (z −1,9 → −1,5) kylkeä pitkin
-  kulkevat vaahtoviikset (alfa 0,6·k, peräpeiliin ylettyvä viiksi jatkuu
+  kulkevat vaahtoviikset (alfa 0,85·k, peräpeiliin ylettyvä viiksi jatkuu
   Kelvinin sivuaaltoon) ja niiden alla matala läpikuultava vesiharjanne
   (`shaders/bow_ridge.gdshader`, valaistu, korkeus 0,10 m·k, huippu
-  keulaolkapäällä, `Wake.ridge_height`). Keularoiske (`CPUParticles3D`,
-  0 → 40 pisaraa/kylki välillä 5,0–7,8 m/s). Peräaalto alkaa peräpeilistä
+  keulaolkapäällä, `Wake.ridge_height`; ylhäältä lähes läpinäkyvä). Keularoiske
+  (`CPUParticles3D`, 40 pisaraa/kylki, elinaika 0,3 s, voimakkuus alfasta ja
+  koosta välillä 5,0–7,8 m/s). Peräaalto alkaa peräpeilistä
   ilman rakoa (elävä nauha nykyiseen perään), kulku-uoma on perässä 1,0 m
   leveä ja sen alfa nousee 0:sta täyteen 1,2 m:n matkalla; kulku-uoman ja
   sivuaaltojen reunat häivytetään varjostimessa UV:n ja maailman
-  koordinaattien kohinan mukaan. Vieraat veneet samoin. Vana on nyt
+  koordinaattien siniaaltokohinan mukaan; vanan vanhin pää ja aukon jälkeinen
+  alku häivytetään samoin 1,2 m:n matkalla. Vieraat veneet samoin. Vana on nyt
   indeksoitu ArrayMesh, ja viikset ja harjanne ovat veneen koordinaatistossa
   (rakennetaan uudelleen vain voimakkuuden muuttuessa): kolme vanaa täydessä
   vauhdissa 1,4 ms/ruutu (ennen 5,0 ms). Testi `--waketest`, kuvat
