@@ -49,6 +49,7 @@ const NET_LINE_CLEARANCE := 6.0 # m verkon linjasta: verkon yli ei ajeta
 ## veden välin väylän keskilinjaa pitkin hitaasti (SLOW_SPEED), kun se on
 ## näin lähellä keskilinjaa
 const CHANNEL_SLOW := 15.0 # m
+const CHANNEL_BERTH_SHIFT := 1.0 # m: väylän laiturilla vieraan veneen paikka kantta pitkin järvelle päin
 const LOS_STEP := 2.0 # m: suoran reitinosan tarkistusväli
 const LINE_SWAY := 1.5 # m: matalassa vedessä suoran sivuilla on myös vettä näin kauas
 const LOS_MAX := 150.0 # m: suoristettu reitinosa enintään
@@ -371,10 +372,13 @@ func berth_of(i: int) -> Vector2:
 	if _channels.has(i):
 		# Väylän laiturilla (kota) vieras vene on kannen toisella puolella kuin
 		# pelaajan aloituspaikka: aloituspaikka on kapeassa taskussa, johon
-		# vene ei käänny väylältä eikä lahdelta
+		# vene ei käänny väylältä eikä lahdelta. Paikka on CHANNEL_BERTH_SHIFT
+		# kantta pitkin järvelle päin, jotta perän alla on enemmän vettä.
 		var d: Dictionary = lake.docks[i]
 		var x_axis: Vector2 = d["x_axis"]
+		var z_axis: Vector2 = d["z_axis"]
 		p -= x_axis * 2.0 * (p - d["center"]).dot(x_axis)
+		p -= z_axis * CHANNEL_BERTH_SHIFT
 	_berths[i] = p
 	return p
 

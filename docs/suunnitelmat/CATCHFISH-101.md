@@ -270,4 +270,9 @@ laituria, eli päätös 14 kumoutuu.
 9. Kodalla kaikki vieraat veneet (moottori- ja soutuveneet) kiinnittyvät
    kannen länsipuolelle, pelaajan aloituspaikan vastapuolelle: itäpuolen
    paikka on kapeassa taskussa, johon moottorivene ei käänny väylältä ja
-   jossa soutuvene hipaisi kannen kulmaa (Teemu).
+   jossa soutuvene hipaisi kannen kulmaa (Teemu). Paikka on 1 m kantta
+   pitkin järvelle päin (`OtherBoats.CHANNEL_BERTH_SHIFT`), jolloin rungon
+   perän alla on noin 1,2 m (ennen 1,0 m) (työnjohtaja).
+10. Jos pelaaja kääntää venettä paikallaan kodan laiturissa moottori käyden,
+    perä heilahtaa törmälle (noin 0,96 m) ja potkuri osuu pohjaan: tämä
+    hyväksytään realismina, törmä pysyy ennallaan (Teemu).

@@ -804,7 +804,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   väylän keskilinjaa pitkin (`OtherBoats._berth_path`, lähtöpiste väylän
   päästä), ja väylällä (alle 15 m keskilinjasta) ajetaan 1,5 m/s
   (`in_channel`). Kodalla vieraat veneet (myös soutuveneet) kiinnittyvät
-  kannen länsipuolelle (`berth_of`), koska pelaajan aloituspaikka kannen
+  kannen länsipuolelle 1 m kantta pitkin järvelle päin (`berth_of`), koska pelaajan aloituspaikka kannen
   itäpuolella on kapeassa taskussa, johon vene ei käänny väylältä.
   Testi `--channeltest`, kuvat `--channelshots=KANSIO`.
 
