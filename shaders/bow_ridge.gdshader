@@ -27,9 +27,11 @@ void fragment() {
 	}
 	float facing = clamp(dot(NORMAL, VIEW), 0.0, 1.0);
 	float fresnel = pow(1.0 - facing, 5.0);
-	ALBEDO = mix(shallow_color, sky_color * 0.5, fresnel * 0.6);
+	// Ylhäältä harjanne on lähes läpinäkyvä (muuten se tekee rungon ympärille
+	// tumman reunan), sivulta kiiltävä vaalea vyö
+	ALBEDO = mix(shallow_color, sky_color, 0.35 + 0.5 * fresnel);
 	METALLIC = 0.0;
 	ROUGHNESS = 0.1;
 	SPECULAR = 0.4;
-	ALPHA = COLOR.a;
+	ALPHA = COLOR.a * mix(0.25, 1.0, pow(1.0 - facing, 1.5));
 }

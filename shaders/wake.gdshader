@@ -16,23 +16,14 @@ uniform float light = 1.0; // vuorokauden valoisuus
 varying vec2 foam_uv;
 varying vec3 strip; // poikittainen paikka, etäisyys perästä, tyyppi
 
-// Arvokohina 0–1 ilman sin-funktiota (tarkka myös kaukana origosta)
-float hash12(vec2 p) {
-	vec3 p3 = fract(vec3(p.xyx) * 0.1031);
-	p3 += dot(p3, p3.yzx + 33.33);
-	return fract((p3.x + p3.y) * p3.z);
-}
-
-float value_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	vec2 u = f * f * (3.0 - 2.0 * f);
-	return mix(mix(hash12(i), hash12(i + vec2(1.0, 0.0)), u.x),
-			mix(hash12(i + vec2(0.0, 1.0)), hash12(i + vec2(1.0, 1.0)), u.x), u.y);
-}
-
+// Reunan kohina 0–1: ristikkäisten siniaaltojen summa maailman koordinaateista.
+// (Hajautusfunktioon perustuva arvokohina teki näytönohjaimella teräviä
+// portaita nauhan reunaan, CATCHFISH-134.)
 float edge_noise(vec2 p) {
-	return 0.65 * value_noise(p * 1.6) + 0.35 * value_noise(p * 4.3 + 17.0);
+	float a = sin(p.x * 1.9 + sin(p.y * 1.3) * 1.7);
+	float b = sin(p.y * 2.3 - p.x * 0.8 + sin(p.x * 3.7) * 0.9);
+	float c = sin(p.x * 5.3 + p.y * 4.1);
+	return 0.5 + 0.2 * a + 0.2 * b + 0.1 * c;
 }
 
 void vertex() {
