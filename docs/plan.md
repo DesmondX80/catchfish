@@ -149,6 +149,7 @@ godot --headless --fixed-fps 30 -- --day=180 --proptest     # potkuri osuu pohja
 godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, helle ja syysyönti
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
+godot --headless -- --shopbgtest                            # kalastustarvikeliikkeen taustakuva: kuva ja näkyvyys
 godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera
 godot --headless --fixed-fps 30 -- --day=180 --synctest     # vene, kamera ja vavat ruudun tahdissa
 godot --headless --fixed-fps 30 -- --day=180 --overlaptest  # päällekkäiset pinnat (talvi: --day=40)
@@ -840,6 +841,15 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   (rakennetaan uudelleen vain voimakkuuden muuttuessa): kolme vanaa täydessä
   vauhdissa 1,4 ms/ruutu (ennen 5,0 ms). Testi `--waketest`, kuvat
   `--wakeshots=KANSIO`.
+
+- **#84 Kalastustarvikeliikkeelle taustakuva – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-84.md`.
+  Uramoodin kalastustarvikeliikkeessä mökin tilalla näkyy koko ruudun
+  taustana myymälän sisätila (`assets/shop/shop_interior.png`, 1920×1080 RGB,
+  `TextureRect` kuvasuhde säilyen, `StartMenu.shop_bg`): tiski, partasuu
+  myyjä, täytetty hauki seinällä, reikälevy uistimineen, vapateline ja hyllyt.
+  `CareerView.shop_shown` kertoo näkymän vaihdosta; kuva näkyy vain liikkeessä,
+  eikä osto välähdä sitä. Kuva piirretään `tools/build_shop_image.py`:llä
+  (numpy, siemen 84, oma PNG-kirjoitin). Testi `--shopbgtest`.
 
 ## Huomioita ja avoimia kysymyksiä
 

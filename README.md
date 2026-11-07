@@ -346,3 +346,8 @@ Kalastajan puhe on tehty Piper-puhesynteesillä suomenkielisellä
 fi_FI-harri-äänellä (opetusaineisto CC0). Repliikit voi tehdä uudelleen
 komennolla `python3 tools/make_voice.py` (vaatii uv:n) tai korvata omilla
 äänityksillä kansiossa `assets/sounds/voice/`.
+
+Kalastustarvikeliikkeen taustakuva (`assets/shop/shop_interior.png`) on
+piirretty itse ohjelmallisesti. Sen voi tehdä uudelleen komennolla
+`python3 tools/build_shop_image.py` (vaatii vain NumPyn); kiinteä siemen
+tuottaa tavulleen saman kuvan.

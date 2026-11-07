@@ -7,6 +7,8 @@ extends CanvasLayer
 
 signal start_selected(index: int)
 
+const SHOP_IMAGE := preload("res://assets/shop/shop_interior.png")
+
 var lake: LakeData
 var _main: Control
 var _map_view: Control
@@ -20,6 +22,8 @@ var _map_real: CheckButton
 var _time_section: Array[Control] = []
 var _map_title: Label
 var _career: CareerView
+## Kalastustarvikeliikkeen taustakuva mökin päällä (vain liikkeessä)
+var shop_bg: TextureRect
 var _book: FishBookView
 ## Uramoodin kalareissu (aloituspaikka valitaan uran kotinäkymästä)
 var career_mode := false
@@ -176,11 +180,23 @@ func _build() -> void:
 	back.pressed.connect(func(): open_career() if career_mode else _show_main())
 	side.add_child(back)
 
+	# Kalastustarvikeliikkeen sisätila koko ruudun taustana mökin päällä ja
+	# uran paneelin alla (tools/build_shop_image.py, CATCHFISH-84)
+	shop_bg = TextureRect.new()
+	shop_bg.texture = SHOP_IMAGE
+	shop_bg.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	shop_bg.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_COVERED
+	shop_bg.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	shop_bg.visible = false
+	add_child(shop_bg)
+	shop_bg.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
 	_career = CareerView.new()
 	_career.visible = false
 	add_child(_career)
 	_career.go_fishing.connect(func(): career_mode = true; _show_map())
 	_career.back.connect(_show_main)
+	_career.shop_shown.connect(func(open: bool): shop_bg.visible = open)
 
 	_book = FishBookView.new()
 	_book.visible = false
@@ -328,6 +344,7 @@ func _show_book() -> void:
 func _show_map() -> void:
 	_main.visible = false
 	_career.visible = false
+	shop_bg.visible = false
 	_map_bg.visible = true
 	_map_view.visible = true
 	_sync_time_controls()
@@ -343,6 +360,7 @@ func open_career() -> void:
 	_map_view.visible = false
 	_map_bg.visible = false
 	_settings.visible = false
+	shop_bg.visible = false
 	career_mode = true
 	_career.visible = true
 	_career.show_home()
@@ -354,6 +372,7 @@ func _show_main() -> void:
 	_map_bg.visible = false
 	_settings.visible = false
 	_career.visible = false
+	shop_bg.visible = false
 	_book.visible = false
 	career_mode = false
 	_main.visible = true

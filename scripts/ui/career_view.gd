@@ -6,6 +6,8 @@ extends MarginContainer
 
 signal go_fishing
 signal back
+## Näkymä vaihtui: true, kun kalastustarvikeliike on auki (taustakuva, CATCHFISH-84)
+signal shop_shown(open: bool)
 
 var _panel: VBoxContainer
 var _message := ""
@@ -97,6 +99,7 @@ func _flash() -> void:
 
 func show_home() -> void:
 	_clear()
+	shop_shown.emit(false)
 	_title("Uramoodi")
 	_label(_day_line(), 20, Color(0.95, 0.92, 0.8))
 	_label("Rahaa: %s" % _eur(Career.money), 18)
@@ -168,6 +171,7 @@ func _on_new_career() -> void:
 
 func show_market() -> void:
 	_clear()
+	shop_shown.emit(false)
 	_title("Kalojen myynti")
 	_label(_day_line(), 16)
 	var bonus := " Maineen hintalisä: +%d %%." % Career.price_bonus_percent() if Career.price_bonus_percent() > 0 else ""
@@ -207,6 +211,7 @@ func _sell(species: String) -> void:
 func show_shop() -> void:
 	var scroll_at := _shop_scroll.scroll_vertical if is_instance_valid(_shop_scroll) else 0
 	_clear()
+	shop_shown.emit(true) # osto rakentaa näkymän uudelleen, kuva pysyy näkyvissä
 	_title("Kalastustarvikeliike")
 	_label("Rahaa: %s" % _eur(Career.money), 18)
 	# Tuotteet vierivät (hiiren rulla), otsikko ja Takaisin pysyvät paikallaan
@@ -268,6 +273,7 @@ func _buy(lure: Dictionary) -> void:
 
 func show_sleep() -> void:
 	_clear()
+	shop_shown.emit(false)
 	_title("Nukkuminen")
 	_label(_day_line(), 16)
 	_label("Kuinka kauan nukutaan?", 18)
