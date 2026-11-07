@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 6.11.2026. Nykyinen versio **0.56.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.56.0)).
+Päivitetty 7.11.2026. Nykyinen versio **0.57.0**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.0)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -842,7 +842,7 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   vauhdissa 1,4 ms/ruutu (ennen 5,0 ms). Testi `--waketest`, kuvat
   `--wakeshots=KANSIO`.
 
-- **#84 Kalastustarvikeliikkeelle taustakuva – tehty.** Suunnitelma `docs/suunnitelmat/CATCHFISH-84.md`.
+- **#84 Kalastustarvikeliikkeelle taustakuva – tehty (0.57.0).** Suunnitelma `docs/suunnitelmat/CATCHFISH-84.md`.
   Uramoodin kalastustarvikeliikkeessä mökin tilalla näkyy koko ruudun
   taustana myymälän sisätila (`assets/shop/shop_interior.png`, 1920×1080 RGB,
   `TextureRect` kuvasuhde säilyen, `StartMenu.shop_bg`): tiski, partasuu
