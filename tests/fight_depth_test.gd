@@ -335,7 +335,7 @@ func _run() -> void:
 			await _scenario("hauki", 3.0, 0.2, d[1] * 8.0, 0.5, 20.0, true, false)
 			_common("kuva, hauki %s" % d[0])
 			Input.action_press("reel")
-			await _shot("hauki_%s" % d[0])
+			await _shot("hauki_%s" % ("oikea" if d[0] == "oikea" else "pera"))
 		_finish()
 		return
 
