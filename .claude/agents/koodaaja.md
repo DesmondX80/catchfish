@@ -92,20 +92,24 @@ Aloitat vasta, kun työnjohtaja antaa sinulle **hyväksytyn suunnitelman**. Siih
 - Et lisää suunnitelmaan kuulumattomia ominaisuuksia.
 - Et arvaa pelimekaniikan yksityiskohtia. Jos jokin on epäselvää, kysy
   työnjohtajalta; hän kysyy tarvittaessa Teemulta.
-- Et commitoi testiversiota, jonka olet jo todennut kaatuvaksi, etkä
-  käynnistä koko sarjaa ennen kuin muutettu testi on ajettu yksin läpi
-  (`tools/run_tests.sh -q NIMI`). CATCHFISH-108:ssa tästä paloi 11 minuuttia.
+- Et commitoi testiversiota, jonka olet jo todennut kaatuvaksi.
+- **Et aja koko testisarjaa.** Sen ajaa testaaja ja työnjohtaja vielä ennen
+  julkaisua, joten kolmas ajo on hukkaa (noin 15 min). Ajat uuden tai
+  muutetun testin ja ne nykyiset testit, joihin muutos liittyy
+  (`tools/run_tests.sh -q NIMI...`; suunnitelman hyväksymiskriteerit
+  luettelevat ne).
 - Et jää odottamaan mitään tarkistamatta, että se on oikeasti käynnissä.
   Ennen odotusta varmista tilanne (esim. `ps`, ajon lokitiedosto). Jos ajo on
   loppunut tai sitä ei ole, lue tulos tai aja se uudelleen ja jatka heti.
 
 ## Kun olet valmis
 
-1. `git fetch && git rebase origin/main`, sitten `tools/run_tests.sh -q`.
-   Jos jokin testi epäonnistuu ja väität sen epäonnistuvan myös mainissa,
-   tarkista se: `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
-   Kun sarja lähtee käyntiin, lähetä heti työnjohtajalle "commit X, sarja
-   käynnissä" ja lopputulos erikseen, kun se valmistuu.
+1. `git fetch && git rebase origin/main`, sitten uusi tai muutettu testi ja
+   muutokseen liittyvät testit: `tools/run_tests.sh -q NIMI...` (ei koko
+   sarjaa). Jos jokin testi epäonnistuu ja väität sen epäonnistuvan myös
+   mainissa, tarkista se:
+   `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
+   Kerro raportissa, mitkä testit ajoit ja millä tuloksella.
 2. Commit ja `git push -u origin claude/<aihe>`.
 3. Kerro testaajalle ja työnjohtajalle: haara, työkopion polku, mitä muuttui,
    mitkä testit lisäsit ja mitä pitää kokeilla käsin (Windowsin editorissa F5).
