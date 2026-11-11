@@ -33,6 +33,7 @@ tests=(
 	"casttest|--fixed-fps 30 -- --day=180 --casttest"
 	"channeltest|--fixed-fps 30 -- --day=180 --channeltest"
 	"docktest|--fixed-fps 30 -- --day=180 --docktest"
+	"fightdepthtest|--fixed-fps 30 -- --day=180 --fightdepthtest"
 	"headwindtest|--fixed-fps 30 -- --day=180 --headwindtest"
 	"icetest|--fixed-fps 30 -- --day=40 --icetest"
 	"luretest|--fixed-fps 30 -- --day=180 --luretest"

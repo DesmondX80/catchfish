@@ -171,6 +171,7 @@ godot --headless --fixed-fps 30 -- --day=180 --waketest     # keula-aalto, harja
 godot --headless --fixed-fps 30 -- --day=180 --otherboatstest # muut veneet: reitit, peräaalto, törmäys, väistö, ehdot (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless --fixed-fps 30 -- --day=180 --linetest     # siima: muoto, taitteet, pinta, tuuli, runko, tilan vaihdot, pätkä, nykäyskuorma (talvi: --day=40)
+godot --headless --fixed-fps 30 -- --day=180 --fightdepthtest # koukussa oleva kala pysyy vedessä ja rungon ulkopuolella (kuvat: --fightdepthtest-shots=KANSIO, ikkuna)
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
 godot --headless --fixed-fps 30 -- --perftest [--perftest-lines] # suorituskyky (kaksi siimaa vedessä)
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan

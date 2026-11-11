@@ -341,6 +341,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/channel_test.gd").new())
 	elif "--waketest" in args:
 		add_child(load("res://tests/wake_test.gd").new())
+	elif "--fightdepthtest" in args:
+		add_child(load("res://tests/fight_depth_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

@@ -44,6 +44,12 @@ const TROLL_MAX_LINE := 60.0 # m: uistelussa perään laskettavan siiman enimmä
 const IDENTIFY_DISTANCE := 6.0 # m veneestä
 const IDENTIFY_DEPTH := 1.5 # m
 const IDENTIFY_SPLASH := 15.0 # m: pinnassa rimpuileva kala tunnistetaan kauempaakin
+## Koukussa oleva kala pysyy avovedessä aina vedessä (CATCHFISH-119): vähintään
+## näin syvällä aaltopinnan alla (sama syvyys, josta haavinta alkaa,
+## landing_net.gd) ja vähintään näin kaukana rungon ääriviivasta
+const FISH_MIN_DEPTH := 0.15 # m
+const FISH_HULL_GAP := 0.3 # m
+const FISH_DEPTH_SPEED := 0.5 # m/s: kala hakeutuu tavoitesyvyyteen ja liukuu rungon alta laidan viereen
 ## Hauen seuranta (#17): osa kaukana veneestä tulevista hauen iskuista muuttuu
 ## seurannaksi, ja seuraaja iskee yleensä viime hetkellä veneen vieressä
 const FOLLOW_CHANCE := 0.6
@@ -1409,6 +1415,7 @@ func _fight(dt: float) -> void:
 	var weight: float = _fish["weight"]
 	var fish_power: float = data["power"]
 	var tip := rod_tip()
+	var from := _fish_pos # kalan paikka askeleen alussa
 
 	# Nykäyksen huippu vaimenee (FishingLine.SHOCK_TAU)
 	_line_shock *= exp(-dt / FishingLine.SHOCK_TAU)
@@ -1431,7 +1438,7 @@ func _fight(dt: float) -> void:
 		_run_dir = -_run_dir
 	var bottom := lake.depth_at(_fish_pos.x, _fish_pos.z)
 	var target_depth := 0.3 if _stamina < 0.3 else clampf(lerpf(data["depth"][0], data["depth"][1], 0.5), 0.3, maxf(0.3, bottom - 0.2))
-	_fish_pos.y = -move_toward(-_fish_pos.y, target_depth, dt * 0.5)
+	_fish_pos.y = -move_toward(-_fish_pos.y, target_depth, dt * FISH_DEPTH_SPEED)
 	# Jäällä siima kulkee avannon kautta: avanto on siiman taitekohta
 	var anchor := tip
 	var tip_to_anchor := 0.0
@@ -1468,8 +1475,17 @@ func _fight(dt: float) -> void:
 			line_out = dist # jarru antaa siimaa
 			steady = minf(wanted, drag_kg)
 		else:
-			_fish_pos = anchor + (_fish_pos - anchor).normalized() * (line_out - tip_to_anchor)
-			line_out = maxf(tip_to_anchor + 0.15 if on_ice else 0.5, line_out - reel * dt * clampf(1.0 - pull / drag_kg, 0.25, 1.0))
+			var reeled := line_out - reel * dt * clampf(1.0 - pull / drag_kg, 0.25, 1.0)
+			if on_ice:
+				_fish_pos = anchor + (_fish_pos - anchor).normalized() * (line_out - tip_to_anchor)
+				line_out = maxf(tip_to_anchor + 0.15, reeled)
+			else:
+				# Siima vetää kalaa kohti kärkeä, mutta ei pinnan yli eikä runkoon.
+				# Jos raja pysäytti kalan kauemmas, siimaa annetaan sen verran
+				# (ei jännityspiikkiä): siiman voi kelata vain kalaan asti.
+				_fish_pos = _pull_fish(tip, line_out, from, dt)
+				reeled += maxf(0.0, tip.distance_to(_fish_pos) - line_out)
+				line_out = maxf(_fight_min_line(tip), reeled)
 			steady = wanted
 		_slack_time = maxf(0.0, _slack_time - dt * 2.0)
 	else:
@@ -1510,14 +1526,145 @@ func _fight(dt: float) -> void:
 				_lose_fish(SHOCK_SNAP_TEXT, true)
 				return
 
+	# Kala pysyy vedessä ja rungon ulkopuolella kaikissa haaroissa (jarru
+	# luistaa, löysä siima, vene vetää kalaa, aallonpohja)
+	if not on_ice:
+		_fish_pos = _keep_fish_in_water(_fish_pos, from, dt)
 	_identify_fish(hole_dist)
 	_stamina = clampf(_stamina - (steady / maxf(weight, 0.2)) * 0.03 * dt / fish_power - _run_intensity * 0.006 * dt + (0.004 * dt if steady < 0.3 else 0.0), 0.0, 1.0)
 	lure_pos = _fish_pos
 	if on_ice:
 		_landing_prompt = line_out - tip_to_anchor < 0.8 and hole_dist < 0.5
 	else:
-		_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2
+		# Rungon alla olevaa kalaa ei voi haavita: kehote vasta laidan ulkopuolella
+		_landing_prompt = line_out < 3.2 and _fish_pos.y > -1.2 and not _under_hull(_fish_pos)
 	tension = maxf(tension, 0.0)
+
+
+## Koukussa olevan kalan ylin sallittu korkeus kohdassa (x, z): FISH_MIN_DEPTH
+## aaltopinnan alla, eikä koskaan lepopinnan yläpuolella (sama aaltofunktio
+## kuin koholla, _bobber_pos)
+func _fish_ceiling(x: float, z: float) -> float:
+	return minf(0.0, Waves.swell_height(Vector2(x, z))) - FISH_MIN_DEPTH
+
+
+## Rungon ääriviiva ylhäältä (Boat._hull_at): x oikealle, y perään
+static var _hull_outline := PackedVector2Array()
+## Rungon pohja: syvin köli rungon koordinaateissa (Boat.HULL_STATIONS, −0,25 m).
+## Tätä syvemmällä kala mahtuu uimaan veneen ali, ja siima kiertää laidan yli.
+static var _hull_bottom := 0.0
+
+
+static func _hull_outline_points() -> PackedVector2Array:
+	if _hull_outline.is_empty():
+		var n := 44
+		for i in n + 1: # oikea laita keulasta perään
+			var z := lerpf(-2.2, 2.2, float(i) / n)
+			_hull_outline.append(Vector2(Boat._hull_at(z).x, z))
+		for i in range(n, 0, -1): # vasen laita perästä keulaan
+			var z := lerpf(-2.2, 2.2, float(i) / n)
+			_hull_outline.append(Vector2(-Boat._hull_at(z).x, z))
+		for st in Boat.HULL_STATIONS:
+			_hull_bottom = minf(_hull_bottom, st[3])
+	return _hull_outline
+
+
+## Maailman kohta p (xz) siirrettynä lähimpään kohtaan, joka on vähintään
+## FISH_HULL_GAP rungon ääriviivan ulkopuolella. Kala liikkuu askeleessa vähän,
+## joten lähin kohta on samalla puolella venettä, jolta kala tuli.
+func _clear_of_hull(p: Vector2) -> Vector2:
+	var side := boat.right()
+	var back := -boat.forward()
+	var l := _hull_local(p)
+	if absf(l.x) > 0.9 + FISH_HULL_GAP or absf(l.y) > 2.3 + FISH_HULL_GAP:
+		return p
+	var poly := _hull_outline_points()
+	var best := INF
+	var near := Vector2.ZERO
+	var normal := Vector2.ZERO
+	for i in poly.size():
+		var a := poly[i]
+		var b := poly[(i + 1) % poly.size()]
+		var c := Geometry2D.get_closest_point_to_segment(l, a, b)
+		var d := l.distance_squared_to(c)
+		if d < best:
+			best = d
+			near = c
+			normal = Vector2(b.y - a.y, a.x - b.x).normalized() # ulospäin (kierros oikea laita → perä → vasen)
+	var inside := Geometry2D.is_point_in_polygon(l, poly)
+	var dist := sqrt(best)
+	if not inside and dist >= FISH_HULL_GAP:
+		return p
+	if dist > 0.001:
+		normal = (near - l) / dist if inside else (l - near) / dist
+	l = near + normal * FISH_HULL_GAP
+	return boat.pos + side * l.x + back * l.y
+
+
+## Maailman kohta (xz) rungon koordinaateissa vaakatasossa: x oikealle, y perään
+func _hull_local(p: Vector2) -> Vector2:
+	var rel := p - boat.pos
+	return Vector2(rel.dot(boat.right()), rel.dot(-boat.forward()))
+
+
+## Onko kohta ylhäältä katsoen rungon ääriviivan sisällä (kala veneen alla)
+func _under_hull(p: Vector3) -> bool:
+	var l := _hull_local(Vector2(p.x, p.z))
+	return absf(l.y) <= 2.2 and Geometry2D.is_point_in_polygon(l, _hull_outline_points())
+
+
+## Kala sallitulle alueelle: pintarajan alle, ja rungon pohjan tasolla tai sen
+## yläpuolella myös rungon ulkopuolelle (lähin kohta laidan vieressä). Rungon
+## pohjaa syvemmällä kala saa uida veneen ali. Veneen alta nouseva kala (from =
+## paikka askeleen alussa) ei nouse rungon läpi eikä hyppää laidan viereen: se
+## liukuu rungon pohjan alla (siiman runkovaran FishingLine.HULL_MARGIN verran
+## pohjaa syvemmällä) lähimmän laidan suuntaan ja nousee pintaan vasta laidan
+## ulkopuolella.
+func _keep_fish_in_water(p: Vector3, from: Vector3, dt: float) -> Vector3:
+	_hull_outline_points()
+	var bottom := boat.hull.global_position.y + _hull_bottom
+	var under := bottom - FishingLine.HULL_MARGIN
+	var start := Vector2(from.x, from.z)
+	var start_clear := _clear_of_hull(start)
+	if from.y < under + 0.01 and start_clear != start:
+		# Kala oli askeleen alussa rungon alla. Pohjan tuntumaan noussut kala
+		# liukuu ulos joka askeleella (2 cm vara: runko keinuu aalloissa).
+		if p.y > under - 0.02:
+			var slid := start.move_toward(start_clear, FISH_DEPTH_SPEED * dt)
+			p = Vector3(slid.x, under, slid.y)
+	elif p.y >= bottom:
+		var clear := _clear_of_hull(Vector2(p.x, p.z))
+		p = Vector3(clear.x, p.y, clear.y)
+	return Vector3(p.x, minf(p.y, _fish_ceiling(p.x, p.z)), p.z)
+
+
+## Kireä siima (pituus length) vetää kalaa kohti vavan kärkeä. Syvällä kala
+## siirtyy suoraan kärkeä kohti. Pintarajalla korkeus jää rajalle ja
+## vaakaetäisyys kärjestä lasketaan siiman pituudesta (kuten uistimella,
+## _constrain_lure), jolloin siiman pituus täsmää eikä kala nouse ilmaan.
+func _pull_fish(tip: Vector3, length: float, from: Vector3, dt: float) -> Vector3:
+	var d := _fish_pos - tip
+	var p := tip + d.normalized() * length
+	if p.y > _fish_ceiling(p.x, p.z):
+		var h := Vector2(d.x, d.z)
+		var dir := h.normalized() if h.length() > 0.001 else Vector2.ZERO
+		# Jyrkkä siima vetäisi pinnassa olevaa kalaa vaakasuunnassa moninkertaisesti
+		# kelausta nopeammin (hyppy kärjen alle): kala siirtyy vaakasuunnassa
+		# enintään sen matkan, jonka siima sitä veti, eikä koskaan kärjestä poispäin
+		var near := maxf(0.0, h.length() - maxf(0.0, d.length() - length))
+		# Pintaraja riippuu aallosta kalan kohdalla: muutama kierros riittää
+		for i in 3:
+			var top := _fish_ceiling(p.x, p.z)
+			var reach := clampf(sqrt(maxf(0.0, length * length - (tip.y - top) * (tip.y - top))), near, maxf(near, h.length()))
+			p = Vector3(tip.x + dir.x * reach, top, tip.z + dir.y * reach)
+	return _keep_fish_in_water(p, from, dt)
+
+
+## Lyhin siima väsytyksessä avovedessä: kärjestä lähimpään kohtaan, jossa kala
+## voi olla (kärjen alla pintarajalla tai laidan vieressä)
+func _fight_min_line(tip: Vector3) -> float:
+	var under := Vector3(tip.x, 0.0, tip.z)
+	return tip.distance_to(_keep_fish_in_water(under, under, 0.0))
 
 
 ## Ryntäys alkaa: kalan veto kasvaa äkkiä (nykäys)

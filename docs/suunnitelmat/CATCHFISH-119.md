@@ -236,3 +236,37 @@ Kala pysyy rungon ääriviivan ulkopuolella vähintään 0,3 m.
 Toteutus alkaa. Jos siiman uusi alaraja ylittää jossain vavan asennossa 3,0 m
 (haavintakehote ei syttyisi), koodaaja kysyy työnjohtajalta ennen kuin muuttaa
 kehotteen ehtoa (rivi 1519).
+
+### PÄÄTÖS 5 (työnjohtaja, 11.11.2026): syvän kalan testissä made
+Pelin kalakannassa ei ole kuhaa (`Species.DATA`), ja kriteerissä kuha oli vain
+esimerkki. Testin "syvällä oleva pirteä kala" on made 1,5 kg 4 m syvyydessä.
+Ei poikkeama suunnitelmasta.
+
+### PÄÄTÖS 6 (työnjohtaja, 11.11.2026): runkoväli koskee vain pinnassa olevaa kalaa
+Koko sarjassa `linetest` epäonnistui (48/49): tilanne "kala veneen alla" ei
+enää toteudu, koska runkorajaus siirsi myös syvällä olevan kalan rungon
+ulkopuolelle. Kala saa edelleen uida veneen ali syvällä, ja siima kiertää
+silloin laidan yli kuten ennen (olemassa oleva ominaisuus, `linetest`, ei
+kuulu tähän bugiin). Runkoväli 0,3 m koskee vain kalaa, joka on rungon pohjan
+syvyydellä tai sen yläpuolella; raja-arvo johdetaan rungon mitoista koodissa
+(ei uutta keksittyä lukua) ja kirjataan nimettynä vakiona. `linetest`iä ei
+muuteta. Uuteen testiin lisätään tarkistus: syvällä veneen alla oleva kala ei
+siirry rungon takia, ja pintaan nostettu kala ei päädy rungon alle.
+
+### PÄÄTÖS 7 (työnjohtaja, 11.11.2026): veneen alta nouseva kala liukuu laidan ulkopuolelle
+Päätöksen 6 toteutuksessa veneen alta pintaan kelattu kala hyppäsi yhdessä
+ruudussa 0,70 m sivulle (pahimmillaan noin 1,06 m). Hyppyä ei hyväksytä.
+Rungon alta nouseva kala ei nouse rungon pohjan tason yläpuolelle niin kauan
+kuin se on vaakatasossa runkovälin sisällä: se liukuu pohjan tasolla lähimmän
+laidan suuntaan ja nousee pintaan vasta laidan ulkopuolella. Liukunopeus on
+sama 0,5 m/s, jolla kala jo hakeutuu tavoitesyvyyteen (ei uutta lukua).
+Testi: kalan paikka ei muutu yhdessäkään ruudussa enempää kuin kelaus- ja
+liukunopeus sallivat (ei hyppyä), kala ei käy rungon sisällä, ja
+haavintakehote syttyy vasta, kun kala on laidan ulkopuolella pinnassa.
+Hyväksymiskriteerien toleransseja ei löysätä.
+
+### PÄÄTÖS 8 (Johtaja, 11.11.2026): koodaaja ei aja koko testisarjaa
+Koodaaja ajaa vain uuden testin ja muutokseen liittyvät testit
+(`fightdepthtest`, `linetest`, `linetest-talvi`, `inputtest`, `trolltest`,
+`trollstriketest`, `icetest`). Koko sarjan ajaa testaaja ja työnjohtaja ennen
+julkaisua.
