@@ -270,3 +270,17 @@ Koodaaja ajaa vain uuden testin ja muutokseen liittyvät testit
 (`fightdepthtest`, `linetest`, `linetest-talvi`, `inputtest`, `trolltest`,
 `trollstriketest`, `icetest`). Koko sarjan ajaa testaaja ja työnjohtaja ennen
 julkaisua.
+
+### PÄÄTÖS 9 (työnjohtaja, 11.11.2026): päätöksen 7 toteutuksen tarkennukset hyväksytty
+- Haavintakehotteen ehtoon (ennen rivi 1519) on lisätty "kala ei ole rungon
+  alla" (`_under_hull`). Päätös 7 vaatii tämän; rajat 3,2 m ja −1,2 m ovat
+  ennallaan.
+- Liukuva kala kulkee 0,05 m rungon pohjan alla (olemassa oleva
+  `FishingLine.HULL_MARGIN`), jotta sen keskipiste ei ole kölin pinnassa.
+- Pintarajalla kalan vaakasiirtymä askeleessa rajataan siihen matkaan, jonka
+  siima sitä veti. Ilman tätä jyrkkä siima siirsi pinnassa olevan kalan
+  0,245 m yhdessä askeleessa (hyppy toisessa paikassa).
+- Huomio Juurisyy-osion mittauksiin: fysiikka pyörii 60 askelta sekunnissa,
+  ja toistoskripti laski ajan 1/30 s askelilla. Taulukoiden ajat ("alkaen
+  6,4 s" jne.) ovat todellisuudessa noin puolet; korkeudet pitävät paikkansa.
+  Regressiotesti käyttää `Engine.physics_ticks_per_second`ia.
