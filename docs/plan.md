@@ -218,6 +218,10 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 5. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
    GitHub-release suomenkielisin julkaisutiedoin ja exe liitteenä →
    **tehtävä Planessa *Done***.
+6. Julkaisun jälkeen mainin GitHub Actions *Testit* -ajon seuranta käynnistetään
+   taustalle (`gh run list --workflow Testit -L 3`, `gh run watch <id>`).
+   Julkaisuraportti ei odota ajoa, mutta punainen ajo kirjataan heti Planeen
+   ja siitä kerrotaan Teemulle.
 
 ## Edistyminen tämän suunnitelman jälkeen
 

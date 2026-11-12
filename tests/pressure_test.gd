@@ -18,17 +18,17 @@ func _ready() -> void:
 	var w := Weather.new()
 	add_child(w) # _ready arpoo alkusään
 	w.set_process(false)
-	w.set_kind(Weather.Kind.CLEAR, true)
+	_set_kind(w, Weather.Kind.CLEAR, true)
 	w.pressure = 1025.0
 	_check("tasainen korkeapaine: syönti laiskaa (%s, kerroin %.2f)" % [w.pressure_text(), w.feeding_factor()], w.feeding_factor() < 0.85)
 	# Sää huononee: tunnin ajan peliminuutteja
-	w.set_kind(Weather.Kind.RAIN)
+	_set_kind(w, Weather.Kind.RAIN)
 	_advance(w, 60)
 	_check("sään huonontuessa paine laskee ja kalat syövät kiivaasti (%s, %.1f hPa/3 h, kerroin %.2f)" % [w.pressure_text(), w.pressure_trend, w.feeding_factor()],
 		w.pressure_trend < -1.5 and w.feeding_factor() > 1.1 and w.pressure_text().contains("laskee"))
 	# Sadetta muutama tunti, sitten selkenee (paine on silloin selvästi alempana)
 	_advance(w, 180)
-	w.set_kind(Weather.Kind.CLEAR)
+	_set_kind(w, Weather.Kind.CLEAR)
 	_advance(w, 60)
 	_check("sään selkeytyessä paine nousee ja syönti heikkenee (%s, kerroin %.2f)" % [w.pressure_text(), w.feeding_factor()], w.pressure_trend > 1.5 and w.feeding_factor() < 1.0)
 	w.queue_free()
@@ -37,6 +37,11 @@ func _ready() -> void:
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
+
+
+func _set_kind(w: Weather, kind: Weather.Kind, instant := false) -> void:
+	w.set_kind(kind, instant)
+	w._change_in = INF # säätila vaihtuu vain testin käskystä
 
 
 func _advance(w: Weather, minutes: int) -> void:

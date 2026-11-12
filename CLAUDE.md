@@ -49,6 +49,9 @@ Katso `docs/plan.md`, osio *Työtapa*. Lyhyesti:
    samaa versiota julkaista kahdesti.
 5. Release: commit → Windows-vienti → push → GitHub-release (suomeksi, exe liitteenä)
    → tehtävä Planessa *Done*.
+6. Julkaisun jälkeen mainin GitHub Actions *Testit* -ajon seuranta taustalle
+   (`gh run list --workflow Testit -L 3`, `gh run watch <id>`). Raportti ei odota
+   ajoa, mutta punainen ajo kirjataan heti Planeen ja kerrotaan Teemulle.
 
 ## Agenttitiimi
 
@@ -102,8 +105,8 @@ kirjaa tehtävään lyhyen kommentin (esim. testaajan tulos).
    palautuskierrosta pysäyttää työn ja työnjohtaja kertoo Teemulle.
    Näkyvät muutokset designer tarkistaa kuvakaappauksista ennen hyväksyntää.
 6. **Julkaisu.** Kun testaaja on hyväksynyt haaran, työnjohtaja julkaisee sen
-   työtavan kohtien 4–5 mukaan: versio, Windows-vienti, push, GitHub-release,
-   Planessa *Done* ja työkopion poisto.
+   työtavan kohtien 4–6 mukaan: versio, Windows-vienti, push, GitHub-release,
+   Planessa *Done*, työkopion poisto ja mainin Actions-ajon seuranta taustalle.
 7. **Retro.** Julkaisun jälkeen jokainen tiimiläinen (designer, koodaaja,
    testaaja) antaa parannusehdotuksia peliin, työn tehokkuuteen ja
    työtapoihin, ja työnjohtaja lisää omansa. Työnjohtaja kirjaa ehdotukset
