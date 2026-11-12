@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 7.11.2026. Nykyinen versio **0.57.0**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.0)).
+Päivitetty 12.11.2026. Nykyinen versio **0.57.1**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.1)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -851,6 +851,18 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
   `CareerView.shop_shown` kertoo näkymän vaihdosta; kuva näkyy vain liikkeessä,
   eikä osto välähdä sitä. Kuva piirretään `tools/build_shop_image.py`:llä
   (numpy, siemen 84, oma PNG-kirjoitin). Testi `--shopbgtest`.
+
+- **#119 Koukussa oleva kala pysyy vedessä – tehty (0.57.1).** Suunnitelma `docs/suunnitelmat/CATCHFISH-119.md`.
+  Kireä siima veti kalaa suoraan vavan kärkeä kohti, joten veneen viereen
+  kelattu (tai moottorilla perässä vedetty) kala nousi jopa 2 m ilmaan ja
+  perän puolella veneen sisälle. Nyt `_fight()` pitää kalan avovedessä
+  vähintään 0,15 m aaltopinnan alla ja pintakerroksessa vähintään 0,3 m
+  rungon ääriviivan ulkopuolella; siiman pituus säilyy vaakaetäisyydellä, ja
+  siiman alaraja on etäisyys lähimpään sallittuun kohtaan (veneen vieressä
+  noin 2,3–2,5 m). Kala saa uida veneen ali syvällä; sieltä nouseva kala
+  liukuu 0,5 m/s rungon pohjan alla laidan ulkopuolelle ja nousee vasta
+  siellä. Haavintakehote ei syty, kun kala on rungon alla. Jäällä ei
+  muutosta. Testi `--fightdepthtest` (kuvat `--fightdepthtest-shots=KANSIO`).
 
 ## Huomioita ja avoimia kysymyksiä
 
