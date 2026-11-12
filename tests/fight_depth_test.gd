@@ -395,6 +395,24 @@ func _run() -> void:
 		m["max_y"] > -0.2 and f._fish_pos.y >= _hull_bottom_y() and _hull_distance(f._fish_pos) >= GAP - 0.02)
 	print("veneen alta pintaan: suurin siirtymä yhdessä ruudussa %.2f m kohdassa (rungossa) %s" % [m["max_step"], boat.hull.global_transform.affine_inverse() * (m["step_at"] as Vector3)])
 
+	# 3d) Pirteä hauki pinnassa laidan vieressä ryntää kohti venettä, jarru löysällä:
+	# siima ei vedä kalaa, joten vain askeleen lopun varmistus pitää sen rungon ulkopuolella
+	_tow = 0.0
+	_reset_rod(false)
+	_place_boat()
+	await _frames(20)
+	_hook("hauki", 3.0, boat.right() * 1.2, DEPTH, 1.0, 119)
+	f.drag_kg = 0.3
+	f._run_dir = -boat.right()
+	f._run_intensity = 1.0
+	f._run_timer = 1000.0
+	_reset_measure()
+	await _frames(1)
+	_measure = true
+	await _frames(int(0.6 * Engine.physics_ticks_per_second))
+	_measure = false
+	_common("pirteä hauki ryntää laitaa kohti, jarru löysällä")
+
 	# 4) Kova tuuli selällä: kala pysyy aaltopinnan alla myös aallonpohjassa
 	# (tuulen suunta, jolla testipaikan pyyhkäisymatka on pisin)
 	var hs := 0.0

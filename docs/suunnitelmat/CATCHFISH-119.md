@@ -284,3 +284,15 @@ julkaisua.
   ja toistoskripti laski ajan 1/30 s askelilla. Taulukoiden ajat ("alkaen
   6,4 s" jne.) ovat todellisuudessa noin puolet; korkeudet pitävät paikkansa.
   Regressiotesti käyttää `Engine.physics_ticks_per_second`ia.
+
+### PÄÄTÖS 10 (työnjohtaja, 12.11.2026): testaajan löydökset
+- Testaaja hyväksyi haaran (fightdepthtest 112/112, koko sarja 48/49:
+  `pressuretest` epävakaa myös `origin/main`issa, 7/10).
+- Askeleen lopun varmistukselle (kohta 4) ei ollut testiä: mutantti, josta
+  varmistus on poistettu, meni läpi. Lisätty testaajan tilanne 3d (pirteä
+  hauki ryntää pinnassa laitaa kohti jarru löysällä), joka kaataa mutantin;
+  fightdepthtest 117/117. Lisätty myös puuttunut `fight_depth_test.gd.uid`.
+- Veneen alta nouseva kala: haavintakehote syttyy, kun kala ylittää rungon
+  ääriviivan (päätös 9, `_under_hull`), jolloin kala on vielä noin 0,30 m
+  syvyydessä eikä 0,3 m päässä laidasta. Haavinta ei ala rungon sisältä.
+  Hyväksytään sellaisenaan; Johtaja kokeilee käsin.
