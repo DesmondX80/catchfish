@@ -873,3 +873,14 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 - **Järven syvyydet** tulevat veden alle jääneistä maastotietokannan korkeuskäyristä (15 m ja 12,5 m, #10). Syvin kohta (7 m) on paikallistieto; sen tarkkaa paikkaa ei tiedetä, joten se on vanhan jokiuoman syvänteen keskellä pohjoisosassa.
 - **Puhesynteesiääni** `fi_FI-harri`: opetusaineisto CC0, mutta malli on jatkokoulutettu lessac-äänestä, jonka ehdot ovat rajoitetummat. Jos peliä joskus jaetaan kaupallisesti, omat äänitykset ovat varmempi valinta.
 - **Vanhat uratallennukset** voivat sisältää kuhia ja taimenia (poistettu 0.18.0); ne voi yhä myydä.
+
+- **#160 GitHub Actions vihreäksi – tehty (ei versionostoa, vain testit ja työtapa).** Suunnitelma `docs/suunnitelmat/CATCHFISH-160.md`.
+  Mainin *Testit*-ajo oli punainen 6.11. alkaen, koska `Weather` arpoo sään
+  siemenettä ja pressure-, boat- ja motorspeedtest antoivat sään elää kesken
+  mittauksen (pressuretest kaatui simuloinnissa 27 %:ssa ajoista). Nyt
+  pressuretestin säätila vaihtuu vain testin käskystä (`_change_in = INF`),
+  ja boat- ja motorspeedtestissä sää on tyyni ja pysähdyksissä. Luvut ovat
+  joka ajolla samat (peruutus 11,53 km/h, selkeytyessä 1021 hPa ja kerroin
+  0,85). Työtapaan kohta 6: mainin Actions-ajo seurataan julkaisun jälkeen.
+  Jatkot: kalastajan jalat laidan läpi sivulle katsottaessa (#164) ja sää
+  kiinni muissakin testeissä (#165).
