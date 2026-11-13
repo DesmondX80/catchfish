@@ -495,3 +495,9 @@ PÄÄTÖS 9 (mutaatioiden muoto, koodaaja):
 - 10b: `weather.gd` `_rng.seed = GameSeed.of("weather")` → `_rng.randomize()` → seedtest koodi 1, VIRHE "weather: siemen GameSeed.of(\"weather\")" ja "sama siemen, sama sää".
 - 10c: `test_util.gd` rivi `w.set_process(false)` poistettu → `--repeat=5 docktest anchortest` 10/10 läpi, mutta anchortestin tuulirivit vaihtelevat (esim. "köysi ei venynyt (yli 0.06 / 0.07 / 0.08 m)", "vene 1.37–1.41 m/s"). docktestin rivit pysyivät samoina, koska apufunktion tyyni tuuli ja `_change_in = INF` pitävät elävänkin sään tyynenä.
 - 10d: kuten hyväksymiskriteereissä (`_button("Asetukset")` → `_button("Asetuksetx")`).
+
+PÄÄTÖS 10: Sonartestin `_pass_sample`-suodin (`c["seed"] <= _pass_sample`) ei suodata mitään, koska luotain ottaa vielä yhden näytteen laiturilla. Varsinaisen korjauksen tekee veneen siirto `_prepare_pass`in jälkeen. Vaihtoehto A: suodinta ei korjata tässä tehtävässä, vaan siitä tehdään Backlog-tehtävä. Testi on deterministinen ja menee 10/10 läpi. Työnjohtaja ratkaisi.
+
+PÄÄTÖS 11: Korjaus PÄÄTÖKSEEN 9 (10c): docktestin rivit eivät pysy aina samoina mutaatiolla 10c. Testaajan ajossa docktest vaihteli (3.0 / 5.0 m). Koodaajan viidellä ajolla rivit pysyivät samoina. Mutaatio jää silti kiinni anchortestin vaihtelusta.
+
+PÄÄTÖS 12: Versio 0.57.2 (patch). Tehtävä korjaa epävakaat testit; pelaajalle ei näy uutta.

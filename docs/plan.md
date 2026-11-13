@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 12.11.2026. Nykyinen versio **0.57.1**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.1)).
+Päivitetty 13.11.2026. Nykyinen versio **0.57.2**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.2)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -298,12 +298,10 @@ sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tuloss
 
 ### Tunnetusti epävakaat testit
 
-Korjataan tehtävässä CATCHFISH-171; korjattu poistetaan listalta (työnjohtaja ylläpitää).
-
-- sonartest
-- boattest ("jalat veneen sisällä kalastaessa")
-- anchortest (tuulinosto)
-- settingstest (jumi ikkunassa)
+Korjattu poistetaan listalta (työnjohtaja ylläpitää). Lista on tyhjä:
+CATCHFISH-171 (0.57.2) korjasi sonar-, boat-, anchor- ja settingstestin
+(boattest `--repeat=60` 60/60, settingstest näytönohjaimella 2 × 10/10).
+Uusi epävakaa testi lisätään tähän siemenineen (`toista: ... --seed=N`).
 
 Listattujen kaatuminen tarkistetaan `--repeat`illa, mutta niitä ei verrata
 mainiin joka kerta erikseen.
@@ -1025,3 +1023,13 @@ kriteerien arviointiin.
   mutaatio käsin, kuvat ja Windows-ajuri, CI-lokit, epävakaat testit).
   pressuretest ja motorspeedtest eivät ole epävakaiden listalla, koska #160
   teki niistä deterministiset. Jatkot: tehokkuustehtävät #171–#176.
+
+- **#171 Testien determinismi ja epävakaat testit – tehty (0.57.2).** Suunnitelma `docs/suunnitelmat/CATCHFISH-171.md`.
+  Kaikki satunnaislukugeneraattorit saavat siemenensä `GameSeed`-autoloadista
+  (sää, kalakanta, kalastus, linnut, muut veneet, äänet, puhe ja globaali
+  `randf()`). Siemen tulostuu ajon alussa, `--seed=N` toistaa ajon, ja
+  `tools/run_tests.sh` kertoo kaatuneen ajon siemenen ja toistokomennon.
+  Testit pysäyttävät sään `TestUtil.calm_weather(main)`illa, ja settingstestissä
+  on 180 s:n vahtiajastin. Sonar-, boat-, anchor- ja settingstest eivät enää
+  ole epävakaita (koko sarja `--repeat=3` 150/150). Testi `--seedtest`.
+  Jatkot: sonartestin tehoton `_pass_sample`-suodin (Backlog).
