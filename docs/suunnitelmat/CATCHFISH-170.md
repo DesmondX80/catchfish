@@ -804,3 +804,7 @@ tunnisteet, viitataanko niihin? Oletus: lähderetron numero.
   haaran rebasen jälkeen `git push --force-with-lease`, eikä rebase-palautus
   laske kahden palautuskierroksen rajaan. Rivirajat pysyvät; tarvittaessa
   karsitaan samasta tiedostosta.
+- **PÄÄTÖS 15 (työnjohtaja, julkaisu):** PÄÄTÖS 8:n listalta poistetaan
+  pressuretest ja motorspeedtest, koska CATCHFISH-160 teki niistä
+  deterministiset (`docs/plan.md`, #160: luvut joka ajolla samat). Listalle jäävät
+  sonartest, boattest, anchortest ja settingstest.

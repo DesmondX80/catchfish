@@ -281,9 +281,7 @@ sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tuloss
 
 Korjataan tehtävässä CATCHFISH-171; korjattu poistetaan listalta (työnjohtaja ylläpitää).
 
-- pressuretest
 - sonartest
-- motorspeedtest (peruutusnopeus)
 - boattest ("jalat veneen sisällä kalastaessa")
 - anchortest (tuulinosto)
 - settingstest (jumi ikkunassa)
@@ -999,3 +997,12 @@ kriteerien arviointiin.
   0,85). Työtapaan kohta 6: mainin Actions-ajo seurataan julkaisun jälkeen.
   Jatkot: kalastajan jalat laidan läpi sivulle katsottaessa (#164) ja sää
   kiinni muissakin testeissä (#165).
+
+- **#170 Agenttiohjeet ja työtavat – tehty (ei versionostoa, vain ohjeet).** Suunnitelma `docs/suunnitelmat/CATCHFISH-170.md`.
+  Kuudentoista retron (#93–#169) työtapaehdotukset yhdistettiin pysyviin
+  ohjeisiin. *Sävy*, yhteiset säännöt ja työnjohtajan vahti ovat nyt kerran
+  `CLAUDE.md`:ssä, eivät kolmena kopiona, ja agenttitiedostot ovat 65–80
+  riviä. Pitkät reseptit ovat *Testaus*-osiossa (pitkät ajot, toistoajot,
+  mutaatio käsin, kuvat ja Windows-ajuri, CI-lokit, epävakaat testit).
+  pressuretest ja motorspeedtest eivät ole epävakaiden listalla, koska #160
+  teki niistä deterministiset. Jatkot: tehokkuustehtävät #171–#176.
