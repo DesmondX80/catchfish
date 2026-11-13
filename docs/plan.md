@@ -209,7 +209,7 @@ Pidempi ajo Bashin `run_in_background`-tilassa valmismerkillä:
 
 Tila: `cat <scratchpad>/sarja.done` tai `grep '^Läpi ' .test-logs/latest.log`
 (`latest.log` osoittaa työkopion uusimpaan ajoon). Taustailmoitukseen ei
-luoteta. Valmismerkki `.test-logs/latest.done` tulossa (CATCHFISH-172).
+luoteta. Yhteinen valmismerkki `.test-logs/latest.done` tulossa (CATCHFISH-172).
 
 ### Toistoajot
 
@@ -325,13 +325,13 @@ kriteerien arviointiin.
   alue, kaava, poissuljetut kohdat, komento, ja mitä tehdään, jos
   suorituskykybudjetti ei riitä. Tulos prototyypistä tai "ei prototyypattu".
 - Näkyvyys kuvakulmittain ("näkyy ylhäältä ja sivulta"), ei pelkkä luku.
-- Ristiriitataulukko, kun samaan paikkaan kohdistuu useita kriteereitä:
+- Kun samaan paikkaan kohdistuu useita kriteereitä, ristiriitataulukko:
   paikka → kriteerit → täyttyvätkö yhtä aikaa.
-- Siirtymätilanteet (esim. löysä → kireä siima), ei vain tasaiset tilat.
+- Kriteereissä siirtymätilanteet (esim. löysä → kireä siima), ei vain tasaiset tilat.
 - Jokainen "X ennallaan" on nimetty ja testattavissa.
 - Testimäärä: "kaikki listan testit", ei arvioitua lukua; muutokseen
   liittyvät nykyiset testit nimeltä.
-- Poistotehtävissä grep-kriteeri kaikille esiintymille ja poikkeukset heti
+- Grep-kriteeri poistotehtävissä kaikille esiintymille ja poikkeukset heti
   listaan (uusi testi, `docs/suunnitelmat/`, edistymiskirjaus).
 - Testimuutoksissa (uusi testi, muutettu raja/syöte, deterministiseksi
   muutettu) mutaatiotarkistus on vakiokriteeri.
