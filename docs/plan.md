@@ -247,14 +247,15 @@ Muoto kirjataan suunnitelman *Päätöksiin*. Työkalu `tools/mutate.sh` tulossa
 
 ### Kuvat Windowsin ajurilla
 
-WSL-interop, Windowsin oma NVIDIA-ajuri:
+WSL-interop, Windowsin oma NVIDIA-ajuri. Aja yhtenä Bash-kutsuna (muuttujat eivät säily):
 
     win="$(wslpath "$(cmd.exe /c 'echo %TEMP%' 2>/dev/null | tr -d '\r')")/catchfish-win"
     gw="/mnt/c/Program Files (x86)/Godot/Godot_v4.7.2-stable_win64_console.exe"
+    [ "${win##*/}" = catchfish-win ] || exit 1   # tyhjä $win → rsync --delete juureen
     rsync -a --delete --exclude .git --exclude .godot --exclude .test-logs ./ "$win/"
     "$gw" --headless --path "$(wslpath -w "$win")" --import
     "$gw" --path "$(wslpath -w "$win")" --fixed-fps 30 --disable-vsync -- --day=180 --watershots="$(wslpath -w "$win/kuvat")"
-    rm -rf "$win"   # kun kuvat on katsottu
+    rm -rf "${win:?}"   # kun kuvat on katsottu
 
 Lokin `OpenGL API` -rivillä pitää lukea NVIDIA. Ennen grafiikkakorjauksen julkaisua
 sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tulossa (CATCHFISH-174).
