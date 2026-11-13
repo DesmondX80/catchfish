@@ -199,6 +199,98 @@ varten (vaatii ikkunan).
 
 Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 
+### Pitkät ajot
+
+Koko sarja kestää paikallisesti noin 15 min (otherboatstest yksinään noin
+4–6 min). Alle 10 minuutin ajot etualalla (Bash-aikaraja 600000 ms).
+Pidempi ajo Bashin `run_in_background`-tilassa valmismerkillä:
+
+    tools/run_tests.sh -q; echo "exit=$? $(date +%T)" > <scratchpad>/sarja.done
+
+Tila: `cat <scratchpad>/sarja.done` tai `grep '^Läpi ' .test-logs/latest.log`
+(`latest.log` osoittaa työkopion uusimpaan ajoon). Taustailmoitukseen ei
+luoteta. Valmismerkki `.test-logs/latest.done` tulossa (CATCHFISH-172).
+
+### Toistoajot
+
+Uusi tai muutettu testi: `--repeat=10`, jos testi kestää alle 60 s, muuten
+`--repeat=3`. Pitkä toistoajo taustalle valmismerkillä (*Pitkät ajot*).
+
+    tools/run_tests.sh -q --repeat=10 NIMI
+    grep -E '^(OK|VIRHE)' .test-logs/latest.log | sort | uniq -c
+
+Deterministisessä testissä jokainen rivi esiintyy N kertaa (N = toistot).
+Jos rivin luvut vaihtelevat, sama tarkistus näkyy useana eri rivinä.
+Vaihtelevien rivien yhteenveto `--repeat`iin tulossa (CATCHFISH-172).
+
+### Mutaatiotarkistus käsin
+
+    mut=$(mktemp -d) && git worktree add --detach "$mut" HEAD
+    cd "$mut" && timeout 590 godot-4.7.2 --headless --import >/dev/null
+    # kytke pois vain korjaus tai varmistus (yksi muutos), ei koko tiedoston palautusta
+    git diff        # todistaa, että mutaatio osui oikeaan riviin
+    tools/run_tests.sh -q NIMI     # testin pitää kaatua
+    cd - && git worktree remove --force "$mut"
+
+Mutaatio on oikea viallinen käytös, jota testin pitäisi vahtia, ei lievä heikennys.
+Muoto kirjataan suunnitelman *Päätöksiin*. Työkalu `tools/mutate.sh` tulossa (CATCHFISH-173).
+
+### Kuvat
+
+- Näytönohjainkomento: `CLAUDE.md`, *Testaus*. Yksi ikkuna-ajo kerrallaan
+  koko koneella: ennen aloitusta `pgrep -af godot | grep -v -- --headless`
+  on tyhjä. GPU-lukko tulossa (CATCHFISH-174).
+- Kuvasuhteet: UI-, HUD- ja valikkomuutokset kaikilla kolmella, pelkät 3D-muutokset
+  16:9:llä. Godotin `--resolution` ennen `--`-erotinta: `--resolution 1600x900`
+  (16:9), `--resolution 1200x900` (4:3), `--resolution 2100x900` (21:9).
+
+### Kuvat Windowsin ajurilla
+
+WSL-interop, Windowsin oma NVIDIA-ajuri:
+
+    win="$(wslpath "$(cmd.exe /c 'echo %TEMP%' 2>/dev/null | tr -d '\r')")/catchfish-win"
+    gw="/mnt/c/Program Files (x86)/Godot/Godot_v4.7.2-stable_win64_console.exe"
+    rsync -a --delete --exclude .git --exclude .godot --exclude .test-logs ./ "$win/"
+    "$gw" --headless --path "$(wslpath -w "$win")" --import
+    "$gw" --path "$(wslpath -w "$win")" --fixed-fps 30 --disable-vsync -- --day=180 --watershots="$(wslpath -w "$win/kuvat")"
+    rm -rf "$win"   # kun kuvat on katsottu
+
+Lokin `OpenGL API` -rivillä pitää lukea NVIDIA. Ennen grafiikkakorjauksen julkaisua
+sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tulossa (CATCHFISH-174).
+
+### Grafiikkavikojen diagnostiikka
+
+- Teemun kuvakaappaus heti alussa.
+- Syy varmistetaan kokeilemalla kesken ajon ennen suunnitelmaa:
+  varjostinparametrit vaihdetaan käynnistysskriptillä, joka lisää puuhun
+  oman Node-skriptin (SceneTree-skriptistä ei voi viitata autoloadeihin).
+  `--param`-lippu tulossa (CATCHFISH-174).
+- Toisto- ja mittausskripteissä aika lasketaan `Engine.physics_ticks_per_second`illa
+  (60 askelta/s), ei ruutujen määrästä.
+
+### CI-lokit
+
+    gh run list --workflow Testit -L 5
+    gh run view <run> --json jobs -q '.jobs[].databaseId'
+    gh api "repos/{owner}/{repo}/actions/jobs/<job>/logs"
+
+`gh run view --log-failed` antaa vanhoista ajoista tyhjää.
+
+### Tunnetusti epävakaat testit
+
+Korjataan tehtävässä CATCHFISH-171; testi poistetaan listalta, kun se on korjattu.
+Työnjohtaja pitää listan ajan tasalla.
+
+- pressuretest
+- sonartest
+- motorspeedtest (peruutusnopeus)
+- boattest ("jalat veneen sisällä kalastaessa")
+- anchortest (tuulinosto)
+- settingstest (jumi ikkunassa)
+
+Listattujen kaatuminen tarkistetaan `--repeat`illa, mutta niitä ei verrata
+mainiin joka kerta erikseen.
+
 ## Työtapa
 
 0. Jokainen tehtävä omaan haaraan ja omaan työkopioon ajantasaisesta mainista,
@@ -217,11 +309,34 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
    käytetty, nostetaan seuraavaan.
 5. Release: commit → Windows-vienti (`export/Catchfish.exe`) → push →
    GitHub-release suomenkielisin julkaisutiedoin ja exe liitteenä →
-   **tehtävä Planessa *Done***.
+   **tehtävä Planessa *Done***. Uudesta työkopiosta puuttuu `export/`
+   (`.gitignore`), joten `mkdir -p export` ennen Windows-vientiä.
 6. Julkaisun jälkeen mainin GitHub Actions *Testit* -ajon seuranta käynnistetään
    taustalle (`gh run list --workflow Testit -L 3`, `gh run watch <id>`).
    Julkaisuraportti ei odota ajoa, mutta punainen ajo kirjataan heti Planeen
    ja siitä kerrotaan Teemulle.
+
+### Suunnitelman tarkistuslista
+
+Designer käy tämän läpi ennen lähettämistä; testaaja voi käyttää sitä
+kriteerien arviointiin.
+
+- Jokaisella numeerisella kriteerillä on mittaustapa: mistä mitataan,
+  alue, kaava, poissuljetut kohdat, komento, ja mitä tehdään, jos
+  suorituskykybudjetti ei riitä. Tulos prototyypistä tai "ei prototyypattu".
+- Näkyvyys kuvakulmittain ("näkyy ylhäältä ja sivulta"), ei pelkkä luku.
+- Ristiriitataulukko, kun samaan paikkaan kohdistuu useita kriteereitä:
+  paikka → kriteerit → täyttyvätkö yhtä aikaa.
+- Siirtymätilanteet (esim. löysä → kireä siima), ei vain tasaiset tilat.
+- Jokainen "X ennallaan" on nimetty ja testattavissa.
+- Testimäärä: "kaikki listan testit", ei arvioitua lukua; muutokseen
+  liittyvät nykyiset testit nimeltä.
+- Poistotehtävissä grep-kriteeri kaikille esiintymille ja poikkeukset heti
+  listaan (uusi testi, `docs/suunnitelmat/`, edistymiskirjaus).
+- Testimuutoksissa (uusi testi, muutettu raja/syöte, deterministiseksi
+  muutettu) mutaatiotarkistus on vakiokriteeri.
+- UI-, HUD- ja valikkotehtävissä tarkistuskuvat 16:9, 4:3 ja 21:9; pelkät
+  3D-muutokset 16:9.
 
 ## Edistyminen tämän suunnitelman jälkeen
 
