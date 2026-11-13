@@ -21,9 +21,8 @@ Ennen kirjoittamista:
 - Näkyvissä tehtävissä kuvaa nykytila jo suunnitteluvaiheessa; luvut otetaan
   kuvista. Kuva- ja UI-tehtävissä tee luonnoskuva ja mockup; työnjohtaja
   liittää ne Planeen hyväksytyn suunnitelman mukana, eikä toteutus odota.
-- Grafiikkavioissa pyydä työnjohtajalta Teemun kuvakaappaus heti ja
-  varmista syy kokeilemalla kesken ajon ennen suunnitelmaa (`docs/plan.md`,
-  *Testaus* → *Grafiikkavikojen diagnostiikka*).
+- Grafiikkavioissa pyydä työnjohtajalta Teemun kuvakaappaus heti. Varmista syy
+  kokeilemalla kesken ajon ennen suunnitelmaa (`docs/plan.md`, *Grafiikkavikojen diagnostiikka*).
 - Prototyyppaa jokainen numeerinen kriteeri pelin omalla laskennalla ja
   interpoloinnilla; aika `Engine.physics_ticks_per_second`illa (60
   askelta/s). Kirjaa tulos kriteerin viereen tai merkintä "ei prototyypattu".
