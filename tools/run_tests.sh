@@ -7,9 +7,13 @@
 #   --repeat=N      aja jokainen valittu testi N kertaa (oletus 1)
 #   --ref=REF       aja testit REF:n (esim. origin/main) väliaikaisessa työkopiossa
 #   --log=TIEDOSTO  lokin polku (oletus .test-logs/AAAAKKPP-HHMMSS.log)
+#   --seed=N        välitä testeille --seed=N (kiinteä satunnaisuus; oletus: siemen
+#                   arvotaan joka ajolla). Testin oma --seed (seedtest) pysyy.
 #   -q, --quiet     ei Godotin tulostetta päätteeseen, vain tulosrivit ja taulukko
 # Testi epäonnistuu, jos se palauttaa muun kuin 0 (testit lopettavat koodilla 1,
 # kun lokissa on VIRHE-rivi) tai ei valmistu aikarajassa ($TEST_TIMEOUT, oletus 600 s).
+# Epäonnistuneen ajon tulosrivi kertoo siemenen Godotin "Siemen: N" -riviltä, ja
+# toistoajon taulukko näyttää komennon, joka toistaa ajon samalla siemenellä.
 # Paluukoodi: 0 kaikki läpi, 1 jokin VIRHE tai AIKAKATKAISU, 2 väärä käyttö.
 # Ikkunaa vaativat testit (inputtest, pausetest, menutest, settingstest,
 # careertest, timepicktest, tvtest) eivät ole mukana.
@@ -54,6 +58,7 @@ tests=(
 	"releasetest-talvi|--fixed-fps 30 -- --day=40 --releasetest"
 	"seamtest|--fixed-fps 30 -- --day=180 --seamtest"
 	"seasonfishtest|-- --day=180 --seasonfishtest"
+	"seedtest|--fixed-fps 30 -- --day=180 --seed=171 --seedtest"
 	"shopbgtest|-- --shopbgtest"
 	"sonartest|--fixed-fps 30 -- --day=180 --sonartest"
 	"speciestest|-- --speciestest"
@@ -74,7 +79,7 @@ tests=(
 
 usage_error() {
 	echo "run_tests.sh: $1" >&2
-	echo "Käyttö: tools/run_tests.sh [GODOT] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [-q] [TESTIN_NIMI...]" >&2
+	echo "Käyttö: tools/run_tests.sh [GODOT] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [-q] [TESTIN_NIMI...]" >&2
 	exit 2
 }
 
@@ -108,12 +113,15 @@ ref=""
 ref_given=0
 log=""
 quiet=0
+seed=""
+seed_given=0
 selected=()
 for arg in "$@"; do
 	case "$arg" in
 		--repeat=*) repeat="${arg#--repeat=}" ;;
 		--ref=*) ref="${arg#--ref=}"; ref_given=1 ;;
 		--log=*) log="${arg#--log=}" ;;
+		--seed=*) seed="${arg#--seed=}"; seed_given=1 ;;
 		-q|--quiet) quiet=1 ;;
 		-*) usage_error "tuntematon lippu $arg" ;;
 		*)
@@ -123,6 +131,7 @@ for arg in "$@"; do
 	esac
 done
 [[ "$repeat" =~ ^[1-9][0-9]*$ ]] || usage_error "--repeat vaatii positiivisen kokonaisluvun"
+[ $seed_given -eq 1 ] && ! [[ "$seed" =~ ^[0-9]+$ ]] && usage_error "--seed vaatii ei-negatiivisen kokonaisluvun"
 [ $ref_given -eq 1 ] && [ -z "$ref" ] && usage_error "--ref vaatii refin, esim. --ref=origin/main"
 
 # Polut absoluuttisiksi ennen hakemiston vaihtoa.
@@ -204,17 +213,20 @@ r_name=()
 r_status=()
 r_secs=()
 r_errs=()
+r_seed=()
 
 total_start=$(date +%s)
 for entry in "${tests[@]}"; do
 	name="${entry%%|*}"
 	args="${entry#*|}"
+	# Siemen testin argumenttien loppuun (kaikissa on --), ellei testillä ole omaa
+	[ -n "$seed" ] && [[ " $args " != *" --seed="* ]] && args+=" --seed=$seed"
 	if [ ${#selected[@]} -gt 0 ] && [[ ! " ${selected[*]} " == *" $name "* ]]; then
 		continue
 	fi
 	if [ -n "$ref" ] && [[ "$ref_entries" != *"\"$name|"* ]]; then
 		say ">> $(pad PUUTTUU 13) $name (ei $ref:n testilistassa)"
-		r_name+=("$name"); r_status+=("PUUTTUU"); r_secs+=(0); r_errs+=("")
+		r_name+=("$name"); r_status+=("PUUTTUU"); r_secs+=(0); r_errs+=(""); r_seed+=("")
 		continue
 	fi
 	for ((i = 1; i <= repeat; i++)); do
@@ -235,22 +247,26 @@ for entry in "${tests[@]}"; do
 		secs=$(( $(date +%s) - start ))
 		say_raw "::endgroup::"
 		errs=""
+		# Pelin tulostama siemen, jolla ajo toistuu (--seed=N)
+		run_seed="$(sed -n 's/^Siemen: \([0-9][0-9]*\).*/\1/p' "$out_file" | head -n 1)"
+		seed_note=""
+		[ -n "$run_seed" ] && seed_note="siemen $run_seed"
 		if [ $code -eq 0 ]; then
 			status="OK"
 			say ">> $(pad OK 13) $label  $secs s"
 		elif [ $code -eq 124 ]; then
 			status="AIKAKATKAISU"
-			say ">> $(pad AIKAKATKAISU 13) $label  $secs s"
+			say ">> $(pad AIKAKATKAISU 13) $label  $secs s${seed_note:+ ($seed_note)}"
 		else
 			status="VIRHE ($code)"
-			say ">> $(pad VIRHE 13) $label  $secs s (koodi $code)"
+			say ">> $(pad VIRHE 13) $label  $secs s (koodi $code${seed_note:+, $seed_note})"
 		fi
 		if [ "$status" != "OK" ]; then
 			n_errs=$(grep -c '^[[:space:]]*VIRHE' "$out_file")
 			errs="$(grep '^[[:space:]]*VIRHE' "$out_file" | head -n $max_errs | sed 's/^[[:space:]]*/    /')"
 			[ "$n_errs" -gt $max_errs ] && errs+=$'\n'"    (+$((n_errs - max_errs)) muuta)"
 		fi
-		r_name+=("$name"); r_status+=("$status"); r_secs+=("$secs"); r_errs+=("$errs")
+		r_name+=("$name"); r_status+=("$status"); r_secs+=("$secs"); r_errs+=("$errs"); r_seed+=("$run_seed")
 	done
 done
 total_secs=$(( $(date +%s) - total_start ))
@@ -303,7 +319,7 @@ else
 		[ $k -eq ${#r_name[@]} ] && break
 		if [ "${r_name[k]}" != "$prev" ]; then
 			prev="${r_name[k]}"
-			t_n=0; t_ok=0; t_err=0; t_to=0; t_secs=0; t_errs=""; t_missing=0
+			t_n=0; t_ok=0; t_err=0; t_to=0; t_secs=0; t_errs=""; t_missing=0; t_failed=0
 		fi
 		case "${r_status[k]}" in
 			PUUTTUU) t_missing=1; continue ;;
@@ -314,8 +330,15 @@ else
 		t_n=$((t_n + 1))
 		t_secs=$((t_secs + r_secs[k]))
 		runs=$((runs + 1))
-		# Ensimmäisen epäonnistuneen ajon VIRHE-rivit.
-		[ -z "$t_errs" ] && [ -n "${r_errs[k]}" ] && t_errs="${r_errs[k]}"
+		# Ensimmäisen epäonnistuneen ajon VIRHE-rivit ja toistokomento sen siemenellä.
+		if [ "${r_status[k]}" != "OK" ] && [ $t_failed -eq 0 ]; then
+			t_failed=1
+			t_errs="${r_errs[k]}"
+			if [ -n "${r_seed[k]}" ]; then
+				[ -n "$t_errs" ] && t_errs+=$'\n'
+				t_errs+="    toista: tools/run_tests.sh --seed=${r_seed[k]} $prev"
+			fi
+		fi
 	done
 fi
 say "------------------------------------------------------------"

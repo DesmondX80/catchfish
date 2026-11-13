@@ -1,6 +1,8 @@
 extends Node
-## Asetusten testi oikeilla hiiren klikkauksilla ja oikealla verkkohaulla:
-##   godot -- --settingstest=/polku/kuviin
+## Asetusten testi oikeilla hiiren klikkauksilla ja oikealla verkkohaulla (vaatii ikkunan):
+##   GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA timeout 300 godot-4.7.2 --fixed-fps 30 --disable-vsync -- --settingstest=/polku/kuviin
+## Aja myös ilman --fixed-fps 30 -lippua (CATCHFISH-122: jumi ikkunassa molemmilla).
+## Vahtiajastin päättää testin VIRHEeseen, jos se kestää yli TIME_LIMIT sekuntia.
 ## Säätietojen tulkinta tarkistetaan lisäksi valmiilla esimerkkidatalla.
 ## Veden laatu: rivi on asetuksissa, valinta tallentuu ja tulee voimaan heti
 ## myös kesken kalareissun (lähiveden verkko harvenee).
@@ -8,11 +10,16 @@ extends Node
 var _dir := ""
 var _log: Array[String] = []
 var main: Node
+var _started_ms := 0 # seinäkello testin alussa (vahtiajastin)
+var _finished := false # tulokset tulostettu, odotetaan lopetusta
+
+const TIME_LIMIT := 180.0 # sekuntia seinäkelloa koko testille
 
 
 func _ready() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	main = get_parent()
+	_started_ms = Time.get_ticks_msec()
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--settingstest="):
 			_dir = arg.split("=")[1]
@@ -27,7 +34,12 @@ func _shot(name: String) -> void:
 	get_viewport().get_texture().get_image().save_png(_dir.path_join(name + ".png"))
 
 
-func _click(control: Control) -> void:
+## Klikkaa painiketta; puuttuva painike päättää testin VIRHEeseen (ei ajonaikaista virhettä)
+func _click(control: Control) -> bool:
+	if control == null:
+		_check("painiketta ei löytynyt (vaihe %d)" % _step, false)
+		_done()
+		return false
 	var scale := Vector2(DisplayServer.window_get_size()) / get_viewport().get_visible_rect().size
 	var at := control.get_global_rect().get_center() * scale
 	Input.warp_mouse(at)
@@ -38,6 +50,7 @@ func _click(control: Control) -> void:
 		ev.position = at
 		ev.global_position = at
 		Input.parse_input_event(ev)
+	return true
 
 
 func _button(text: String) -> Button:
@@ -80,25 +93,34 @@ func _next() -> void:
 
 
 func _done() -> void:
+	if _finished:
+		return
+	_finished = true
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
 
 
 func _process(delta: float) -> void:
+	if _finished:
+		return
 	_t += delta
+	if (Time.get_ticks_msec() - _started_ms) / 1000.0 > TIME_LIMIT:
+		_check("settingstest: aikaraja %d s ylittyi vaiheessa %d" % [int(TIME_LIMIT), _step], false)
+		_done()
+		return
 	match _step:
 		0:
 			if _t > 0.5:
-				_click(_button("Asetukset"))
-				_next()
+				if _click(_button("Asetukset")):
+					_next()
 		1:
 			if _t > 0.3:
 				_check("Asetukset aukesivat", main.menu._settings.visible and not main.menu._main.visible)
 				_check("oletuksena pois päältä", not main.menu._real_toggle.button_pressed)
 				_water_quality_menu_checks()
-				_click(main.menu._real_toggle)
-				_next()
+				if _click(main.menu._real_toggle):
+					_next()
 		2:
 			if _t > 0.3:
 				_check("valinta kytkeytyi päälle", Settings.real_world)
@@ -108,12 +130,12 @@ func _process(delta: float) -> void:
 			if label.begins_with("Nyt Saloisissa") or label.begins_with("Säätietoja") or _t > 25.0:
 				_check("sää haettiin verkosta: " + label.replace("\n", " "), label.begins_with("Nyt Saloisissa"))
 				_shot("asetukset")
-				_click(_button("Takaisin"))
-				_next()
+				if _click(_button("Takaisin")):
+					_next()
 		4:
 			if _t > 0.3:
-				_click(_button("Mene kalalle"))
-				_next()
+				if _click(_button("Mene kalalle")):
+					_next()
 		5:
 			if _t > 0.3:
 				# Aloituspaikka reagoi klikkaukseen, kun hiiri on ensin sen päällä
@@ -147,7 +169,9 @@ func _process(delta: float) -> void:
 		9:
 			if _t > 1.0:
 				_check("lähde: " + main.weather.real_source, main.weather.real_source != "")
-				_check("HUD näyttää lämpötilan: " + main.hud._status.text.split("\n")[1], "°C" in main.hud._status.text)
+				var text: String = main.hud._status.text
+				var temp_lines := Array(text.split("\n")).filter(func(l): return "°C" in l)
+				_check("HUD näyttää lämpötilan: " + (temp_lines[0] if not temp_lines.is_empty() else "(ei °C-riviä)"), "°C" in text)
 				_shot("peli-todellinen-saa")
 				_water_quality_game_checks()
 				_done()

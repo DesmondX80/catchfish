@@ -12,13 +12,16 @@ mkdir -p "$tmp/tools"
 cp "$src" "$tmp/tools/run_tests.sh"
 runner="$tmp/tools/run_tests.sh"
 
-# Valekomento: speciestest läpi, luretest 7 VIRHE-riviä ja koodi 1, boattest jää jumiin.
+# Valekomento: speciestest läpi, luretest 7 VIRHE-riviä ja koodi 1 (siemen 42),
+# boattest jää jumiin. Argumentit kaiutetaan lokiin.
 fake="$tmp/fake-godot"
 cat >"$fake" <<'EOF'
 #!/usr/bin/env bash
+echo "argumentit: $*"
 case " $* " in
 	*" --speciestest "*) echo "OK   lajit"; echo "OK   koot"; exit 0 ;;
 	*" --luretest "*)
+		echo "Siemen: 42 (toista: --seed=42)"
 		echo "OK   uistin 1"
 		for i in 1 2 3 4 5 6 7; do echo "VIRHE uistin $i syvyys"; done
 		exit 1 ;;
@@ -76,6 +79,7 @@ check "VIRHE-testi: 5 VIRHE-riviä sisennettynä" \
 	test "$(grep -c '^    VIRHE uistin' <<<"$out")" -eq 5
 check "VIRHE-testi: (+2 muuta)" has '^    \(\+2 muuta\)$'
 check "VIRHE-testi: epäonnistuneet" has '^Epäonnistuneet: luretest$'
+check "VIRHE-testi: siemen tulosrivillä" has '^>> VIRHE +luretest +[0-9]+ s \(koodi 1, siemen 42\)$'
 
 # Aikakatkaisu.
 TEST_TIMEOUT=1 run boattest speciestest
@@ -115,6 +119,22 @@ check "--repeat: speciestest 3/3" has '^speciestest +3/3 +0 +0 +[0-9]+ s$'
 check "--repeat: luretest 0/3" has '^luretest +0/3 +3 +0 +[0-9]+ s$'
 check "--repeat: läpi 3/6" has '^Läpi 3/6,'
 check "--repeat: paluukoodi 1" test $rc -eq 1
+check "--repeat: toista-rivi siemenellä" has '^    toista: tools/run_tests.sh --seed=42 luretest$'
+check "--repeat: toista-rivi kerran" test "$(grep -c '^    toista:' <<<"$out")" -eq 1
+check "--repeat: ei toista-riviä läpi menneelle" lacks 'toista: .*speciestest'
+
+# Siemen.
+run -q --seed=5 speciestest
+check "--seed: paluukoodi 0" test $rc -eq 0
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "--seed=5 välittyy testille" grep -qE '^argumentit: .* --speciestest --seed=5$' "$tmp/$log"
+run -q --seed=5 seedtest
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "--seed: seedtest pitää oman siemenensä" grep -qE '^argumentit: .* --seed=171 --seedtest$' "$tmp/$log"
+run --seed=x speciestest
+check "--seed=x: paluukoodi 2" test $rc -eq 2
+run --seed=-1 speciestest
+check "--seed=-1: paluukoodi 2" test $rc -eq 2
 
 # Oma lokipolku.
 run --log="$tmp/oma.log" speciestest
