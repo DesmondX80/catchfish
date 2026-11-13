@@ -79,7 +79,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, sky_ti
 	weather = weather_node
 	sky = sky_time
 	lake = lake_data
-	_rng.randomize()
+	_rng.seed = GameSeed.of("game_audio")
 	log_enabled = "--audio-log" in OS.get_cmdline_user_args()
 	# Rajoitin päämikserissä estää säröytymisen, kun moni ääni soi yhtä aikaa
 	# (vain kerran: peli voidaan käynnistää uudelleen kotoa)

@@ -19,6 +19,7 @@ var _shots := ""
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
 	for arg in OS.get_cmdline_user_args():

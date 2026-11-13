@@ -13,6 +13,7 @@ var _log: Array[String] = []
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--bookshots="):
 			_dir = arg.split("=")[1]

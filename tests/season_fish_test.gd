@@ -16,6 +16,7 @@ func _check(name: String, ok: bool) -> void:
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	var spring := _stats(125) # hauen kutu
 	var early := _stats(175) # alkukesä
 	var heat := _stats(210) # helle

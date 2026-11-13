@@ -14,6 +14,7 @@ var _rng := RandomNumberGenerator.new()
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	_rng.seed = 5
 	var pop: FishPopulation = main.population
 	print("Kaloja: ", pop.count_by_species())

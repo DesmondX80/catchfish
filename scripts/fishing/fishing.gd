@@ -198,7 +198,7 @@ func setup(boat_node: Boat, rig: CameraRig, lake_data: LakeData, fish_pop: FishP
 	population = fish_pop
 	weather = weather_node
 	sky = sky_time
-	_rng.randomize()
+	_rng.seed = GameSeed.of("fishing")
 	_build_visuals()
 	_update_rod(0.0) # vavan kärjen sijainti heti alussa
 

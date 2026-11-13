@@ -16,10 +16,12 @@ var _start := Vector2.ZERO
 var _dir := Vector2.ZERO
 var _spots: Array[Vector2] = [] # kuvauspaikat pohjatyypeittäin
 var _shot := 0
+var _pass_sample := 0 # luotaimen näyte, jonka jälkeen alkaa ylitys
 
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
 	for arg in OS.get_cmdline_user_args():
@@ -46,6 +48,10 @@ func _physics_process(delta: float) -> void:
 		0:
 			_check_lake(lake)
 			_prepare_pass(lake)
+			# Vene heti ylityksen alkuun: aloituspaikan kaiut eivät tule mukaan kaareen
+			boat.pos = _start
+			boat.velocity = Vector2.ZERO
+			_pass_sample = main.hud.sounder._sample
 			_next()
 		1:
 			# Vene ajaa tasaisesti kalan yli 1 m/s
@@ -124,8 +130,10 @@ func _prepare_pass(lake: LakeData) -> void:
 	# Muut kalat kauas, yksi iso kala ylityskohtaan
 	for i in main.population.fish.size():
 		var f: Dictionary = main.population.fish[i]
-		if _fish < 0 and f["weight"] > 1.0:
+		if i == 0:
+			# Aina sama kala ja paino: uiskentelun suunta tulee kalan indeksistä
 			_fish = i
+			f["weight"] = 2.0
 			f["pos"] = _start + Vector2(6.0, 0.0)
 			f["depth"] = 2.0
 		elif f["pos"].distance_to(_start) < 60.0:
@@ -139,6 +147,8 @@ func _check_arc(what: String) -> void:
 	var sounder: EchoSounder = main.hud.sounder
 	var ranges := []
 	for c in sounder._columns:
+		if c["seed"] <= _pass_sample:
+			continue # ennen ylityksen alkua otettu sarake
 		for e in c["fish"]:
 			ranges.append(e[0])
 	if ranges.size() < 5:

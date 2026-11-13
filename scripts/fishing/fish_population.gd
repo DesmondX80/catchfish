@@ -23,7 +23,7 @@ var _wander_budget := 0.0
 
 func setup(lake_data: LakeData) -> void:
 	lake = lake_data
-	_rng.randomize()
+	_rng.seed = GameSeed.of("fish_population")
 	update_traits()
 	var area_km2 := lake.water.count(1) * lake.cell_size * lake.cell_size / 1e6
 	for sp in Species.DATA:

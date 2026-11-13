@@ -32,6 +32,7 @@ var _bend_worst := {}
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	f = main.fishing
 	boat = main.boat
 	GameInput.force_active = true
@@ -39,7 +40,6 @@ func _ready() -> void:
 	f.message.connect(func(t): _messages.append(t))
 	for fish in main.population.fish:
 		fish["wary"] = 1.0e9 # tärpit tehdään testissä itse
-	main.weather.set_process(false) # sää ei muutu kesken testin
 	_wind(3.0, 0.0)
 	if f.on_ice:
 		_winter.call_deferred()

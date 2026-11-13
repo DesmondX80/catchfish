@@ -14,6 +14,7 @@ var _sounds: Array = []
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	birds = main.birds
 	birds.auto_spawn = false
 	for arg in OS.get_cmdline_user_args():

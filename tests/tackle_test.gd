@@ -14,6 +14,7 @@ var _dir := ""
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	box = main.tackle_box
 	GameInput.force_active = true
 	for arg in OS.get_cmdline_user_args():

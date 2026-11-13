@@ -22,14 +22,10 @@ var _saved := {}
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
 	main.boat.message.connect(func(text): _messages.append(text))
-	# Tyyni sää, joka ei muutu kesken testin: tuuli ei vaikuta nopeuksiin
-	main.weather.set_process(false)
-	main.weather.wind_base = 0.0
-	main.weather.gust = 0.0
-	main.weather._wind_target = 0.0
 	_find_spot()
 
 

@@ -32,6 +32,7 @@ var m := {}
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	f = main.fishing
 	boat = main.boat
 	process_physics_priority = 100 # mittaus saman askeleen lopussa, veneen ja vapojen jälkeen
@@ -40,7 +41,6 @@ func _ready() -> void:
 	f.message.connect(func(t): _messages.append(t))
 	for fish in main.population.fish:
 		fish["wary"] = 1.0e9 # tärpit tehdään testissä itse
-	main.weather.set_process(false) # sää ei muutu kesken testin
 	for arg in OS.get_cmdline_user_args():
 		if arg.begins_with("--fightdepthtest-shots="):
 			_shots = arg.split("=")[1]

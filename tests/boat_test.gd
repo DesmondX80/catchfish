@@ -13,13 +13,9 @@ var _spin := 0.0
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
-	# Tyyni sää, joka ei muutu kesken testin: tuuli ei käännä venettä ja kalastajaa
-	main.weather.set_process(false)
-	main.weather.wind_base = 0.0
-	main.weather.gust = 0.0
-	main.weather._wind_target = 0.0
 
 
 func _check(name: String, ok: bool) -> void:

@@ -12,6 +12,7 @@ var _t := 0.0
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	main.weather.rain = 0.0
 	main.birds.auto_spawn = false # taivaan linnut eivät sotke lokia
 	main.audio._bird_timer = 9999.0 # eivät myöskään metsän pikkulinnut

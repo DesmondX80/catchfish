@@ -21,6 +21,7 @@ func _check(name: String, ok: bool) -> void:
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 
 
 func _process(_delta: float) -> void:

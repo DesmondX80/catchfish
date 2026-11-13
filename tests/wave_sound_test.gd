@@ -21,6 +21,7 @@ func _check(name: String, ok: bool) -> void:
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	var lake: LakeData = main.lake
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 5
@@ -47,11 +48,8 @@ func _process(delta: float) -> void:
 		return
 	# Vaiheet: tyyni, 4 m/s ja 8 m/s selällä, lopuksi 8 m/s ylätuulen rannassa
 	var strength: float = [0.0, 0.5, 1.0, 1.0][_step]
-	main.weather.wind_base = strength * 8.0
-	main.weather._wind_target = strength * 8.0
-	main.weather.wind_direction = 0.0
+	TestUtil.calm_weather(main, strength * 8.0, 0.0) # tuuli ja aallokko heti vaiheen mukaisiksi
 	main.boat.pos = _shelter if _step == 3 else _open
-	Waves.reset(strength * 8.0, 0.0) # aallokko heti tuulen mukaiseksi
 	if _t > 0.6:
 		if _step == 3:
 			var open_waves: float = _levels[1.0][1]

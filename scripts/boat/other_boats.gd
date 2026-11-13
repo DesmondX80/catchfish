@@ -113,7 +113,7 @@ func setup(boat_node: Boat, camera_node: Camera3D, sky_time: SkyTime, weather_no
 	lake = lake_data
 	nets = net_control
 	winter = is_winter
-	_rng.randomize()
+	_rng.seed = GameSeed.of("other_boats")
 	_next_variant = _rng.randi() % OtherBoat.COLORS.size()
 	_timer = _rng.randf_range(FIRST_SPAWN.x, FIRST_SPAWN.y)
 	_gcols = lake.cols / 2

@@ -93,7 +93,7 @@ func setup(boat_node: Boat, camera_node: Camera3D, sky_time: SkyTime, weather_no
 	lake = lake_data
 	winter = is_winter
 	day = sky.day_of_year
-	_rng.randomize()
+	_rng.seed = GameSeed.of("birds")
 
 
 ## Lajin yleisyys nyt: muuttolinnut talvella poissa, hanhia eniten muuttoaikaan

@@ -20,6 +20,7 @@ var _dir := Vector2.UP
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	main.hud.set_paused_view(false)
 	main.birds.auto_spawn = false
 	ob = main.other_boats
@@ -45,16 +46,7 @@ func _frame() -> void:
 
 
 func _calm() -> void:
-	var w: Weather = main.weather
-	w.set_process(false) # tuuli pysyy tyynenä koko testin
-	w.wind_base = 0.0
-	w.gust = 0.0
-	w._wind_target = 0.0
-	w._gust_timer = 999.0
-	w.rain = 0.0
-	w._rain_target = 0.0
-	w._change_in = 1e6
-	Waves.reset(0.0, w.wind_direction)
+	TestUtil.calm_weather(main) # tuuli pysyy tyynenä koko testin
 	main.sky.minutes = 12.0 * 60.0
 
 

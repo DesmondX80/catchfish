@@ -28,6 +28,7 @@ var load_ms := 0
 
 
 func _ready() -> void:
+	GameSeed.setup() # siemen ensin: kaikki arvonta (myös globaali randf) sen mukaan
 	lake = LakeData.load_from(LAKE_DIR)
 	if return_to_menu:
 		return_to_menu = false
@@ -45,7 +46,7 @@ func _ready() -> void:
 				_show_menu()
 				add_child(load("res://tests/%s.gd" % menu_tests[prefix]).new())
 				return
-		if arg.begins_with("--") and arg != "--audio-log": # äänen kirjaus ei ohita valikkoa
+		if arg.begins_with("--") and arg != "--audio-log" and not arg.begins_with("--seed="): # äänen kirjaus ja siemen eivät ohita valikkoa
 			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
 			_start_game(0) # testit ohittavat valikon
 			return
@@ -343,6 +344,8 @@ func _start_game(start_index: int, career := false) -> void:
 		add_child(load("res://tests/wake_test.gd").new())
 	elif "--fightdepthtest" in args:
 		add_child(load("res://tests/fight_depth_test.gd").new())
+	elif "--seedtest" in args:
+		add_child(load("res://tests/seed_test.gd").new())
 	else:
 		for arg in args:
 			if arg.begins_with("--seasonshot="):

@@ -12,6 +12,7 @@ var _t := 0.0
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	main.hud.set_paused_view(false)
 	main.weather.rain = 0.0
 	# Oikeat kalat ja merikotka eivät saa huutaa väliin ("Hauki!", "Merikotka!")

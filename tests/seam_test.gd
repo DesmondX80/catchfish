@@ -23,6 +23,7 @@ func _check(name: String, ok: bool) -> void:
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 	var before: String = Settings.water_quality
 	for quality in ["korkea", "matala"]:

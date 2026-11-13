@@ -67,7 +67,7 @@ var _change_in := 40.0 # peliminuuttia seuraavaan säätilan vaihtoon
 
 
 func _ready() -> void:
-	_rng.randomize()
+	_rng.seed = GameSeed.of("weather")
 	wind_direction = _rng.randf() * TAU
 	wind_base = _rng.randf_range(1.0, 5.0)
 	_wind_target = wind_base

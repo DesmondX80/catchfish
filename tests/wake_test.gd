@@ -38,6 +38,7 @@ var _g := {}
 
 
 func _ready() -> void:
+	TestUtil.calm_weather(get_parent()) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	_run.call_deferred()
 
 

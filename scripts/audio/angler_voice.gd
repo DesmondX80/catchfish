@@ -79,7 +79,7 @@ func setup(boat_node: Boat, fishing_node: Fishing, weather_node: Weather, hud_no
 	fishing = fishing_node
 	weather = weather_node
 	hud = hud_node
-	_rng.randomize()
+	_rng.seed = GameSeed.of("angler_voice")
 	for key in LINES:
 		_streams[key] = load(DIR + key + ".wav")
 	_player = AudioStreamPlayer3D.new()

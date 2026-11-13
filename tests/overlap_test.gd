@@ -21,6 +21,7 @@ var _solids: Array = [] # [rungosta kappaleeseen, koko, onko sylinteri]: umpinai
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	GameInput.force_active = true
 
 

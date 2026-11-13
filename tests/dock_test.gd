@@ -19,6 +19,7 @@ var _crossed := false
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	main.hud.set_paused_view(false)
 	var boat: Boat = main.boat
 	boat.sound_event.connect(func(sound: String, _at: Vector3) -> void:

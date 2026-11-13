@@ -28,6 +28,7 @@ var _line := PackedVector2Array()
 
 func _ready() -> void:
 	main = get_parent()
+	TestUtil.calm_weather(main) # tyyni, pysäytetty sää: tulos ei riipu arvotusta säästä
 	lake = main.lake
 	GameInput.force_active = true
 	main.hud.set_paused_view(false)
