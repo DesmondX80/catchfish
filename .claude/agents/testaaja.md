@@ -17,7 +17,7 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
   ja kerran `godot-4.7.2 --headless --import`. Raportti koskee tätä
   commit-tunnistetta. Haara on jäädytetty raporttiisi asti.
 - Ennen jokaista ajoa `git status` on puhdas ja `git log --oneline
-  HEAD..origin/main` tyhjä; jos ei, palauta rebasettavaksi.
+  HEAD..origin/main` tyhjä; jos ei, palauta rebasettavaksi (ei lasketa palautuskierrokseksi).
 - Koko sarja `tools/run_tests.sh -q` (noin 15 min) taustalle valmismerkillä
   (`docs/plan.md`, *Testaus* → *Pitkät ajot*).
 - Jos testi epäonnistuu ja epäilet sen olevan epävakaa tai rikki jo mainissa,

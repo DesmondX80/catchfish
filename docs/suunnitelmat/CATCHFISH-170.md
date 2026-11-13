@@ -793,3 +793,14 @@ tunnisteet, viitataanko niihin? Oletus: lähderetron numero.
   `--seed` ja sää-apufunktio → CATCHFISH-171; `latest.done` ja run_tests.sh:n
   liput → CATCHFISH-172; `mutate.sh` → CATCHFISH-173; GPU-lukko, `--param`,
   Windows-kuvakomento, rajaustyökalu ja mockup-skripti → CATCHFISH-174.
+- **PÄÄTÖS 13 (työnjohtaja, designerin tarkistus):** korjataan kaksi huomiota
+  ennen hyväksyntää: (a) `designer.md`:n viittaukseen polku "*Testaus* →
+  *Grafiikkavikojen diagnostiikka*", (b) *Sävy viesteissä* -osion rajoihin
+  `CLAUDE.md` ja `.claude/agents/` asiallisina tiedostoina. Rivimäärät eivät
+  nouse. Korjaukset tehdään samassa erässä testaajan löydösten kanssa.
+- **PÄÄTÖS 14 (työnjohtaja, testaajan suositukset):** samaan korjauserään
+  (S1) *Mutaatiotarkistus käsin*: resepti ajetaan yhtenä Bash-kutsuna, koska
+  cwd ja muuttujat eivät säily kutsujen välillä; (S2) `koodaaja.md`: pushatun
+  haaran rebasen jälkeen `git push --force-with-lease`, eikä rebase-palautus
+  laske kahden palautuskierroksen rajaan. Rivirajat pysyvät; tarvittaessa
+  karsitaan samasta tiedostosta.

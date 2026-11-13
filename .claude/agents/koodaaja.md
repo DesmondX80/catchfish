@@ -67,7 +67,7 @@ suunnitelmatiedosto ja toteutuksen runko, ei pitkää lukemista ilman muutoksia.
    muutokseen liittyvät testit: `tools/run_tests.sh -q NIMI...`. Jos jokin
    epäonnistuu ja väität sen epäonnistuvan myös mainissa, tarkista se:
    `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
-2. Commit ja `git push -u origin claude/<aihe>`.
+2. Commit ja `git push --force-with-lease -u origin claude/<aihe>` (rebasen jälkeen).
 3. Ilmoita testaajalle ja työnjohtajalle commit-tunniste
    (`git rev-parse --short HEAD`), haara, työkopion polku, testin OK/VIRHE-
    rivit ja kartta kriteeri → testirivi, ajetut testit ja käsin

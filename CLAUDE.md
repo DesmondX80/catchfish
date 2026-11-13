@@ -184,8 +184,8 @@ Rajat:
   tilalle.
 - Haukutaan työtä ja tunaroinnit, ei ihmisryhmiä. Teemua ei haukuta.
 - Tiedostoihin kirjoitettava teksti on asiallista: koodin kommentit,
-  commit-viestit, README, F1-ohje, suunnitelmat (`docs/suunnitelmat/`) ja
-  `docs/plan.md`. Sävy koskee vain viestejä.
+  commit-viestit, README, F1-ohje, suunnitelmat (`docs/suunnitelmat/`),
+  `docs/plan.md`, `CLAUDE.md` ja `.claude/agents/`. Sävy koskee vain viestejä.
 
 ### Yhteiset säännöt tiimiläisille
 

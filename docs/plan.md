@@ -232,6 +232,7 @@ Vaihtelevien rivien yhteenveto `--repeat`iin tulossa (CATCHFISH-172).
     tools/run_tests.sh -q NIMI     # testin pitää kaatua
     cd - && git worktree remove --force "$mut"
 
+Aja resepti yhtenä Bash-kutsuna ja tee mutaatio polkuun `$mut/...` (sed tai Edit).
 Mutaatio on oikea viallinen käytös, jota testin pitäisi vahtia, ei lievä heikennys.
 Muoto kirjataan suunnitelman *Päätöksiin*. Työkalu `tools/mutate.sh` tulossa (CATCHFISH-173).
 
@@ -278,8 +279,7 @@ sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tuloss
 
 ### Tunnetusti epävakaat testit
 
-Korjataan tehtävässä CATCHFISH-171; testi poistetaan listalta, kun se on korjattu.
-Työnjohtaja pitää listan ajan tasalla.
+Korjataan tehtävässä CATCHFISH-171; korjattu poistetaan listalta (työnjohtaja ylläpitää).
 
 - pressuretest
 - sonartest
