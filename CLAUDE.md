@@ -196,8 +196,7 @@ Koskevat designeria, koodaajaa ja testaajaa (roolit: `.claude/agents/`).
   tulevat perille vasta seuraavalla työkalukierroksella, joten lue
   *Päätökset* ennen jokaista commitia ja ennen jokaista yli 2 minuutin ajoa.
 - Tilaviesti alkaa tilarivillä, esim. `TILA: valmis`, `TILA: kesken`,
-  `TILA: ajo käynnissä (PID 1234, loki .test-logs/latest.log)`,
-  `TILA: odottaa vastausta (kysymys 2)`.
+  `TILA: ajo käynnissä (PID 1234, loki .test-logs/latest.log)`, `TILA: odottaa vastausta`.
 - Pitkät ajot: et päätä vuoroasi odottamaan taustatyötä. Alle 10 minuutin ajot
   etualalla (Bash-aikaraja 600000 ms); pidempi, esim. koko sarja (noin 15 min),
   taustalle valmismerkillä, ja seuraat sitä itse lokista (`docs/plan.md`,
