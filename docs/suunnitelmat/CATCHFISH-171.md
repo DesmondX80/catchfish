@@ -487,3 +487,7 @@ PÄÄTÖS 5: L3 vaihtoehto A. Listan testit (pressure, sonar, motorspeed, boat, 
 PÄÄTÖS 6: L4 vaihtoehto B, tarkistettu Planesta. 122: jumi tapahtui ikkunassa myös origin/mainissa (4ebfb83); koodaajalla --fixed-fps 30 -lipulla, testaajalla myös ilman sitä. Näytönohjaimesta ei ole mainintaa. Vahtiajastin (180 s) toteutetaan, ja testaaja ajaa settingstestin näytönohjaimella sekä --fixed-fps 30 -lipulla että ilman. Ajokomento kirjataan testitiedoston alkuun ja docs/plan.md:n testilistaan (122 vaatii). 112: L-jalan x oli kaatuessa noin −0,41…−0,46.
 
 PÄÄTÖS 7: L5 kyllä. docktest korjataan samalla sää-apufunktiolla.
+
+PÄÄTÖS 8 (koodaaja, työnjohtajan kuitattavaksi): `tools/run_tests.sh --seed=N` ei lisää lippua testille, jonka argumenteissa on jo oma `--seed=` (seedtest, `--seed=171`). Muuten seedtest saisi kaksi siementä, `GameSeed` lukisi viimeisen ja tarkistus "GameSeed.base = 171" kaatuisi. Selftest tarkistaa tämän ("seedtest pitää oman siemenensä"). Ei koske `origin/main`ia (lippu on uusi).
+
+PÄÄTÖS 9 (mutaatioiden muoto): 10b tehty: `weather.gd` `_rng.seed = GameSeed.of("weather")` → `_rng.randomize()` → seedtest kaatuu riveihin "weather: siemen GameSeed.of(\"weather\")" ja "sama siemen, sama sää" (koodi 1). 10a, 10c ja 10d kuten hyväksymiskriteereissä; tulokset luovutusviestissä.

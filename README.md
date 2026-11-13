@@ -291,6 +291,7 @@ tools/run_tests.sh /polku/godotiin luretest   # vain nimetyt, Godot annettuna
 tools/run_tests.sh -q                         # vain tulosrivit ja yhteenveto päätteeseen
 tools/run_tests.sh --repeat=10 luretest       # epävakaan testin toistoajo
 tools/run_tests.sh --ref=origin/main --repeat=3 luretest  # sama mainissa (väliaikainen työkopio)
+tools/run_tests.sh --seed=12345 boattest      # toista kaatunut ajo samalla siemenellä
 ```
 
 Lopuksi tulostuu yhteenvetotaulukko (testi, tulos, kesto ja epäonnistuneen
@@ -299,6 +300,8 @@ omista riveistä. Koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
 `latest.log` uusimpaan; `--log=TIEDOSTO` muuttaa polun). Aikaraja on
 `TEST_TIMEOUT` sekuntia testiä kohti (oletus 600). Paluukoodi on 0, kun kaikki
 menivät läpi, 1, jos jokin epäonnistui, ja 2 väärällä käytöllä.
+Peli tulostaa ensimmäiseksi rivin `Siemen: N`; epäonnistuneen testin tulosrivi
+kertoo siemenen, ja `--seed=N` toistaa ajon samoilla satunnaisluvuilla.
 `tools/run_tests_selftest.sh` testaa itse ajurin valekomennolla.
 
 Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.

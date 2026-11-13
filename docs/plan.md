@@ -128,13 +128,29 @@ Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
 WSL:ssä se on komentona `godot-4.7.2` (`~/.local/bin/godot-4.7.2`).
 GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 (`.github/workflows/tests.yml`); samat testit paikallisesti:
-`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [testin_nimi...]`.
+`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [testin_nimi...]`.
 Lopussa on yhteenvetotaulukko (tulos, kesto ja `VIRHE`-rivit), ajon tulosrivit
 alkavat `>>`, ja koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
 `latest.log`). `-q` jättää Godotin tulosteen vain lokiin. `--repeat=N` ajaa
 testit N kertaa ja `--ref=origin/main` väliaikaisessa työkopiossa, jolla
 tarkistetaan, epäonnistuuko testi myös mainissa. Ajurin itsetesti
 `tools/run_tests_selftest.sh` ajetaan CI:ssä ennen testejä.
+
+Siemen: pelin ensimmäinen rivi on aina `Siemen: N (toista: --seed=N)`.
+`--seed=N` kiinnittää kaikki satunnaislukugeneraattorit (`GameSeed`: sää,
+kalakanta, kalastus, linnut, muut veneet, äänet, puhe ja globaali `randf()`);
+ilman lippua siemen arvotaan, myös CI:ssä. Epäonnistuneen ajon tulosrivi
+kertoo siemenen (`(koodi 1, siemen N)`), ja toistoajon taulukossa on rivi
+`toista: tools/run_tests.sh --seed=N NIMI`, joka toistaa ajon samoilla arvoilla.
+`tools/run_tests.sh --seed=N` välittää lipun kaikille testeille (seedtest
+pitää oman siemenensä 171).
+
+Sää testeissä: uusi testi kutsuu `_ready`ssä heti `main = get_parent()`n
+jälkeen `TestUtil.calm_weather(main)` (`tests/test_util.gd`), ellei se testaa
+säätä. Se pysäyttää sään tyyneksi (tuuli, puuskat, sade, paine ja säätilan
+vaihdot) ja nollaa aallokon, joten tulos ei riipu arvotusta säästä. Tuulen voi
+antaa: `TestUtil.calm_weather(main, 8.0, 0.0)` (m/s, suunta rad). Ilman
+apufunktiota: pressuretest, wavetest, shopbgtest ja settingstest.
 
 ```bash
 godot --headless --fixed-fps 30 -- --day=180 --luretest     # uistinten syvyydet
@@ -173,8 +189,10 @@ godot --headless --fixed-fps 30 -- --day=40 --icetest       # pilkintä
 godot --headless --fixed-fps 30 -- --day=180 --linetest     # siima: muoto, taitteet, pinta, tuuli, runko, tilan vaihdot, pätkä, nykäyskuorma (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --fightdepthtest # koukussa oleva kala pysyy vedessä ja rungon ulkopuolella (kuvat: --fightdepthtest-shots=KANSIO, ikkuna)
 godot --headless -- --day=180 --speciestest                 # kalakanta ja saalisjakauma
+godot --headless --fixed-fps 30 -- --day=180 --seed=171 --seedtest # siemen: alijärjestelmien siemenet, sama siemen -> sama sää ja kalakanta
 godot --headless --fixed-fps 30 -- --perftest [--perftest-lines] # suorituskyky (kaksi siimaa vedessä)
 godot -- --inputtest / --careertest=KANSIO / --pausetest     # vaativat ikkunan
+GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA timeout 300 godot-4.7.2 --fixed-fps 30 --disable-vsync -- --settingstest=KANSIO # asetukset ja todellinen sää (ikkuna; aja myös ilman --fixed-fps 30, aikaraja 180 s)
 godot --fixed-fps 30 -- --day=180 --anglershots=KANSIO      # kalastajan lähikuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --fpvshots=KANSIO         # FPV-kameran kuvat (ikkuna)
 godot --fixed-fps 30 -- --day=180 --foamshots=KANSIO        # vaahtopäät eri tuulilla (ikkuna)
