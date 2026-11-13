@@ -488,6 +488,10 @@ PÄÄTÖS 6: L4 vaihtoehto B, tarkistettu Planesta. 122: jumi tapahtui ikkunassa
 
 PÄÄTÖS 7: L5 kyllä. docktest korjataan samalla sää-apufunktiolla.
 
-PÄÄTÖS 8 (koodaaja, työnjohtajan kuitattavaksi): `tools/run_tests.sh --seed=N` ei lisää lippua testille, jonka argumenteissa on jo oma `--seed=` (seedtest, `--seed=171`). Muuten seedtest saisi kaksi siementä, `GameSeed` lukisi viimeisen ja tarkistus "GameSeed.base = 171" kaatuisi. Selftest tarkistaa tämän ("seedtest pitää oman siemenensä"). Ei koske `origin/main`ia (lippu on uusi).
+PÄÄTÖS 8 (koodaaja, työnjohtaja hyväksyi): `tools/run_tests.sh --seed=N` ei lisää lippua testille, jonka argumenteissa on jo oma `--seed=` (seedtest, `--seed=171`). Muuten seedtest saisi kaksi siementä, `GameSeed` lukisi viimeisen ja tarkistus "GameSeed.base = 171" kaatuisi. Selftest tarkistaa tämän ("seedtest pitää oman siemenensä"). Ei koske `origin/main`ia (lippu on uusi).
 
-PÄÄTÖS 9 (mutaatioiden muoto): 10b tehty: `weather.gd` `_rng.seed = GameSeed.of("weather")` → `_rng.randomize()` → seedtest kaatuu riveihin "weather: siemen GameSeed.of(\"weather\")" ja "sama siemen, sama sää" (koodi 1). 10a, 10c ja 10d kuten hyväksymiskriteereissä; tulokset luovutusviestissä.
+PÄÄTÖS 9 (mutaatioiden muoto, koodaaja):
+- 10a: `echo_sounder.gd:55` `var slant := sqrt(f[0] * f[0] + dist * dist)` → `var slant: float = f[0]`. Suunnitelman muoto `var slant := f[0]` ei käänny (tyyppiä ei voi päätellä Variantista), jolloin peli ei käynnisty ja ajo päättyy aikakatkaisuun eikä testin VIRHEeseen; siksi tyypitetty muoto. Tulos: sonartest koodi 1, "vene ajaa kalan yli: ... 2.00 m → 2.00 m → 2.00 m" ja "vene paikallaan ... 2.00–2.00 m" VIRHE.
+- 10b: `weather.gd` `_rng.seed = GameSeed.of("weather")` → `_rng.randomize()` → seedtest koodi 1, VIRHE "weather: siemen GameSeed.of(\"weather\")" ja "sama siemen, sama sää".
+- 10c: `test_util.gd` rivi `w.set_process(false)` poistettu → `--repeat=5 docktest anchortest` 10/10 läpi, mutta anchortestin tuulirivit vaihtelevat (esim. "köysi ei venynyt (yli 0.06 / 0.07 / 0.08 m)", "vene 1.37–1.41 m/s"). docktestin rivit pysyivät samoina, koska apufunktion tyyni tuuli ja `_change_in = INF` pitävät elävänkin sään tyynenä.
+- 10d: kuten hyväksymiskriteereissä (`_button("Asetukset")` → `_button("Asetuksetx")`).
