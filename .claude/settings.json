@@ -14,6 +14,8 @@
       "Bash(git rebase *)",
       "Bash(git checkout *)",
       "Bash(git push -u origin claude/*)",
+      "Bash(git push origin claude/*)",
+      "Bash(git push origin HEAD:claude/*)",
       "Bash(tools/run_tests.sh *)",
       "Bash(godot *)",
       "Bash(python3 tools/*)"
