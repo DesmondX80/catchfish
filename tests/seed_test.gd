@@ -31,6 +31,7 @@ func _checks() -> void:
 		_check("%s: siemen GameSeed.of(\"%s\")" % [key, key], rng.seed == GameSeed.of(key))
 	_weather_checks()
 	_population_checks()
+	_global_checks()
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
@@ -71,3 +72,13 @@ func _population_checks() -> void:
 	var a := _new_population()
 	var b := _new_population()
 	_check("sama siemen, sama kalakanta: %d kalaa, 50 ensimmäisen paikka ja paino samat" % a[0], a[0] > 0 and a == b)
+
+
+## Globaali randf()/randi(): GameSeed.setup() siementää sen perussiemenellä
+func _global_checks() -> void:
+	GameSeed.setup()
+	var a := [randi(), randf()]
+	randi() # tila etenee: ilman siementämistä seuraava setup() jatkaisi tästä
+	GameSeed.setup()
+	var b := [randi(), randf()]
+	_check("globaali randf: sama siemen, samat luvut (%d, %.4f)" % a, a == b)
