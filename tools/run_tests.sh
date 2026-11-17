@@ -38,6 +38,7 @@ tests=(
 	"channeltest|--fixed-fps 30 -- --day=180 --channeltest"
 	"docktest|--fixed-fps 30 -- --day=180 --docktest"
 	"fightdepthtest|--fixed-fps 30 -- --day=180 --fightdepthtest"
+	"fpvtest|--fixed-fps 30 -- --day=180 --fpvtest"
 	"headwindtest|--fixed-fps 30 -- --day=180 --headwindtest"
 	"icetest|--fixed-fps 30 -- --day=40 --icetest"
 	"luretest|--fixed-fps 30 -- --day=180 --luretest"
@@ -184,9 +185,10 @@ pad() { # pad TEKSTI LEVEYS
 
 workdir="$root"
 ref_dir=""
-out_file="$(mktemp)"
+# Jokaisen ajon tuloste omaan tiedostoonsa: $run_dir/N.out (N = ajon järjestysnumero)
+run_dir="$(mktemp -d)"
 cleanup() {
-	rm -f "$out_file"
+	rm -rf "$run_dir"
 	[ -n "$ref_dir" ] || return
 	git -C "$root" worktree remove --force "$ref_dir" >/dev/null 2>&1 || rm -rf "$ref_dir"
 	git -C "$root" worktree prune >/dev/null 2>&1
@@ -214,6 +216,7 @@ r_status=()
 r_secs=()
 r_errs=()
 r_seed=()
+r_out=()
 
 total_start=$(date +%s)
 for entry in "${tests[@]}"; do
@@ -226,12 +229,13 @@ for entry in "${tests[@]}"; do
 	fi
 	if [ -n "$ref" ] && [[ "$ref_entries" != *"\"$name|"* ]]; then
 		say ">> $(pad PUUTTUU 13) $name (ei $ref:n testilistassa)"
-		r_name+=("$name"); r_status+=("PUUTTUU"); r_secs+=(0); r_errs+=(""); r_seed+=("")
+		r_name+=("$name"); r_status+=("PUUTTUU"); r_secs+=(0); r_errs+=(""); r_seed+=(""); r_out+=("")
 		continue
 	fi
 	for ((i = 1; i <= repeat; i++)); do
 		label="$name"
 		[ "$repeat" -gt 1 ] && label="$name [$i/$repeat]"
+		out_file="$run_dir/$((${#r_name[@]} + 1)).out"
 		say_raw "::group::$label"
 		start=$(date +%s)
 		# --foreground: Ctrl+C menee myös Godotille.
@@ -266,7 +270,7 @@ for entry in "${tests[@]}"; do
 			errs="$(grep '^[[:space:]]*VIRHE' "$out_file" | head -n $max_errs | sed 's/^[[:space:]]*/    /')"
 			[ "$n_errs" -gt $max_errs ] && errs+=$'\n'"    (+$((n_errs - max_errs)) muuta)"
 		fi
-		r_name+=("$name"); r_status+=("$status"); r_secs+=("$secs"); r_errs+=("$errs"); r_seed+=("$run_seed")
+		r_name+=("$name"); r_status+=("$status"); r_secs+=("$secs"); r_errs+=("$errs"); r_seed+=("$run_seed"); r_out+=("$out_file")
 	done
 done
 total_secs=$(( $(date +%s) - total_start ))
