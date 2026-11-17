@@ -456,7 +456,7 @@ pois): valetesti proptest kuolee heti KILLiin isolla aikarajalla → odotus
 bonus) Jono lyhimmästä pisimpään (`sort -k1,1nr` → `-k1,1n`): valmis
 `kestot.tsv` ja `FAKE_ORDER`-aloitusjärjestys `-j 2`:lla neljällä testillä
 (kestoton ja pisin ensin, lyhin viimeisenä); mutantilla 2 VIRHE-riviä.
-PÄÄTÖS 27: tarkistus `-j 2 --repeat=2` kahdella testillä ja valmiilla
+Toteutus PÄÄTÖKSEEN 27: tarkistus `-j 2 --repeat=2` kahdella testillä ja valmiilla
 `kestot.tsv`:llä: aloitusjärjestyksessä ensin kierros 1 (kaksi eri testiä),
 sitten kierros 2. Mutantit: kierrosavain pois lajittelusta → 2 VIRHE-riviä
 (kierrostarkistukset); kesto nousevaksi (`-k2,2nr` → `-k2,2n`, testaajan
