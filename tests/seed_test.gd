@@ -32,6 +32,7 @@ func _checks() -> void:
 	_weather_checks()
 	_population_checks()
 	_global_checks()
+	_flag_checks()
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
@@ -82,3 +83,38 @@ func _global_checks() -> void:
 	GameSeed.setup()
 	var b := [randi(), randf()]
 	_check("globaali randf: sama siemen, samat luvut (%d, %.4f)" % a, a == b)
+
+
+## Valikon ohitus ja testilippujen tunnistus luetaan taulukosta TestFlags
+func _flag_checks() -> void:
+	for args in [["--seed=5"], ["--audio-log"], ["--day=40"], ["--day=40", "--waterquality=matala"]]:
+		_check("valikko jää näkyviin: %s" % " ".join(args), not TestFlags.skips_menu(PackedStringArray(args)))
+	for args in [["--day=40", "--luretest"], ["--boatshots=x"], ["--scratchtest=x"], ["--skipmenu"], ["--day=40", "--skipmenu"]]:
+		_check("valikko ohitetaan: %s" % " ".join(args), TestFlags.skips_menu(PackedStringArray(args)))
+	_check("--skipmenu ei lataa testiä", TestFlags.find(PackedStringArray(["--day=40", "--skipmenu"])) == "")
+	_check("valikkotesti ei ohita valikkoa: --menutest=x",
+		not TestFlags.skips_menu(PackedStringArray(["--menutest=x"])) and TestFlags.find_menu(PackedStringArray(["--menutest=x"])) == "res://tests/menu_test.gd")
+	_check("--scratchtest voittaa muut testiliput",
+		TestFlags.find(PackedStringArray(["--luretest", "--boatshots=x", "--scratchtest=/tmp/koe.gd"])) == "/tmp/koe.gd")
+	_check("pelitesti voittaa kuvaskriptin, taulukon järjestys ratkaisee",
+		TestFlags.find(PackedStringArray(["--boatshots=x", "--boattest", "--luretest"])) == "res://tests/lure_test.gd")
+	_check("--seasonshot= ja toinen kuvalippu: vain season_shot",
+		TestFlags.find(PackedStringArray(["--boatshots=x", "--seasonshot=y"])) == "res://tests/season_shot.gd")
+	_check("tuntematon testilippu: --luretst",
+		TestFlags.unknown_test_flag(PackedStringArray(["--day=180", "--luretst"])) == "VIRHE tuntematon testilippu --luretst")
+	_check("valikkotesti ilman kansiota: vihje --menutest=KANSIO",
+		TestFlags.unknown_test_flag(PackedStringArray(["--menutest"])).ends_with("--menutest vaatii kansion: --menutest=KANSIO"))
+	_check("tuntematon paljas lippu: --lurtest ja --skipmenyy",
+		TestFlags.unknown_test_flag(PackedStringArray(["--lurtest"])) == "VIRHE tuntematon testilippu --lurtest"
+		and TestFlags.unknown_test_flag(PackedStringArray(["--day=40", "--skipmenyy"])) == "VIRHE tuntematon testilippu --skipmenyy")
+	for args in [["--day=180", "--perftest-lines", "--luretest"], ["--mouse", "--short", "--flicker"], ["--jitter-still", "--watershots-timing"], ["--anchortest-shots=x", "--anchortest"], ["--shopbgtest"],
+			["--menutest=x"], ["--short", "--bookshots=x", "--audio-log", "--seed=5", "--skipmenu"]]:
+		_check("tunnetut liput kelpaavat: %s" % " ".join(args), TestFlags.unknown_test_flag(PackedStringArray(args)) == "")
+	_check("taulukoissa 45 peli-, 15 kuva- ja 6 valikkolippua",
+		TestFlags.GAME.size() == 45 and TestFlags.SHOTS.size() == 15 and TestFlags.MENU.size() == 6)
+	var missing: Array[String] = []
+	for table in [TestFlags.GAME, TestFlags.SHOTS, TestFlags.MENU]:
+		for flag in table:
+			if not ResourceLoader.exists(TestFlags.TEST_DIR + table[flag] + ".gd"):
+				missing.append(flag)
+	_check("jokaisen lipun skripti on olemassa (puuttuu: %s)" % ", ".join(missing), missing.is_empty())

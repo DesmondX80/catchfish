@@ -29,6 +29,11 @@ var load_ms := 0
 
 func _ready() -> void:
 	GameSeed.setup() # siemen ensin: kaikki arvonta (myös globaali randf) sen mukaan
+	var unknown := TestFlags.unknown_test_flag(OS.get_cmdline_user_args())
+	if unknown != "": # väärin kirjoitettu testilippu: ei jäädä valikkoon aikarajaan asti
+		print(unknown)
+		get_tree().quit(1)
+		return
 	lake = LakeData.load_from(LAKE_DIR)
 	if return_to_menu:
 		return_to_menu = false
@@ -38,18 +43,16 @@ func _ready() -> void:
 			menu.open_career()
 		return
 	var args := OS.get_cmdline_user_args()
-	for arg in args:
-		var menu_tests := {"--menutest=": "menu_test", "--settingstest=": "settings_test", "--timepicktest=": "time_pick_test", "--careertest=": "career_test", "--tvtest=": "tv_test", "--shopbgtest": "shop_bg_test"}
-		for prefix in menu_tests:
-			if arg.begins_with(prefix):
-				CatchLog.persist = false
-				_show_menu()
-				add_child(load("res://tests/%s.gd" % menu_tests[prefix]).new())
-				return
-		if arg.begins_with("--") and arg != "--audio-log" and not arg.begins_with("--seed="): # äänen kirjaus ja siemen eivät ohita valikkoa
-			CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
-			_start_game(0) # testit ohittavat valikon
-			return
+	var menu_test := TestFlags.find_menu(args)
+	if menu_test != "":
+		CatchLog.persist = false
+		_show_menu()
+		_add_test(menu_test)
+		return
+	if TestFlags.skips_menu(args): # testit, kuvaskriptit ja --skipmenu ohittavat valikon
+		CatchLog.persist = false # testiajo: ei kirjoiteta pelaajan saaliskirjaan
+		_start_game(0)
+		return
 	_show_menu()
 
 
@@ -255,129 +258,18 @@ func _start_game(start_index: int, career := false) -> void:
 	load_ms = Time.get_ticks_msec() - t0
 	running = true
 
-	var args := OS.get_cmdline_user_args()
-	if "--autotest" in args:
-		add_child(load("res://tests/autotest.gd").new())
-	elif "--flicker" in args:
-		add_child(load("res://tests/flicker.gd").new())
-	elif "--icetest" in args:
-		add_child(load("res://tests/ice_test.gd").new())
-	elif "--pausetest" in args:
-		add_child(load("res://tests/pause_test.gd").new())
-	elif "--inputtest" in args:
-		add_child(load("res://tests/input_test.gd").new())
-	elif "--perftest" in args:
-		add_child(load("res://tests/perf.gd").new())
-	elif "--luretest" in args:
-		add_child(load("res://tests/lure_test.gd").new())
-	elif "--trolltest" in args:
-		add_child(load("res://tests/troll_test.gd").new())
-	elif "--speciestest" in args:
-		add_child(load("res://tests/species_test.gd").new())
-	elif "--tubtest" in args:
-		add_child(load("res://tests/tub_test.gd").new())
-	elif "--casttest" in args:
-		add_child(load("res://tests/cast_test.gd").new())
-	elif "--voicetest" in args:
-		add_child(load("res://tests/voice_test.gd").new())
-	elif "--audiologtest" in args:
-		add_child(load("res://tests/audio_log_test.gd").new())
-	elif "--wavesoundtest" in args:
-		add_child(load("res://tests/wave_sound_test.gd").new())
-	elif "--baittest" in args:
-		add_child(load("res://tests/bait_test.gd").new())
-	elif "--docktest" in args:
-		add_child(load("res://tests/dock_test.gd").new())
-	elif "--anglertest" in args:
-		add_child(load("res://tests/angler_test.gd").new())
-	elif "--piketest" in args:
-		add_child(load("res://tests/pike_follow_test.gd").new())
-	elif "--sonartest" in args:
-		add_child(load("res://tests/sonar_test.gd").new())
-	elif "--boattest" in args:
-		add_child(load("res://tests/boat_test.gd").new())
-	elif "--overlaptest" in args:
-		add_child(load("res://tests/overlap_test.gd").new())
-	elif "--synctest" in args:
-		add_child(load("res://tests/sync_test.gd").new())
-	elif "--motorspeedtest" in args:
-		add_child(load("res://tests/motor_speed_test.gd").new())
-	elif "--proptest" in args:
-		add_child(load("res://tests/prop_test.gd").new())
-	elif "--seasonfishtest" in args:
-		add_child(load("res://tests/season_fish_test.gd").new())
-	elif "--pressuretest" in args:
-		add_child(load("res://tests/pressure_test.gd").new())
-	elif "--anchortest" in args:
-		add_child(load("res://tests/anchor_test.gd").new())
-	elif "--headwindtest" in args:
-		add_child(load("res://tests/headwind_test.gd").new())
-	elif "--paddletest" in args:
-		add_child(load("res://tests/paddle_test.gd").new())
-	elif "--tackletest" in args:
-		add_child(load("res://tests/tackle_test.gd").new())
-	elif "--birdsoundtest" in args:
-		add_child(load("res://tests/bird_sound_test.gd").new())
-	elif "--birdtest" in args:
-		add_child(load("res://tests/bird_test.gd").new())
-	elif "--trollstriketest" in args:
-		add_child(load("res://tests/troll_strike_test.gd").new())
-	elif "--fpvtest" in args:
-		add_child(load("res://tests/fpv_test.gd").new())
-	elif "--booktest" in args:
-		add_child(load("res://tests/book_test.gd").new())
-	elif "--nettest" in args:
-		add_child(load("res://tests/net_test.gd").new())
-	elif "--releasetest" in args:
-		add_child(load("res://tests/release_test.gd").new())
-	elif "--wavetest" in args:
-		add_child(load("res://tests/wave_test.gd").new())
-	elif "--seamtest" in args:
-		add_child(load("res://tests/seam_test.gd").new())
-	elif "--linetest" in args:
-		add_child(load("res://tests/line_test.gd").new())
-	elif "--otherboatstest" in args:
-		add_child(load("res://tests/other_boats_test.gd").new())
-	elif "--channeltest" in args:
-		add_child(load("res://tests/channel_test.gd").new())
-	elif "--waketest" in args:
-		add_child(load("res://tests/wake_test.gd").new())
-	elif "--fightdepthtest" in args:
-		add_child(load("res://tests/fight_depth_test.gd").new())
-	elif "--seedtest" in args:
-		add_child(load("res://tests/seed_test.gd").new())
-	else:
-		for arg in args:
-			if arg.begins_with("--seasonshot="):
-				add_child(load("res://tests/season_shot.gd").new())
-			if arg.begins_with("--screenshots="):
-				add_child(load("res://tests/screenshots.gd").new())
-			elif arg.begins_with("--anglershots="):
-				add_child(load("res://tests/angler_shots.gd").new())
-			elif arg.begins_with("--boatshots="):
-				add_child(load("res://tests/boat_shots.gd").new())
-			elif arg.begins_with("--fpvshots="):
-				add_child(load("res://tests/fpv_shots.gd").new())
-			elif arg.begins_with("--watershots="):
-				add_child(load("res://tests/water_shots.gd").new())
-			elif arg.begins_with("--foamshots="):
-				add_child(load("res://tests/foam_shots.gd").new())
-			elif arg.begins_with("--shadowshots="):
-				add_child(load("res://tests/shadow_shots.gd").new())
-			elif arg.begins_with("--jittershots="):
-				add_child(load("res://tests/jitter_shots.gd").new())
-			elif arg.begins_with("--otherboatshots="):
-				add_child(load("res://tests/other_boats_shots.gd").new())
-			elif arg.begins_with("--lineshots="):
-				add_child(load("res://tests/line_shots.gd").new())
-			elif arg.begins_with("--seamshots="):
-				add_child(load("res://tests/seam_shots.gd").new())
-			elif arg.begins_with("--channelshots="):
-				add_child(load("res://tests/channel_shots.gd").new())
-			elif arg.begins_with("--wakeshots="):
-				add_child(load("res://tests/wake_shots.gd").new())
-			elif arg.begins_with("--audio-preview="):
-				add_child(load("res://tests/audio_preview.gd").new())
+	var test_path := TestFlags.find(OS.get_cmdline_user_args())
+	if test_path != "":
+		_add_test(test_path)
+
+
+## Lisää testiskriptin lapseksi; jos skripti ei lataudu, peli loppuu koodilla 1
+func _add_test(path: String) -> void:
+	var test := TestFlags.instantiate(path)
+	if test == null:
+		get_tree().quit(1)
+		return
+	add_child(test)
 
 
 ## Kala vapautettiin: pois saaviista, uramoodissa mainetta

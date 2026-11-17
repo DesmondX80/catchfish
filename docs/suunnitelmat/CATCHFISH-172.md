@@ -920,3 +920,16 @@ PÄÄTÖS 11: Valikon ohittavat vain taulukon testi- ja kuvaliput sekä uusi lip
 (`godot -- --day=40`) avaa valikon; `godot -- --day=40 --skipmenu` käynnistää
 pelin suoraan. `--skipmenu` dokumentoidaan `README.md`:hen ja saa oman
 hyväksymiskriteerinsä julkaisussa A.
+
+PÄÄTÖS 12: Tuntematon testilippu (kohta 97, kriteeri 5): virhe on mikä tahansa
+paljas `--<kirjaimia>`-argumentti (ei `=`-osaa, ei väliviivaa), joka ei ole
+`GAME`- tai `MENU`-lippu, `--skipmenu` eikä `TestFlags`in apulippulistassa
+(nyt `--mouse` ja `--short`). Korvaa kohdan 97 säännön "muotoa
+`--<kirjaimia>test`", koska se ei osunut kriteerin 5 esimerkkiin `--luretst`
+(koodaajan koe: aikakatkaisu 124). Uusi paljas apulippu rekisteröidään
+apulippulistaan; tämä kirjataan `docs/plan.md`:hen. Työnjohtaja, koodaajan
+vaihtoehto B.
+
+PÄÄTÖS 13: Jos komennossa on sekä `MENU`-lippu että `GAME`- tai `SHOTS`-lippu,
+`MENU`-lippu voittaa (valikko ja valikkotesti), kuten vanhassa koodissa, jossa
+valikkotarkistus oli ensin. Työnjohtaja.
