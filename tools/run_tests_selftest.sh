@@ -160,10 +160,18 @@ check "--log: loki annetussa polussa" grep -q '^Läpi 1/1' "$tmp/oma.log"
 
 # Lokeja säilytetään 20 (saman sekunnin ajot saavat eri nimet, joten
 # aiempia lokeja ei tarvitse poistaa).
-for i in $(seq -w 1 25); do : >"$tmp/.test-logs/20000101-0000$i.log"; done
+for i in $(seq -w 1 25); do
+	for f in "" .rivit.tsv .ajot.tsv .done; do : >"$tmp/.test-logs/20000101-0000$i.log$f"; done
+done
 run speciestest
 check "lokeja säilytetään 20" \
 	test "$(find "$tmp/.test-logs" -name '2*.log' | wc -l)" -eq 20
+# Jokaisella säilyneellä lokilla on kolme kaveria, poistetuilla ei yhtään.
+kept_old="$(find "$tmp/.test-logs" -name '20000101-*.log' | wc -l)"
+check "siivous poistaa lokin kaveritiedostot" \
+	test "$(find "$tmp/.test-logs" -name '20000101-*.log.*' | wc -l)" -eq $((kept_old * 3))
+check "siivous poisti vanhoja lokeja" test "$kept_old" -lt 25
+check "oletusajon jälkeen latest.done luettavissa" grep -q '^exit=0 ' "$tmp/.test-logs/latest.done"
 
 # Lokinimi: kaksi ajoa samalla sekunnilla (date pysäytetty) → kaksi lokia.
 mkdir -p "$tmp/bin"

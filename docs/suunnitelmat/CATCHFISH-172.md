@@ -938,6 +938,7 @@ PÄÄTÖS 14: `--skipmenu`-ajo ei lue eikä kirjoita tallennuksia eikä asetuksi
 kuten muutkin `--`-lipulla käynnistetyt ajot (autoloadien `persist = false`).
 Autoloadeihin ei kosketa. `README.md`:ssä mainitaan tämä. Teemun linjaus
 17.11.2026.
+Tarkennus (koodaaja): CatchLog lukee ennätyslistan testiajossakin (`catch_log.gd:19`), mutta ei tallenna; README ja plan.md kertovat tämän.
 
 PÄÄTÖS 15: Ajokohtaiset tiedostot nimetään lokin mukaan (`LOKI.rivit.tsv`,
 `LOKI.ajot.tsv`, `LOKI.done`), ja oletusajossa `.test-logs/latest.done`,

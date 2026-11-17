@@ -328,7 +328,7 @@ if [ -z "$log" ]; then
 	mkdir -p .test-logs
 	ls -1 .test-logs/ | grep -E '^[0-9]{8}-[0-9]{6}.*\.log$' | sort \
 		| head -n -$((keep_logs - 1)) | while read -r old; do
-			rm -f ".test-logs/$old" ".test-logs/$old.rivit.tsv" ".test-logs/$old.ajot.tsv"
+			rm -f ".test-logs/$old" ".test-logs/$old.rivit.tsv" ".test-logs/$old.ajot.tsv" ".test-logs/$old.done"
 		done
 	log_base="$root/.test-logs/$(date +%Y%m%d-%H%M%S)$ref_slug"
 	log="$log_base.log"
