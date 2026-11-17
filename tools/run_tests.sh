@@ -962,6 +962,7 @@ AWK
 #   s_*  ajon tiedot, r_*  ensimmäisen ajon tulos, u_*  uusinnan tulos
 s_args=()
 s_label=()
+s_round=()
 r_name=()
 r_status=()
 r_code=()
@@ -994,7 +995,7 @@ for entry in "${tests[@]}"; do
 	if [ -n "$missing_note" ]; then
 		nslots=$((nslots + 1))
 		r_name[nslots]="$name"; r_status[nslots]="PUUTTUU"; r_code[nslots]=""; r_secs[nslots]=0
-		r_errs[nslots]=""; r_seed[nslots]=""; r_out[nslots]=""; s_label[nslots]="$missing_note"
+		r_errs[nslots]=""; r_seed[nslots]=""; r_out[nslots]=""; s_label[nslots]="$missing_note"; s_round[nslots]=1
 		continue
 	fi
 	for ((i = 1; i <= repeat; i++)); do
@@ -1004,11 +1005,14 @@ for entry in "${tests[@]}"; do
 		r_name[nslots]="$name"
 		s_args[nslots]="$args"
 		s_label[nslots]="$label"
+		s_round[nslots]=$i
 	done
 done
 
 # Jono: listan järjestys, rinnakkain pisimmät ensin (.test-logs/kestot.tsv);
-# testit, joilla ei ole kestoa, ensimmäisinä.
+# testit, joilla ei ole kestoa, ensimmäisinä. Toistoajossa kierroksittain
+# (ensin kaikkien kierros 1, sitten kierros 2 …), jotta saman testin kopiot
+# eivät käynnisty yhtä aikaa.
 durations_file="$root/.test-logs/kestot.tsv"
 queue=()
 if [ "$jobs" -gt 1 ]; then
@@ -1019,8 +1023,8 @@ if [ "$jobs" -gt 1 ]; then
 		done <"$durations_file"
 	fi
 	mapfile -t queue < <(for ((k = 1; k <= nslots; k++)); do
-		printf '%s\t%s\n' "${dur[${r_name[k]}]:-999999}" "$k"
-	done | sort -t $'\t' -k1,1nr -k2,2n | cut -f2)
+		printf '%s\t%s\t%s\n' "${s_round[k]}" "${dur[${r_name[k]}]:-999999}" "$k"
+	done | sort -t $'\t' -k1,1n -k2,2nr -k3,3n | cut -f3)
 else
 	for ((k = 1; k <= nslots; k++)); do queue+=("$k"); done
 fi

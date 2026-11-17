@@ -487,6 +487,13 @@ rm -f "$tmp/order.txt"
 FAKE_ORDER="$tmp/order.txt" FAKE_DELAY=1 run -q -j 2 speciestest baittest sonartest birdtest
 check "-j 2: kestoton ja pisin aloitetaan ensin" test "$(head -n 2 "$tmp/order.txt" | sort | tr '\n' ' ')" = "--baittest --birdtest "
 check "-j 2: lyhin aloitetaan viimeisenä" test "$(tail -n 1 "$tmp/order.txt")" = "--speciestest"
+# Toistoajo kierroksittain (PÄÄTÖS 27): saman testin kopiot eivät ala yhtä aikaa.
+printf 'speciestest\t5\nbaittest\t50\n' >"$tmp/.test-logs/kestot.tsv"
+rm -f "$tmp/order.txt"
+FAKE_ORDER="$tmp/order.txt" FAKE_DELAY=1 run -q -j 2 --repeat=2 speciestest baittest
+check "-j 2 --repeat=2: kierros 1 ensin" test "$(head -n 2 "$tmp/order.txt" | sort | tr '\n' ' ')" = "--baittest --speciestest "
+check "-j 2 --repeat=2: kierros 2 perään" test "$(tail -n 2 "$tmp/order.txt" | sort | tr '\n' ' ')" = "--baittest --speciestest "
+check "-j 2 --repeat=2: taulukko" has '^baittest +2/2 '
 # Paikan siivous ei osu muihin paikkoihin: paikka 1 päättyy, paikat 10 ja 11
 # (merkit PID-10, PID-11 alkavat PID-1:llä) ovat vielä käynnissä ja menevät läpi.
 mkdir -p "$tmp/bin-nproc16"

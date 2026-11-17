@@ -435,8 +435,9 @@ kuolematon orpo (`trap '' TERM`) on kuollut ajon jälkeen. M1 (`:1091`): koodi
 tarkistuksella. M6 (trapin `wait`) jätetään kattamatta. Jokainen uusi
 tarkistus todistetaan ajamalla vastaava mutantti. Työnjohtaja 17.11.2026.
 
-PÄÄTÖS 27: Palautus 1 (testaajan elävät mutantit), korjaus itsetestiin;
-ajuriin ei koskettu. Mutaatiot kuten PÄÄTÖKSESSÄ 26 (koko itsetesti
+PÄÄTÖS 29: Palautus 1, toteutus PÄÄTÖKSIIN 27 ja 28 (koodaaja). Elävät
+mutantit katettiin itsetestillä; ajurin ainoa muutos on PÄÄTÖKSEN 27
+kierroksittainen jono (`s_round`, lajittelu kierros, kesto laskevasti, paikka). Mutaatiot kuten PÄÄTÖKSESSÄ 26 (koko itsetesti
 väliaikaiskopiossa, ajettu peräkkäin, koska rinnakkaiset itsetestit näkevät
 toistensa `sleep 317x` -prosessit). (1) `kill_marked`in ankkuri pois
 (`[ "${2:-}" = etuliite ] || pat+='$'` → `:`): uusi tarkistus `-j 11`
@@ -455,5 +456,11 @@ pois): valetesti proptest kuolee heti KILLiin isolla aikarajalla → odotus
 bonus) Jono lyhimmästä pisimpään (`sort -k1,1nr` → `-k1,1n`): valmis
 `kestot.tsv` ja `FAKE_ORDER`-aloitusjärjestys `-j 2`:lla neljällä testillä
 (kestoton ja pisin ensin, lyhin viimeisenä); mutantilla 2 VIRHE-riviä.
-Trapin `wait` jätettiin ilman tarkistusta testaajan luvalla. Mutatoimaton
-itsetesti 422/422 kahdesti peräkkäin.
+PÄÄTÖS 27: tarkistus `-j 2 --repeat=2` kahdella testillä ja valmiilla
+`kestot.tsv`:llä: aloitusjärjestyksessä ensin kierros 1 (kaksi eri testiä),
+sitten kierros 2. Mutantit: kierrosavain pois lajittelusta → 2 VIRHE-riviä
+(kierrostarkistukset); kesto nousevaksi (`-k2,2nr` → `-k2,2n`, testaajan
+bonus) → 2 VIRHE-riviä (pisin ensin, lyhin viimeisenä). Mutantti (1)
+ajettiin uudelleen jonomuutoksen jälkeen: 3 VIRHE-riviä. Trapin `wait`
+jätettiin kattamatta (PÄÄTÖS 28). Mutatoimaton itsetesti 425/425 kahdesti
+peräkkäin; oikealla Godotilla `-j 4 --repeat=2` kolmella testillä 6/6 OK.

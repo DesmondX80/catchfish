@@ -151,7 +151,8 @@ testejä; ajurin muutoksen jälkeen se ajetaan kahdesti peräkkäin.
 - Rinnakkaisajo: `-j N` (myös `-jN`, `--jobs=N`; oletus 1, paikallinen
   suositus 4, CI ajaa peräkkäin) ajaa enintään N testiä yhtä aikaa, pisimmät
   ensin edellisten kestojen mukaan (`.test-logs/kestot.tsv`, päivittyy myös
-  `-j 1`:llä). Lokiin ja päätteeseen kunkin ajon tuloste tulee kokonaisena
+  `-j 1`:llä); `--repeat`illa kierroksittain, jolloin saman testin kopiot
+  eivät käynnisty yhtä aikaa. Lokiin ja päätteeseen kunkin ajon tuloste tulee kokonaisena
   lohkona valmistumisjärjestyksessä; taulukko ja TSV:t ovat listan
   järjestyksessä. N > ytimet → varoitus ja ytimien määrä. Vaatii `.godot/`in
   (`godot --headless --import`). `Läpi`-rivin loppuun `(rinnakkain N)`.
