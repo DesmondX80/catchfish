@@ -129,7 +129,7 @@ Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
 WSL:ssä se on komentona `godot-4.7.2` (`~/.local/bin/godot-4.7.2`).
 GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 (`.github/workflows/tests.yml`); samat testit paikallisesti:
-`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [--wait] [--scratch=POLKU] [testin_nimi...] [-- lisäliput...]`.
+`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [-j N] [--no-retry] [--changed[=REF]] [--wait] [--check] [--scratch=POLKU] [testin_nimi...] [-- lisäliput...]`.
 Lopussa on yhteenvetotaulukko (tulos, kesto ja `VIRHE`-rivit), ajon tulosrivit
 alkavat `>>`, ja koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
 `latest.log`; saman sekunnin ajot saavat nimen `…-2.log`). `-q` jättää Godotin
@@ -138,8 +138,50 @@ väliaikaisessa työkopiossa, jolla tarkistetaan, epäonnistuuko testi myös
 mainissa. Ajurin itsetesti `tools/run_tests_selftest.sh` ajetaan CI:ssä ennen
 testejä; ajurin muutoksen jälkeen se ajetaan kahdesti peräkkäin.
 
-- Paluukoodit: 0 kaikki läpi, 1 jokin `VIRHE` tai `AIKAKATKAISU`, 2 väärä
-  käyttö, 3 toinen ajo käynnissä samassa työkopiossa, 130 keskeytetty.
+- Paluukoodit: 0 kaikki läpi, 1 jokin `VIRHE`, `SATUNNAINEN` tai
+  `AIKAKATKAISU`, 2 väärä käyttö, 3 toinen ajo käynnissä samassa työkopiossa,
+  130 keskeytetty.
+- Uusinta: kun `--repeat` on 1, epäonnistunut testi (ei aikakatkaisu, koodit
+  124 ja 137) ajetaan heti uudelleen ensimmäisen ajon siemenellä (`--seed=N`
+  `Siemen:`-riviltä, ellei testillä ole omaa). Uusinta OK → `SATUNNAINEN`
+  (rivi `Satunnaiset: …`, valmismerkissä `satunnaiset=a,b`, paluukoodi 1);
+  uusinta VIRHE → `VIRHE (koodi)`, toistuu siemenellä. Lokissa lohko
+  `::group::NIMI [uusinta]`, TSV:issä omat rivit (sarake `uusinta` = 1).
+  `--no-retry` ja `--repeat=N` (N ≥ 2) jättävät uusinnan pois.
+- Rinnakkaisajo: `-j N` (myös `-jN`, `--jobs=N`; oletus 1, paikallinen
+  suositus 4, CI ajaa peräkkäin) ajaa enintään N testiä yhtä aikaa, pisimmät
+  ensin edellisten kestojen mukaan (`.test-logs/kestot.tsv`, päivittyy myös
+  `-j 1`:llä). Lokiin ja päätteeseen kunkin ajon tuloste tulee kokonaisena
+  lohkona valmistumisjärjestyksessä; taulukko ja TSV:t ovat listan
+  järjestyksessä. N > ytimet → varoitus ja ytimien määrä. Vaatii `.godot/`in
+  (`godot --headless --import`). `Läpi`-rivin loppuun `(rinnakkain N)`.
+- Alaprosessien siivous: jokainen Godot-ajo saa ympäristömuuttujan
+  `CATCHFISH_AJO=<ajurin pid>-<paikka>`, joka periytyy myös testin omille
+  alaprosesseille (Godot irrottaa ne omaan istuntoonsa). Ajon jälkeen ja
+  Ctrl+C:llä/SIGTERMillä ajuri lopettaa merkityt prosessit (`/proc/*/environ`)
+  ja ilmoittaa `>> Lopetettiin n testin jälkeen jäänyttä prosessia.`
+  Aikaraja `timeout -k 10`: Godot, joka ei kuole TERMiin, pakkolopetetaan
+  10 s:n päästä (koodi 137 = `AIKAKATKAISU`). Ilman `/proc`ia ajuri varoittaa
+  eikä siivoa. `kill -9` ajurille ei ole siepattavissa: käynnissä olevat ajot
+  jatkavat aikarajaansa asti, lukko vapautuu silti.
+- Muutetut: `--changed[=REF]` ajaa vain testit, joihin muutetut tiedostot
+  vaikuttavat (vertailukohta `git merge-base origin/main HEAD`; commitoidut,
+  commitoimattomat ja jäljittämättömät). Säännöt järjestyksessä: dokumentit,
+  `.claude/`, `.github/`, `tools/*.py`, `export/` → ei testejä; ajuri ja
+  itsetesti → `Aja myös: tools/run_tests_selftest.sh`; `tools/test_map.txt` →
+  `Aja myös: tools/run_tests.sh --check`; `tests/X.gd` → sen lipun listarivit
+  (myös `-talvi`); muu `tests/*.gd` → `ei ajurin listassa (aja käsin)`;
+  muutoskartan `tools/test_map.txt` polku → kartan testit; kaikki muu (myös
+  `tests/test_util.gd`) → kaikki testit. `*.gd.uid` kuten `.gd`. Ei yhdisty
+  testin nimiin, `--scratch`iin eikä `--ref`iin (koodi 2). Pikatarkistus:
+  koko sarja ajetaan silti ennen julkaisua.
+- Tarkistus: `tools/run_tests.sh --check` (ei Godotia, ei lukkoa, ei lokia)
+  tarkistaa, että jokainen `tests/*.gd` (paitsi `test_util.gd`) on
+  testitaulukossa ja taulukon skriptit ovat olemassa, jokainen `GAME`- ja
+  `MENU`-lippu on ajurin listassa tai sen `not_listed`-listassa (ikkunaa
+  vaativat ja käsin ajettavat), jokaisella listarivillä on täsmälleen yksi
+  testilippu ja muutoskartan polut ja testit ovat olemassa. Itsetesti ajaa sen
+  lopuksi oikeaa työkopiota vasten, joten CI vahtii listoja.
 - Lukko: työkopiossa voi olla käynnissä yksi ajo kerrallaan
   (`.test-logs/run.lock`, myös `--ref`- ja `--log`-ajot). Toinen ajo kertoo
   käynnissä olevan ajon PID:n ja komennon ja päättyy koodiin 3; `--wait`
@@ -149,9 +191,9 @@ testejä; ajurin muutoksen jälkeen se ajetaan kahdesti peräkkäin.
   `exit=1 lapi=49/50 kesto=912 loki=.test-logs/20261117-081500.log paattyi=08:30:12`.
   `--log=X`-ajossa merkki on `X.done`.
 - Koneluettava yhteenveto lokin viereen: `.test-logs/latest.ajot.tsv` (rivi
-  ajoa kohden: `testi ajo tulos koodi kesto_s siemen ok_riveja virhe_riveja`) ja
-  `.test-logs/latest.rivit.tsv` (rivi tarkistusriviä kohden: `testi ajo tila
-  rivi luvut`). Yhteenvedon `Läpi`-rivin alla on `Tarkistusrivit: OK n, VIRHE m`.
+  ajoa kohden: `testi ajo tulos koodi kesto_s siemen ok_riveja virhe_riveja
+  uusinta`) ja `.test-logs/latest.rivit.tsv` (rivi tarkistusriviä kohden:
+  `testi ajo tila rivi luvut uusinta`). Yhteenvedon `Läpi`-rivin alla on `Tarkistusrivit: OK n, VIRHE m`.
   Esim. `awk -F'\t' '$1=="boattest" && $3=="OK"' .test-logs/latest.rivit.tsv | wc -l`.
 - Kokeiluskripti: `--scratch=POLKU` ajaa kertakäyttöisen skriptin
   (`extends Node`, esim. scratchpadissa) testinä `scratchtest`; ks. `--scratchtest` alla.
@@ -163,7 +205,10 @@ Testilippu ja valikko (`scripts/test_flags.gd`):
 
 - Uusi testi rekisteröidään yhdellä rivillä `TestFlags.GAME`-taulukkoon
   (`"--x": "x_test"`, kuvaskripti `SHOTS`, valikkotesti `MENU`) ja ikkunaton
-  testi lisäksi ajurin listaan `tools/run_tests.sh`.
+  testi lisäksi ajurin listaan `tools/run_tests.sh` (ikkunaa vaativa tai
+  käsin ajettava sen `not_listed`-listaan). Pelikoodin tiedoston testit voi
+  lisätä muutoskarttaan `tools/test_map.txt`. `tools/run_tests.sh --check`
+  kertoo, jos jokin puuttuu.
 - Valikon ohittavat vain taulukon testi- ja kuvaliput, `--scratchtest=POLKU` ja
   `--skipmenu`. Pelkkä apulippu (`-- --day=40`, `--seed=N`, `--audio-log`)
   avaa valikon; `godot -- --day=40 --skipmenu` käynnistää pelin suoraan
@@ -267,16 +312,19 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 
 Koko sarja kestää paikallisesti noin 15 min (otherboatstest yksinään noin
 4–6 min). Alle 10 minuutin ajot etualalla (Bash-aikaraja 600000 ms).
+Rinnakkain `-j 4` lyhentää sarjaa (pisin yksittäinen testi on alaraja).
 Pidempi ajo Bashin `run_in_background`-tilassa; ajuri kirjoittaa
 valmismerkin `.test-logs/latest.done` itse:
 
-    tools/run_tests.sh -q
+    tools/run_tests.sh -q -j 4
     until [ -f .test-logs/latest.done ]; do sleep 5; done; cat .test-logs/latest.done
 
 Tila kesken ajon: `cat .test-logs/run.lock` (PID, alkuaika, komento) ja
 `grep '^>>' .test-logs/latest.log`. Taustailmoitukseen ei luoteta. Jos ajuri
 tapetaan (`kill -9`), merkkiä ei tule, mutta lukko vapautuu; uusi ajo
-käynnistyy normaalisti. Toinen ajo samassa työkopiossa päättyy koodiin 3
+käynnistyy normaalisti. Silloin jo käynnissä olevat testit jatkavat
+aikarajaansa asti (haku: `grep -lsz '^CATCHFISH_AJO=' /proc/[0-9]*/environ`). Ctrl+C ja `kill`
+(SIGTERM) lopettavat testit ja niiden alaprosessit. Toinen ajo samassa työkopiossa päättyy koodiin 3
 (`--wait` odottaa).
 
 ### Toistoajot
@@ -1097,5 +1145,5 @@ kriteerien arviointiin.
   `--wait`), valmismerkki `.test-logs/latest.done`, saman sekunnin lokinimet,
   `--repeat`in vaihtelevat rivit, TSV-yhteenvedot ja `Tarkistusrivit`-rivi,
   `--scratch=POLKU`, läpivienti `NIMI -- LISÄLIPUT` ja fpvtest listassa.
-  Julkaisu B (uusinta, `-j N`, `--changed`, `--check`) on vielä tekemättä.
+  Julkaisu B (uusinta, `-j N`, `--changed`, `--check`): #183.
   Jatkot: sonartestin tehoton `_pass_sample`-suodin (Backlog).

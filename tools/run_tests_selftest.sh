@@ -521,9 +521,19 @@ interrupt_check() { # interrupt_check SIGNAALI KUVAUS AJURIN_ARGUMENTIT...
 	done
 	t0=$(date +%s%N)
 	kill "-$sig" $bgpid
+	# Aikaraja 15 s: jumiin jäänyt ajuri (esim. tee orvon alaprosessin putkessa)
+	# pakkolopetetaan, jolloin tarkistukset kaatuvat eivätkä jää odottamaan.
+	for _ in $(seq 150); do kill -0 $bgpid 2>/dev/null || break; sleep 0.1; done
+	hung=0
+	if kill -0 $bgpid 2>/dev/null; then
+		hung=1
+		kill -KILL $bgpid 2>/dev/null
+		pkill -x -f 'sleep 317[12]' 2>/dev/null
+	fi
 	wait $bgpid
 	rc=$?
 	t_ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+	check "$desc: ajuri ei jää jumiin (15 s)" test $hung -eq 0
 	check "$desc: paluukoodi 130" test $rc -eq 130
 	check "$desc: ajuri päättyy alle 5 s:ssa ($t_ms ms)" test $t_ms -lt 5000
 	check "$desc: alaprosessit lopetettu" bash -c "! pgrep -x -f 'sleep 317[12]' >/dev/null"

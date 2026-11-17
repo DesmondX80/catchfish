@@ -295,6 +295,9 @@ tools/run_tests.sh --seed=12345 boattest      # toista kaatunut ajo samalla siem
 tools/run_tests.sh -q --wait luretest         # odota, jos toinen ajo on käynnissä
 tools/run_tests.sh -q --scratch=/tmp/koe.gd   # kertakäyttöinen kokeiluskripti testinä
 tools/run_tests.sh -q anchortest -- --audio-log  # lisäliput testin argumentteihin
+tools/run_tests.sh -q -j 4                    # neljä testiä rinnakkain (suositus paikallisesti)
+tools/run_tests.sh -q --changed               # vain muutettujen tiedostojen testit (pikatarkistus)
+tools/run_tests.sh --check                    # testilistojen tarkistus, ei aja testejä
 ```
 
 Lopuksi tulostuu yhteenvetotaulukko (testi, tulos, kesto ja epäonnistuneen
@@ -302,11 +305,26 @@ testin `VIRHE`-rivit). Tulosrivit alkavat `>>`, joten ne erottuvat testien
 omista riveistä. Koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
 `latest.log` uusimpaan; `--log=TIEDOSTO` muuttaa polun). Aikaraja on
 `TEST_TIMEOUT` sekuntia testiä kohti (oletus 600). Paluukoodi on 0, kun kaikki
-menivät läpi, 1, jos jokin epäonnistui, 2 väärällä käytöllä ja 3, jos samassa
+menivät läpi, 1, jos jokin epäonnistui, 2 väärällä käytöllä, 3, jos samassa
 työkopiossa on jo ajo käynnissä (lukko `.test-logs/run.lock`; `--wait` odottaa
-vuoroaan).
+vuoroaan) ja 130 keskeytettäessä.
 Peli tulostaa ensimmäiseksi rivin `Siemen: N`; epäonnistuneen testin tulosrivi
 kertoo siemenen, ja `--seed=N` toistaa ajon samoilla satunnaisluvuilla.
+Epäonnistunut testi (ei aikakatkaisu) ajetaan heti uudelleen samalla
+siemenellä: jos uusinta menee läpi, tulos on `SATUNNAINEN` (rivi
+`Satunnaiset: …`, paluukoodi silti 1). `--no-retry` ja `--repeat=N` (N ≥ 2)
+jättävät uusinnan pois.
+`-j N` ajaa enintään N testiä rinnakkain, pisimmät ensin edellisten ajojen
+kestojen mukaan (`.test-logs/kestot.tsv`); taulukko on silti listan
+järjestyksessä. Oletus on 1, paikallinen suositus 4.
+`--changed` ajaa vain testit, joihin muutetut tiedostot vaikuttavat
+(vertailukohta `git merge-base origin/main HEAD`, `--changed=REF` vaihtaa sen;
+muutoskartta `tools/test_map.txt`). Se on pikatarkistus, joka ei korvaa koko
+sarjaa. `--check` tarkistaa, että testitaulukko (`scripts/test_flags.gd`),
+`tests/`-kansio, ajurin testilista ja muutoskartta pitävät yhtä.
+Ajuri lopettaa testin jälkeen kaikki sen käynnistämät prosessit, myös testin
+omat alaprosessit (ympäristömuuttuja `CATCHFISH_AJO`), sekä aikarajalla että
+Ctrl+C:llä.
 `tools/run_tests_selftest.sh` testaa itse ajurin valekomennolla.
 
 Ajon päätyttyä ajuri kirjoittaa valmismerkin `.test-logs/latest.done`
@@ -314,7 +332,8 @@ Ajon päätyttyä ajuri kirjoittaa valmismerkin `.test-logs/latest.done`
 taustalla ajetun sarjan valmistumista voi odottaa:
 `until [ -f .test-logs/latest.done ]; do sleep 5; done`. Lokin viereen tulevat
 sarkaineroteltuina ajot (`latest.ajot.tsv`) ja jokainen `OK`/`VIRHE`-rivi
-lukuineen (`latest.rivit.tsv`). Toistoajo (`--repeat=N`) näyttää lopuksi
+lukuineen (`latest.rivit.tsv`); uusinnan rivit on merkitty viimeiseen
+sarakkeeseen `uusinta` (1). Toistoajo (`--repeat=N`) näyttää lopuksi
 testeittäin rivit, jotka vaihtelivat ajosta toiseen, ja niiden luvut muodossa
 `pienin…suurin`.
 

@@ -382,3 +382,33 @@ AIKAKATKAISUKSI (L6 = A). Työnjohtaja 17.11.2026.
 
 PÄÄTÖS 25: Päätökset jatkavat 172:n numerointia (L7 = A); viittaukset 172:n
 päätöksiin muodossa "172/PÄÄTÖS n". Työnjohtaja 17.11.2026.
+
+PÄÄTÖS 26: Kriteerien 26 ja 31 mutaatioiden muodot (koodaaja). Mutaatiot
+ajettiin väliaikaiskopioissa (`tools/`, `scripts/`, `tests/` scratchpadiin,
+sed ajuriin, koko itsetesti). (a) Uusinnan siemenen lisäys pois
+(`args+=" --seed=${r_seed[k]}"`-rivi poistettu) → 3 VIRHE-riviä (siemen
+uusinnan argumenteissa, siemen 42 uusinnassa, siemen ennen lisälippuja).
+(b1) Rinnakkaisajon tuloste suoraan lokiin taustaprosessista
+(`spawn`: `>"$out"` → `>>"$log"`) → 63 VIRHE-riviä, mm. `-j 3: lokin lohkot
+ehjiä`. (b2) Rajoitin pois (`$running -lt "$jobs"` → `$running -lt 999`) →
+`-j 2: enintään kaksi yhtä aikaa` kaatuu; tarkistus (neljä 2 s:n testiä
+`-j 2`:lla kestää vähintään 4 s) lisättiin itsetestiin, koska aiemmat
+tarkistukset eivät kaatuneet. (c) Ajon jälkeinen merkkisiivous pois
+(`godot_marked`: `n=$(kill_marked "$mark")` → `n=0`) → itsetestissä 8
+VIRHE-riviä (K28 aikaraja: orpo elossa; keskeytys ilman `-q`:ta jää jumiin,
+koska orpo pitää `tee`n putken auki); K30 oikealla Godotilla: `-q`-ajon
+jälkeen `sleep 1830` ja `sleep 1831` elossa, ilman `-q`:ta ajo jumittui
+(ulompi `timeout 120` lopetti, koodi 124). (d) Trapin ryhmä- ja merkkilopetus
+pois (`kill -TERM -- "-$p"` → `:` ja `n=$(kill_marked "$$-" etuliite)` →
+`n=0`) → 4 VIRHE-riviä: ajuri päättyy vasta noin 30 s:n päästä (valetestin
+`sleep 30`) kaikissa neljässä keskeytyskokeessa (INT, TERM, ilman `-q`:ta,
+`-j 2`). (e) `timeout --foreground -k 10` yhdessä (c):n kanssa → 26
+VIRHE-riviä (K28 ja kaikki keskeytyskokeet: ilman ryhmää trapin
+ryhmälopetus ei tavoita Godotia). Itsetestin keskeytyskokeeseen lisättiin
+15 s:n aikaraja (`ajuri ei jää jumiin`), jotta mutatoitu ajuri kaatuu eikä
+jää odottamaan itsetestin 590 s:n rajaan. K28:n vertailu: `origin/main`in
+(1c56302) ajurilla sama valetesti (`setsid sleep 3171 &`, `TEST_TIMEOUT=2`)
+jätti `sleep 3171`:n henkiin 3 s ajurin jälkeen, eli virhe toistuu mainissa.
+Lisäksi itsetestiin: `kestot.tsv` päivittyy `-j 1`:llä (vain läpi menneet),
+`-j 2` ilman `.godot/`ia → koodi 2, `-j 5` kahdella ytimellä (valekomento
+`nproc`) → varoitus ja `(rinnakkain 2)`.
