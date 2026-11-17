@@ -1,5 +1,7 @@
 extends Node
 ## Siemenen testi: godot --headless --fixed-fps 30 -- --day=180 --seed=171 --seedtest
+## Lisäksi pelin kutsupolku main.gd:ssä alaprosesseina (tuntematon testilippu,
+## valikkotestin etusija).
 ## --seed=N kiinnittää pelin satunnaislukugeneraattorit: jokainen alijärjestelmä
 ## saa oman siemenensä GameSeed.of(nimi):stä, ja sama siemen antaa saman sään ja
 ## kalakannan.
@@ -33,6 +35,7 @@ func _checks() -> void:
 	_population_checks()
 	_global_checks()
 	_flag_checks()
+	await _subprocess_checks()
 	for l in _log:
 		print(l)
 	get_tree().quit(1 if _log.any(func(l): return l.begins_with("VIRHE")) else 0)
@@ -118,3 +121,65 @@ func _flag_checks() -> void:
 			if not ResourceLoader.exists(TestFlags.TEST_DIR + table[flag] + ".gd"):
 				missing.append(flag)
 	_check("jokaisen lipun skripti on olemassa (puuttuu: %s)" % ", ".join(missing), missing.is_empty())
+
+
+const CHILD_TIMEOUT_MS := 40000 # alaprosessin aikaraja, ettei ajo jää roikkumaan
+
+
+## Käynnistää pelin alaprosessina tällä projektilla; tuloste putkeen, ettei se
+## sekoitu tämän testin riveihin.
+func _start_child(user_args: Array) -> Dictionary:
+	var args := ["--headless", "--path", ProjectSettings.globalize_path("res://"), "--"]
+	args.append_array(user_args)
+	var child := OS.execute_with_pipe(OS.get_executable_path(), args, false)
+	child["out"] = ""
+	child["code"] = -1
+	child["timed_out"] = false
+	return child
+
+
+func _drain(child: Dictionary) -> void:
+	for key in ["stdio", "stderr"]:
+		var pipe: FileAccess = child.get(key)
+		if pipe != null:
+			child["out"] += pipe.get_buffer(65536).get_string_from_utf8()
+
+
+## Odottaa alaprosessit (enintään CHILD_TIMEOUT_MS), lopettaa jumiin jääneet
+func _wait_children(children: Array) -> void:
+	var deadline := Time.get_ticks_msec() + CHILD_TIMEOUT_MS
+	while true:
+		var running := false
+		for c in children:
+			if c.is_empty():
+				continue
+			_drain(c)
+			if OS.is_process_running(c["pid"]):
+				running = true
+		if not running or Time.get_ticks_msec() > deadline:
+			break
+		await get_tree().create_timer(0.1, true, false, true).timeout
+	for c in children:
+		if c.is_empty():
+			continue
+		if OS.is_process_running(c["pid"]):
+			c["timed_out"] = true
+			OS.kill(c["pid"])
+		else:
+			c["code"] = OS.get_process_exit_code(c["pid"])
+		_drain(c)
+
+
+## main.gd:n kytkennät oikealla kutsupolulla: tuntematon testilippu lopettaa
+## heti koodilla 1, ja valikkotesti voittaa pelitestin (PÄÄTÖS 13).
+func _subprocess_checks() -> void:
+	var unknown := _start_child(["--day=180", "--luretst"])
+	var menu_first := _start_child(["--day=180", "--luretest", "--shopbgtest"])
+	_check("alaprosessit käynnistyivät", not unknown.is_empty() and not menu_first.is_empty())
+	await _wait_children([unknown, menu_first])
+	if unknown.is_empty() or menu_first.is_empty():
+		return
+	_check("alaprosessi -- --luretst: koodi %d (odotus 1), aikakatkaisu %s, rivi \"tuntematon testilippu --luretst\"" % [unknown["code"], unknown["timed_out"]],
+		unknown["code"] == 1 and "VIRHE tuntematon testilippu --luretst" in unknown["out"])
+	_check("alaprosessi -- --luretest --shopbgtest: valikkotesti ajettiin (aikakatkaisu %s)" % menu_first["timed_out"],
+		not menu_first["timed_out"] and "kuvatiedosto on olemassa" in menu_first["out"])

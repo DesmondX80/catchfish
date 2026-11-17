@@ -963,3 +963,14 @@ mutatoimaton ajo päättyy 5 sekunnissa. (b) Vaihteluyhteenvedossa ennen riviä
 `if false; then` → 7 VIRHE-riviä (lukko ja `--wait`). Lisäksi (d) lukon
 tiedostokuvaajan sulku `9>&-` pois Godot-ajosta → `lukko: kill -9:n jälkeen uusi
 ajo käynnistyy` kaatuu. Mutaatiot ajettiin väliaikaiskopioissa scratchpadissa.
+
+PÄÄTÖS 17: Palautus 1: main.gd:n tuntemattoman lipun ja MENU-etusijan kytkennät
+testataan alaprosessiajolla seedtestissä (testaajan mutantit W1 ja W2).
+Toteutus (koodaaja): seedtest käynnistää kaksi alaprosessia rinnakkain
+(`OS.execute_with_pipe`, `--headless --path <projekti> -- …`, tuloste putkeen,
+aikaraja 40 s ja `OS.kill`): `--day=180 --luretst` → koodi 1 ja rivi
+`VIRHE tuntematon testilippu --luretst`; `--day=180 --luretest --shopbgtest` →
+shopbgtestin rivi `kuvatiedosto on olemassa` ilman aikakatkaisua. Mutantit:
+W1 (`main.gd`: `if unknown != "":` → `if false:`) → seedtest koodi 1, 48 s;
+W2 (valikkotestin tarkistus `skips_menu`n jälkeen) → seedtest koodi 1, 47 s.
+`main.gd`:hen ei koskettu. Seedtestin kesto kasvoi noin 5 s → 9 s.
