@@ -435,6 +435,13 @@ log="$(sed -n 's/^Loki: //p' <<<"$out")"
 check "uusinta: siemen ennen lisälippuja" grep -qE '^argumentit: .* --casttest --seed=77 --oma=1$' "$tmp/$log"
 
 # Rinnakkaisajo -j N (kriteeri 19).
+rm -f "$tmp/.test-logs/kestot.tsv"
+run -q speciestest luretest
+check "kestot.tsv: -j 1 kirjaa läpi menneen" grep -qE "^speciestest${tab}[0-9]+\$" "$tmp/.test-logs/kestot.tsv"
+check "kestot.tsv: epäonnistunutta ei kirjata" bash -c "! grep -q '^luretest' '$tmp/.test-logs/kestot.tsv'"
+run -q -j 2 speciestest
+check "-j 2 ilman .godot/-kansiota: paluukoodi 2" test $rc -eq 2
+check "-j 2 ilman .godot/-kansiota: ilmoitus" has '\.godot/ puuttuu: aja ensin godot --headless --import'
 mkdir -p "$tmp/.godot"
 start_t=$(date +%s%N)
 FAKE_DELAY=2 run -q -j 2 speciestest baittest
@@ -447,6 +454,19 @@ check "-j 2: Läpi-rivillä (rinnakkain 2)" has '^Läpi 2/2, kesto yhteensä 0 m
 check "-j 2: taulukko listan järjestyksessä" \
 	test "$(grep -nE '^(baittest|speciestest) ' <<<"$out" | cut -d' ' -f1 | tr '\n' ' ')" = "$(grep -n '^baittest ' <<<"$out" | cut -d' ' -f1) $(grep -n '^speciestest ' <<<"$out" | cut -d' ' -f1) "
 check "-j 2: kestot.tsv päivittyy" grep -qE "^baittest${tab}[0-9]+\$" "$tmp/.test-logs/kestot.tsv"
+# Rajoitin: neljä 2 s:n testiä kahdella rinnakkaisella kestää vähintään 4 s.
+start_t=$(date +%s%N)
+FAKE_DELAY=2 run -q -j 2 speciestest baittest sonartest birdtest
+el_ms=$(( ($(date +%s%N) - start_t) / 1000000 ))
+check "-j 2: enintään kaksi yhtä aikaa (neljä 2 s:n testiä $el_ms ms >= 4000)" test "$el_ms" -ge 4000
+check "-j 2: neljä testiä läpi" test $rc -eq 0
+# N > ytimet: varoitus ja ytimien määrä (valekomento nproc = 2).
+mkdir -p "$tmp/bin-nproc"
+printf '#!/bin/sh\necho 2\n' >"$tmp/bin-nproc/nproc"
+chmod +x "$tmp/bin-nproc/nproc"
+PATH="$tmp/bin-nproc:$PATH" run -q -j 5 speciestest baittest
+check "-j 5 kahdella ytimellä: varoitus" has '^>> Varoitus: -j 5 on enemmän kuin ytimiä \(2\), käytetään -j 2\.$'
+check "-j 5 kahdella ytimellä: Läpi-rivi (rinnakkain 2)" has '^Läpi 2/2, .*\(rinnakkain 2\)$'
 # Lohkot ehjinä: jokaisen ::group::-lohkon rivit ovat sen testin omia.
 FAKE_STEPS=10 run -q -j 3 speciestest baittest sonartest
 log="$(sed -n 's/^Loki: //p' <<<"$out")"
