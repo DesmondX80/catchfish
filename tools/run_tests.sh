@@ -255,19 +255,29 @@ kill_marked() {
 }
 
 interrupting=0
+declare -A run_pid=() run_start=() # käynnissä olevat ajot: paikka -> pid, alkuaika
+s_retry=()
 interrupted() {
-	local tf p n
+	local tf p n k id
 	interrupting=1
 	echo
-	# Käynnissä olevien ajojen prosessiryhmät (timeout on ryhmänsä johtaja) ja
-	# sen jälkeen kaikki tämän ajurin merkitsemät prosessit.
+	# Käynnissä olevien ajojen prosessiryhmät (timeout on ryhmänsä johtaja).
 	if [ -n "$run_dir" ]; then
 		for tf in "$run_dir"/*.tpid; do
 			[ -f "$tf" ] && read -r p <"$tf" && kill -TERM -- "-$p" 2>/dev/null
 		done
 	fi
-	n=$(kill_marked "$$-" etuliite)
+	# Ajojen aliprosessit siivoavat oman merkkinsä ajon päätyttyä (timeout -k
+	# pakkolopettaa viimeistään 10 s:n päästä); lopuksi kaikki ajurin merkit.
 	wait 2>/dev/null
+	n=$(kill_marked "$$-" etuliite)
+	if [ -n "$run_dir" ]; then
+		for k in "${!run_pid[@]}"; do
+			id="$k"
+			[ "${s_retry[k]:-0}" -eq 1 ] && id="${k}u"
+			[ -f "$run_dir/$id.rc" ] && read -r _ p <"$run_dir/$id.rc" && n=$((n + p))
+		done
+	fi
 	if [ $log_ready -eq 1 ]; then
 		say ">> Keskeytetty."
 		[ "$n" -gt 0 ] && say ">> Lopetettiin $n testin jälkeen jäänyttä prosessia."
@@ -952,7 +962,6 @@ AWK
 #   s_*  ajon tiedot, r_*  ensimmäisen ajon tulos, u_*  uusinnan tulos
 s_args=()
 s_label=()
-s_retry=()
 r_name=()
 r_status=()
 r_code=()
@@ -1034,7 +1043,6 @@ error_lines() { # error_lines TULOSTETIEDOSTO
 	printf '%s' "$e"
 }
 
-declare -A run_pid=() run_start=()
 running=0
 
 # start_slot PAIKKA: käynnistää ajon (tai uusinnan); palauttaa 1, jos mitään ei käynnistetty.

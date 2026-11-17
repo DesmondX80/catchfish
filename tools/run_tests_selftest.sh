@@ -499,22 +499,28 @@ interrupt_check() { # interrupt_check SIGNAALI KUVAUS AJURIN_ARGUMENTIT...
 		pgrep -x -f 'sleep 3171' >/dev/null && { [ "$*" != "${*/anglertest/}" ] || break; pgrep -x -f 'sleep 3172' >/dev/null && break; }
 		sleep 0.1
 	done
+	t0=$(date +%s%N)
 	kill "-$sig" $bgpid
 	wait $bgpid
 	rc=$?
+	t_ms=$(( ($(date +%s%N) - t0) / 1000000 ))
 	check "$desc: paluukoodi 130" test $rc -eq 130
+	check "$desc: ajuri päättyy alle 5 s:ssa ($t_ms ms)" test $t_ms -lt 5000
 	check "$desc: alaprosessit lopetettu" bash -c "! pgrep -x -f 'sleep 317[12]' >/dev/null"
 	check "$desc: ajurilla ei lapsia" bash -c "! pgrep -P $bgpid >/dev/null"
 	check "$desc: merkittyjä prosesseja ei ole" bash -c "! grep -lsz '^CATCHFISH_AJO=$bgpid-' /proc/[0-9]*/environ >/dev/null"
 	check "$desc: latest.done exit=130" grep -q '^exit=130 keskeytetty' "$tmp/.test-logs/latest.done"
 	check "$desc: Keskeytetty-rivi" grep -q '^>> Keskeytetty\.$' "$tmp/bg.out"
+	check "$desc: siivottujen määrä" grep -q "^>> Lopetettiin $n_orphans testin jälkeen jäänyttä prosessia\.\$" "$tmp/bg.out"
 	run -q speciestest
 	check "$desc: lukko vapaa" test $rc -eq 0
 }
+n_orphans=1
 interrupt_check INT "Ctrl+C (INT)" -q anchortest
 interrupt_check TERM "TERM" -q anchortest
-interrupt_check INT "Ctrl+C -j 2" -q -j 2 anchortest anglertest
 interrupt_check INT "Ctrl+C ilman -q:ta" anchortest
+n_orphans=2
+interrupt_check INT "Ctrl+C -j 2" -q -j 2 anchortest anglertest
 
 # --changed (kriteeri 24): väliaikainen git-repo valetiedostoilla.
 srcroot="$(dirname "$(dirname "$src")")"
