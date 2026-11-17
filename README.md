@@ -292,6 +292,9 @@ tools/run_tests.sh -q                         # vain tulosrivit ja yhteenveto p�
 tools/run_tests.sh --repeat=10 luretest       # epävakaan testin toistoajo
 tools/run_tests.sh --ref=origin/main --repeat=3 luretest  # sama mainissa (väliaikainen työkopio)
 tools/run_tests.sh --seed=12345 boattest      # toista kaatunut ajo samalla siemenellä
+tools/run_tests.sh -q --wait luretest         # odota, jos toinen ajo on käynnissä
+tools/run_tests.sh -q --scratch=/tmp/koe.gd   # kertakäyttöinen kokeiluskripti testinä
+tools/run_tests.sh -q anchortest -- --audio-log  # lisäliput testin argumentteihin
 ```
 
 Lopuksi tulostuu yhteenvetotaulukko (testi, tulos, kesto ja epäonnistuneen
@@ -299,10 +302,33 @@ testin `VIRHE`-rivit). Tulosrivit alkavat `>>`, joten ne erottuvat testien
 omista riveistä. Koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
 `latest.log` uusimpaan; `--log=TIEDOSTO` muuttaa polun). Aikaraja on
 `TEST_TIMEOUT` sekuntia testiä kohti (oletus 600). Paluukoodi on 0, kun kaikki
-menivät läpi, 1, jos jokin epäonnistui, ja 2 väärällä käytöllä.
+menivät läpi, 1, jos jokin epäonnistui, 2 väärällä käytöllä ja 3, jos samassa
+työkopiossa on jo ajo käynnissä (lukko `.test-logs/run.lock`; `--wait` odottaa
+vuoroaan).
 Peli tulostaa ensimmäiseksi rivin `Siemen: N`; epäonnistuneen testin tulosrivi
 kertoo siemenen, ja `--seed=N` toistaa ajon samoilla satunnaisluvuilla.
 `tools/run_tests_selftest.sh` testaa itse ajurin valekomennolla.
+
+Ajon päätyttyä ajuri kirjoittaa valmismerkin `.test-logs/latest.done`
+(esim. `exit=0 lapi=50/50 kesto=912 loki=… paattyi=08:30:12`), joten
+taustalla ajetun sarjan valmistumista voi odottaa:
+`until [ -f .test-logs/latest.done ]; do sleep 5; done`. Lokin viereen tulevat
+sarkaineroteltuina ajot (`latest.ajot.tsv`) ja jokainen `OK`/`VIRHE`-rivi
+lukuineen (`latest.rivit.tsv`). Toistoajo (`--repeat=N`) näyttää lopuksi
+testeittäin rivit, jotka vaihtelivat ajosta toiseen, ja niiden luvut muodossa
+`pienin…suurin`.
+
+`--scratch=POLKU` ajaa kertakäyttöisen kokeiluskriptin (`extends Node`) kuten
+testin; pelissä sama lippu on `--scratchtest=POLKU`:
+`godot --headless --fixed-fps 30 -- --day=180 --scratchtest=/tmp/koe.gd`.
+Skripti lisätään pelin lapseksi, ja se lopettaa itse (`get_tree().quit(0)`).
+
+Testilippu ohittaa päävalikon. Pelin voi käynnistää suoraan ilman testiä
+lipulla `--skipmenu`, esim. talvella `godot -- --day=40 --skipmenu`; pelkkä
+`godot -- --day=40` avaa valikon. Komentoriviltä `--`-lipuilla käynnistetty
+peli (myös `--skipmenu`) ei tallenna mitään eikä käytä pelaajan asetuksia,
+uraa eikä kalakirjaa; ennätyslista luetaan, mutta siihen ei tallenneta. Väärin kirjoitettu testilippu (esim. `--luretst`) lopettaa pelin
+heti koodilla 1, samoin testiskripti, joka ei lataudu.
 
 Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.
 Ikkunaa vaativat testit (esim. `--inputtest`, `--pausetest`, `--menutest`)

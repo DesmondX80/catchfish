@@ -102,7 +102,8 @@ Ei avoimia (#29 ja #17 tehty 0.26.0:ssa).
 
 | Tiedosto | Tehtävä |
 |---|---|
-| `scripts/main.gd` | Pelin käynnistys, järjestelmien kytkentä, testien valinta komentoriviltä |
+| `scripts/main.gd` | Pelin käynnistys, järjestelmien kytkentä, testin lataus komentoriviltä |
+| `scripts/test_flags.gd` | Testilippujen taulukot (`TestFlags`): mikä lippu lataa minkä `tests/`-skriptin ja ohittaa valikon |
 | `scripts/fishing/fishing.gd` | Kalastuksen tilakone (heitto, uinti, tärppi, väsytys), kaksi vapaa (`ROD_VARS` vaihdetaan käsiteltävän vavan mukaan), tähtäin, koho ja mato |
 | `scripts/fishing/fishing_line.gd`, `shaders/fishing_line.gdshader` | Siima: arvot yhdessä paikassa (0,28 mm, lujuus 6,5 kg, nykäysmallin S, K ja aikavakio, katkenneen pätkän pituus) ja näkyvä siima pistemassaketjuna (Verlet, 32 pistettä, pituus- ja taivutusrajat, pitkät rajoitteet, lepokitka pinnalla ja maassa, rungon kierto). Vapakohtainen olio (`_line` `ROD_VARS`issa); fysiikka-askel `Fishing._step_line`, piirto ruudun tahdissa (`follow_boat`). Varjostin: kameraan päin kääntyvä nauha (vähintään 2 px, peittävyys ohuemmalla siimalla), valo langan suunnan mukaan, häivytys pinnan alla; pinnan alla oleva siima siirretään katsesädettä pitkin pinnan yläpuolelle, ettei vesi peitä sitä |
 | `scripts/fishing/landing_net.gd` | Haavinta-animaatio ja sen kamerakuva |
@@ -128,13 +129,56 @@ Automaattitestit ajetaan Godot 4.7.2:lla (headless, ellei toisin mainita).
 WSL:ssä se on komentona `godot-4.7.2` (`~/.local/bin/godot-4.7.2`).
 GitHub Actions ajaa kaikki ikkunattomat testit jokaisesta pushista ja PR:stä
 (`.github/workflows/tests.yml`); samat testit paikallisesti:
-`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [testin_nimi...]`.
+`tools/run_tests.sh [godot] [-q] [--repeat=N] [--ref=REF] [--log=TIEDOSTO] [--seed=N] [--wait] [--scratch=POLKU] [testin_nimi...] [-- lisäliput...]`.
 Lopussa on yhteenvetotaulukko (tulos, kesto ja `VIRHE`-rivit), ajon tulosrivit
 alkavat `>>`, ja koko ajo tallentuu lokiin `.test-logs/` (20 viimeisintä,
-`latest.log`). `-q` jättää Godotin tulosteen vain lokiin. `--repeat=N` ajaa
-testit N kertaa ja `--ref=origin/main` väliaikaisessa työkopiossa, jolla
-tarkistetaan, epäonnistuuko testi myös mainissa. Ajurin itsetesti
-`tools/run_tests_selftest.sh` ajetaan CI:ssä ennen testejä.
+`latest.log`; saman sekunnin ajot saavat nimen `…-2.log`). `-q` jättää Godotin
+tulosteen vain lokiin. `--repeat=N` ajaa testit N kertaa ja `--ref=origin/main`
+väliaikaisessa työkopiossa, jolla tarkistetaan, epäonnistuuko testi myös
+mainissa. Ajurin itsetesti `tools/run_tests_selftest.sh` ajetaan CI:ssä ennen
+testejä; ajurin muutoksen jälkeen se ajetaan kahdesti peräkkäin.
+
+- Paluukoodit: 0 kaikki läpi, 1 jokin `VIRHE` tai `AIKAKATKAISU`, 2 väärä
+  käyttö, 3 toinen ajo käynnissä samassa työkopiossa, 130 keskeytetty.
+- Lukko: työkopiossa voi olla käynnissä yksi ajo kerrallaan
+  (`.test-logs/run.lock`, myös `--ref`- ja `--log`-ajot). Toinen ajo kertoo
+  käynnissä olevan ajon PID:n ja komennon ja päättyy koodiin 3; `--wait`
+  odottaa vuoroaan. Eri työkopioiden ajot kulkevat rinnakkain.
+- Valmismerkki: ajuri poistaa `.test-logs/latest.done`in alussa ja kirjoittaa
+  sen lopuksi, myös väärästä käytöstä ja keskeytyksestä, esim.
+  `exit=1 lapi=49/50 kesto=912 loki=.test-logs/20261117-081500.log paattyi=08:30:12`.
+  `--log=X`-ajossa merkki on `X.done`.
+- Koneluettava yhteenveto lokin viereen: `.test-logs/latest.ajot.tsv` (rivi
+  ajoa kohden: `testi ajo tulos koodi kesto_s siemen ok_riveja virhe_riveja`) ja
+  `.test-logs/latest.rivit.tsv` (rivi tarkistusriviä kohden: `testi ajo tila
+  rivi luvut`). Yhteenvedon `Läpi`-rivin alla on `Tarkistusrivit: OK n, VIRHE m`.
+  Esim. `awk -F'\t' '$1=="boattest" && $3=="OK"' .test-logs/latest.rivit.tsv | wc -l`.
+- Kokeiluskripti: `--scratch=POLKU` ajaa kertakäyttöisen skriptin
+  (`extends Node`, esim. scratchpadissa) testinä `scratchtest`; ks. `--scratchtest` alla.
+- Läpivienti: `tools/run_tests.sh -q anchortest -- --audio-log` lisää
+  `--`-erottimen jälkeiset liput jokaisen valitun testin argumenttien loppuun
+  (vaatii testin nimen tai `--scratch`in); tulosrivillä `(lisäliput: …)`.
+
+Testilippu ja valikko (`scripts/test_flags.gd`):
+
+- Uusi testi rekisteröidään yhdellä rivillä `TestFlags.GAME`-taulukkoon
+  (`"--x": "x_test"`, kuvaskripti `SHOTS`, valikkotesti `MENU`) ja ikkunaton
+  testi lisäksi ajurin listaan `tools/run_tests.sh`.
+- Valikon ohittavat vain taulukon testi- ja kuvaliput, `--scratchtest=POLKU` ja
+  `--skipmenu`. Pelkkä apulippu (`-- --day=40`, `--seed=N`, `--audio-log`)
+  avaa valikon; `godot -- --day=40 --skipmenu` käynnistää pelin suoraan
+  aloituspaikasta. `--`-lipulla käynnistetty ajo (myös `--skipmenu`) ei
+  kirjoita tallennuksia eikä käytä asetuksia, uraa eikä kalakirjaa;
+  ennätyslista (`CatchLog`) luetaan mutta ei tallenneta (`catch_log.gd:19`).
+- Paljas lippu muotoa `--<kirjaimia>` (ei `=`-osaa), joka ei ole taulukossa:
+  `VIRHE tuntematon testilippu --x` ja koodi 1 heti. Uusi paljas apulippu
+  (kuten `--mouse`, `--short`) lisätään `TestFlags.HELPERS`-listaan.
+- Testiskripti, joka ei lataudu (puuttuu tai jäsennysvirhe):
+  `VIRHE testiskripti ei lataudu: res://tests/x.gd` ja koodi 1 heti
+  aikakatkaisun sijaan. Ajonaikainen virhe jättää testin edelleen aikarajaan.
+- `--scratchtest=POLKU` (`res://…` tai absoluuttinen polku) käynnistää pelin
+  kuten testit ja lisää skriptin (`extends Node`) `Main`in lapseksi; skripti
+  lopettaa itse (`get_tree().quit(koodi)`) ja näkee autoloadit ja `main`in.
 
 Siemen: pelin ensimmäinen rivi on aina `Siemen: N (toista: --seed=N)`.
 `--seed=N` kiinnittää kaikki satunnaislukugeneraattorit (`GameSeed`: sää,
@@ -166,7 +210,8 @@ godot --headless -- --day=180 --seasonfishtest              # kalojen kutu, hell
 godot --headless -- --day=180 --pressuretest                # ilmanpaine ja syönti
 godot --headless --fixed-fps 30 -- --day=180 --booktest     # kalakirja
 godot --headless -- --shopbgtest                            # kalastustarvikeliikkeen taustakuva: kuva ja näkyvyys
-godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera
+godot --headless --fixed-fps 30 -- --day=180 --fpvtest      # FPV-kamera (ajurin listassa)
+godot --headless --fixed-fps 30 -- --day=180 --scratchtest=/polku/koe.gd # kertakäyttöinen kokeiluskripti (extends Node)
 godot --headless --fixed-fps 30 -- --day=180 --synctest     # vene, kamera ja vavat ruudun tahdissa
 godot --headless --fixed-fps 30 -- --day=180 --overlaptest  # päällekkäiset pinnat (talvi: --day=40)
 godot --headless --fixed-fps 30 -- --day=180 --birdtest     # linnut
@@ -221,13 +266,17 @@ Kokeilu käsin: Godot-editori ja F5, tai `export/Catchfish.exe`.
 
 Koko sarja kestää paikallisesti noin 15 min (otherboatstest yksinään noin
 4–6 min). Alle 10 minuutin ajot etualalla (Bash-aikaraja 600000 ms).
-Pidempi ajo Bashin `run_in_background`-tilassa valmismerkillä:
+Pidempi ajo Bashin `run_in_background`-tilassa; ajuri kirjoittaa
+valmismerkin `.test-logs/latest.done` itse:
 
-    tools/run_tests.sh -q; echo "exit=$? $(date +%T)" > <scratchpad>/sarja.done
+    tools/run_tests.sh -q
+    until [ -f .test-logs/latest.done ]; do sleep 5; done; cat .test-logs/latest.done
 
-Tila: `cat <scratchpad>/sarja.done` tai `grep '^Läpi ' .test-logs/latest.log`
-(`latest.log` osoittaa työkopion uusimpaan ajoon). Taustailmoitukseen ei
-luoteta. Yhteinen valmismerkki `.test-logs/latest.done` tulossa (CATCHFISH-172).
+Tila kesken ajon: `cat .test-logs/run.lock` (PID, alkuaika, komento) ja
+`grep '^>>' .test-logs/latest.log`. Taustailmoitukseen ei luoteta. Jos ajuri
+tapetaan (`kill -9`), merkkiä ei tule, mutta lukko vapautuu; uusi ajo
+käynnistyy normaalisti. Toinen ajo samassa työkopiossa päättyy koodiin 3
+(`--wait` odottaa).
 
 ### Toistoajot
 
@@ -235,11 +284,16 @@ Uusi tai muutettu testi: `--repeat=10`, jos testi kestää alle 60 s, muuten
 `--repeat=3`. Pitkä toistoajo taustalle valmismerkillä (*Pitkät ajot*).
 
     tools/run_tests.sh -q --repeat=10 NIMI
-    grep -E '^(OK|VIRHE)' .test-logs/latest.log | sort | uniq -c
 
-Deterministisessä testissä jokainen rivi esiintyy N kertaa (N = toistot).
-Jos rivin luvut vaihtelevat, sama tarkistus näkyy useana eri rivinä.
-Vaihtelevien rivien yhteenveto `--repeat`iin tulossa (CATCHFISH-172).
+Kun N ≥ 2, yhteenveto näyttää testeittäin tarkistusrivit, jotka eivät
+toistuneet samoina jokaisessa ajossa: monessako ajossa rivi esiintyi, OK- ja
+VIRHE-määrät ja teksti, jossa vaihtelevat luvut ovat muodossa `pienin…suurin`.
+Deterministiselle testille tulostuu `Vaihtelevia rivejä ei ole: NIMI`.
+
+    Vaihtelevat rivit: boattest (3 ajoa)
+      AJOJA  TULOS            RIVI (luvut pienin…suurin)
+       3/3   OK 2, VIRHE 1    jalat x -0.52…-0.38 (raja -0.50)
+       1/3   VIRHE 1          vain kerran 1,5–2,5 m
 
 ### Mutaatiotarkistus käsin
 
@@ -282,8 +336,9 @@ sama kuvaskripti ajetaan myös viedyllä exellä. Yhden komennon työkalu tuloss
 
 - Teemun kuvakaappaus heti alussa.
 - Syy varmistetaan kokeilemalla kesken ajon ennen suunnitelmaa:
-  varjostinparametrit vaihdetaan käynnistysskriptillä, joka lisää puuhun
-  oman Node-skriptin (SceneTree-skriptistä ei voi viitata autoloadeihin).
+  varjostinparametrit vaihdetaan kokeiluskriptillä (`extends Node`)
+  lipulla `--scratchtest=POLKU` tai ajurin `--scratch=POLKU`
+  (SceneTree-skriptistä ei voi viitata autoloadeihin).
   `--param`-lippu tulossa (CATCHFISH-174).
 - Toisto- ja mittausskripteissä aika lasketaan `Engine.physics_ticks_per_second`illa
   (60 askelta/s), ei ruutujen määrästä.

@@ -933,3 +933,32 @@ vaihtoehto B.
 PÄÄTÖS 13: Jos komennossa on sekä `MENU`-lippu että `GAME`- tai `SHOTS`-lippu,
 `MENU`-lippu voittaa (valikko ja valikkotesti), kuten vanhassa koodissa, jossa
 valikkotarkistus oli ensin. Työnjohtaja.
+
+PÄÄTÖS 14: `--skipmenu`-ajo ei lue eikä kirjoita tallennuksia eikä asetuksia,
+kuten muutkin `--`-lipulla käynnistetyt ajot (autoloadien `persist = false`).
+Autoloadeihin ei kosketa. `README.md`:ssä mainitaan tämä. Teemun linjaus
+17.11.2026.
+
+PÄÄTÖS 15: Ajokohtaiset tiedostot nimetään lokin mukaan (`LOKI.rivit.tsv`,
+`LOKI.ajot.tsv`, `LOKI.done`), ja oletusajossa `.test-logs/latest.done`,
+`latest.rivit.tsv` ja `latest.ajot.tsv` ovat olemassa (linkki tai tiedosto).
+`--log=X`-ajossa vain `X.*`, `latest.*`-nimiin ei kosketa. Lokien siivous (20
+viimeisintä) poistaa myös lokin kaveritiedostot. Väärä käyttö: koodi 2,
+valmismerkki vain, jos lukko on vapaana. `--ref` + `--scratch`: PUUTTUU, jos
+REF:ssä ei ole `scripts/test_flags.gd`:tä. Lisäliput näkyvät `toista:`-rivillä.
+Vaihtelulohko taulukon ja viivarivin väliin, `Tarkistusrivit` heti `Läpi`-rivin
+alle. Työnjohtaja, koodaajan tulkinnat.
+
+PÄÄTÖS 16: Kriteerin 16 mutaatioiden muodot (koodaaja). (a) Pelkän
+`can_instantiate`-ehdon poisto ei ole viallinen käytös: `instantiate` tarkistaa
+myös `node != null` ja `main.gd:_add_test` tuloksen `null`in, joten ajo päättyi
+silti koodiin 1 (5 s). Mutaatio on siksi `_add_test`in palautus vanhaan muotoon
+`add_child(load(path).new())` (kaikki tarkistukset pois, kuten `origin/main`):
+kriteerin 3 rikottu `species_test.gd` → `timeout 60 godot-4.7.2 --headless --
+--speciestest` päättyi koodiin 124 (60 s). Aikaraja 60 s eikä 590 s, koska
+mutatoimaton ajo päättyy 5 sekunnissa. (b) Vaihteluyhteenvedossa ennen riviä
+`if (stable) continue` asetetaan `stable = 1` → itsetestissä 17 VIRHE-riviä
+(kaikki vaihtelutarkistukset kolmella awkilla). (c) `if ! flock -n 9; then` →
+`if false; then` → 7 VIRHE-riviä (lukko ja `--wait`). Lisäksi (d) lukon
+tiedostokuvaajan sulku `9>&-` pois Godot-ajosta → `lukko: kill -9:n jälkeen uusi
+ajo käynnistyy` kaatuu. Mutaatiot ajettiin väliaikaiskopioissa scratchpadissa.
