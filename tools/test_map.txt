@@ -1,0 +1,27 @@
+# Muutoskartta tools/run_tests.sh --changed -lipulle: pelikoodin tiedosto ja
+# testit, joihin sen muutos vaikuttaa. Rivi: polku<TAB>testi testi ...
+# (testit ajurin listan niminä; -talvi-rivit ajetaan mukana automaattisesti).
+#
+# Rivit ovat käsin arvioituja eikä niitä ole tarkistettu ajamalla. --changed on
+# pikatarkistus, joka ei korvaa koko sarjaa: koko sarja ajetaan ennen julkaisua.
+# Tiedosto, jota kartassa ei ole, ajaa kaikki testit. tools/run_tests.sh --check
+# tarkistaa, että polut ja testien nimet ovat olemassa.
+scripts/boat/boat.gd	boattest docktest proptest otherboatstest anchortest motorspeedtest
+scripts/boat/anchor.gd	anchortest boattest
+scripts/boat/other_boat.gd	otherboatstest
+scripts/boat/other_boat_crew.gd	otherboatstest
+scripts/boat/other_boats.gd	otherboatstest
+scripts/boat/tackle_box.gd	tackletest
+scripts/boat/catch_tub.gd	tubtest
+scripts/boat/wake.gd	waketest
+scripts/boat/angler.gd	anglertest
+scripts/fishing/fishing_line.gd	linetest
+scripts/fishing/gill_net.gd	nettest
+scripts/fishing/nets.gd	nettest
+scripts/fishing/net_control.gd	nettest
+scripts/ui/echo_sounder.gd	sonartest
+scripts/ui/fish_book_view.gd	booktest
+scripts/fish_book.gd	booktest
+scripts/world/birds.gd	birdtest birdsoundtest
+scripts/audio/angler_voice.gd	voicetest
+scripts/game_seed.gd	seedtest
