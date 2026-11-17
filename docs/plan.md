@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 13.11.2026. Nykyinen versio **0.57.2**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.2)).
+Päivitetty 17.11.2026. Nykyinen versio **0.57.3**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.3)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -1088,4 +1088,14 @@ kriteerien arviointiin.
   Testit pysäyttävät sään `TestUtil.calm_weather(main)`illa, ja settingstestissä
   on 180 s:n vahtiajastin. Sonar-, boat-, anchor- ja settingstest eivät enää
   ole epävakaita (koko sarja `--repeat=3` 150/150). Testi `--seedtest`.
+
+- **#172 Testiajuri, julkaisu A – tehty (0.57.3).** Suunnitelma `docs/suunnitelmat/CATCHFISH-172.md`.
+  Testiliput ovat taulukossa `scripts/test_flags.gd` (`main.gd`:n `elif`-ketju
+  poistettu). Rikkinäinen testiskripti, tuntematon paljas lippu ja tyhjä
+  `--scratchtest=` lopettavat heti koodilla 1. Valikon ohittavat vain testi- ja
+  kuvaliput sekä uusi `--skipmenu`. Ajurissa työkopiokohtainen lukko (koodi 3,
+  `--wait`), valmismerkki `.test-logs/latest.done`, saman sekunnin lokinimet,
+  `--repeat`in vaihtelevat rivit, TSV-yhteenvedot ja `Tarkistusrivit`-rivi,
+  `--scratch=POLKU`, läpivienti `NIMI -- LISÄLIPUT` ja fpvtest listassa.
+  Julkaisu B (uusinta, `-j N`, `--changed`, `--check`) on vielä tekemättä.
   Jatkot: sonartestin tehoton `_pass_sample`-suodin (Backlog).

@@ -199,8 +199,12 @@ Koskevat designeria, koodaajaa ja testaajaa (roolit: `.claude/agents/`).
   `TILA: ajo käynnissä (PID 1234, loki .test-logs/latest.log)`, `TILA: odottaa vastausta`.
 - Pitkät ajot: et päätä vuoroasi odottamaan taustatyötä. Alle 10 minuutin ajot
   etualalla (Bash-aikaraja 600000 ms); pidempi, esim. koko sarja (noin 15 min),
-  taustalle valmismerkillä, ja seuraat sitä itse lokista (`docs/plan.md`,
-  *Pitkät ajot*). Ennen idle-tilaa jokaisen ajosi valmismerkki ja tulos luettu.
+  taustalle, ja seuraat sitä itse ajurin valmismerkistä
+  (`until [ -f .test-logs/latest.done ]; do sleep 5; done; cat .test-logs/latest.done`,
+  `docs/plan.md`, *Pitkät ajot*). Ennen idle-tilaa jokaisen ajosi valmismerkki ja tulos luettu.
+- Ajurilla on työkopiokohtainen lukko: jos samassa työkopiossa on jo ajo
+  käynnissä, `tools/run_tests.sh` lopettaa koodilla 3 (tai odottaa lipulla
+  `--wait`). Älä käynnistä toista ajoa samaan työkopioon.
 - Et jää odottamaan mitään tarkistamatta, että se on oikeasti käynnissä (`ps`,
   lokin muutosaika). Jos ajo on loppunut tai puuttuu, lue tulos tai aja uudelleen.
 - Suora Godot-ajo aina aikarajalla: `timeout 590 godot-4.7.2 ...`.
@@ -232,11 +236,16 @@ Koskevat designeria, koodaajaa ja testaajaa (roolit: `.claude/agents/`).
   moninkertaisesti hitaampi ja kuormittaa koko suoritinta:
   `GALLIUM_DRIVER=d3d12 MESA_D3D12_DEFAULT_ADAPTER_NAME=NVIDIA godot-4.7.2 --fixed-fps 30 --disable-vsync -- --day=180 --anchortest --anchortest-shots=KANSIO`.
   Lokin rivillä `OpenGL API` pitää lukea `RTX 4050`. Aja kuvia yksi ajo kerrallaan.
-- Epävakaa testi: `tools/run_tests.sh -q --repeat=N NIMI`; epäonnistuuko se myös
+- Kertakäyttöinen kokeilu ilman rekisteröintiä: `tools/run_tests.sh -q --scratch=POLKU`
+  (skripti `extends Node` ja lopettaa itse `get_tree().quit(koodi)`); testin
+  lisäliput: `tools/run_tests.sh -q NIMI -- --lippu`.
+- Epävakaa testi: `tools/run_tests.sh -q --repeat=N NIMI` (lopussa vaihdelleet
+  rivit pienimmällä ja suurimmalla luvulla); epäonnistuuko se myös
   mainissa: `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
   Tunnetusti epävakaat testit: `docs/plan.md`, *Testaus*.
 - Suora Godot-ajo aikarajalla (`timeout 590 ...`). Koko sarja kestää
-  noin 15 min, joten se ajetaan taustalle valmismerkillä (`docs/plan.md`, *Pitkät ajot*).
+  noin 15 min, joten se ajetaan taustalle ja valmistuminen luetaan
+  `.test-logs/latest.done`:sta (`docs/plan.md`, *Pitkät ajot*).
 - Näkyvät varjostin- ja grafiikkamuutokset varmistetaan myös Windowsin ajurilla
   WSL-interopilla (`docs/plan.md`, *Kuvat Windowsin ajurilla*). WSL:n D3D12-kuvat
   eivät yksin riitä: CATCHFISH-120:n korjaus toimi WSL:ssä mutta ei Windowsissa.

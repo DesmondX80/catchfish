@@ -18,8 +18,10 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
   commit-tunnistetta. Haara on jäädytetty raporttiisi asti.
 - Ennen jokaista ajoa `git status` on puhdas ja `git log --oneline
   HEAD..origin/main` tyhjä; jos ei, palauta rebasettavaksi (ei lasketa palautuskierrokseksi).
-- Koko sarja `tools/run_tests.sh -q` (noin 15 min) taustalle valmismerkillä
-  (`docs/plan.md`, *Testaus* → *Pitkät ajot*).
+- Koko sarja `tools/run_tests.sh -q` (noin 15 min) taustalle; valmistuminen
+  näkyy ajurin merkistä `.test-logs/latest.done` (`docs/plan.md`, *Testaus* →
+  *Pitkät ajot*). Koneluettavat tulokset: `.test-logs/latest.ajot.tsv` ja
+  `latest.rivit.tsv`. Tilapäiset kokeilut: `--scratch=POLKU`.
 - Jos testi epäonnistuu ja epäilet sen olevan epävakaa tai rikki jo mainissa,
   älä väitä sitä arvaamalla: tarkista `tools/run_tests.sh -q --repeat=N NIMI`
   ja `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI` ja kerro tulos.
@@ -32,8 +34,8 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
   tarkistaa asian eikä vain käy läpi.
 - Uusi tai muutettu testi ajetaan ennen hyväksyntää `--repeat=10`:llä, jos
   se kestää alle 60 s, muuten `--repeat=3`:lla, ja tulosrivien luvut
-  verrataan, ei pelkkää läpi-lukua (komento: `docs/plan.md`, *Testaus* →
-  *Toistoajot*). Pitkä toistoajo taustalle valmismerkillä muun työn rinnalla.
+  verrataan, ei pelkkää läpi-lukua; ajuri listaa vaihdelleet rivit itse
+  (`docs/plan.md`, *Testaus* → *Toistoajot*). Pitkä toistoajo taustalle valmismerkillä muun työn rinnalla.
 - Testimuutoksissa mutaatiotarkistus on vakiokriteeri (`docs/plan.md`,
   *Testaus* → *Mutaatiotarkistus käsin*): jokaiselle uudelle testille,
   muutetulle ehdolle, rajalle tai syötteelle ja deterministiseksi muutetulle

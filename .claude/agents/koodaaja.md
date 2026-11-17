@@ -26,7 +26,8 @@ suunnitelmatiedosto ja toteutuksen runko, ei pitkää lukemista ilman muutoksia.
   työnjohtajalta ennen kuin poikkeat siitä.
 - Testi kattaa hyväksymiskriteerit, jotka voi tarkistaa ilman ikkunaa.
 - Uuden headless-testin kytkentä: `tests/<nimi>_test.gd` (ajokomento tiedoston
-  alkuun), lippu `scripts/main.gd`, `tools/run_tests.sh` (jos ei vaadi ikkunaa) ja
+  alkuun), lippu yhdeksi riviksi `scripts/test_flags.gd`:n taulukkoon (paljas
+  apulippu, kuten `--mouse`, sen apulippulistaan), `tools/run_tests.sh` (jos ei vaadi ikkunaa) ja
   `docs/plan.md`:n *Testaus*-listaan. Uuden .gd-tiedoston jälkeen aja
   `godot-4.7.2 --headless --import` ja lisää syntynyt `.uid` committiin.
 - Testi ajaa pelin oikean kutsupolun (esim. `boat.gd` kutsuu, ei irrallinen
@@ -34,7 +35,7 @@ suunnitelmatiedosto ja toteutuksen runko, ei pitkää lukemista ilman muutoksia.
   "ennallaan"-kriteerillä ja päätöksellä on oma testirivi.
 - Uusi testi ei käytä satunnaista säätä, ellei se testaa nimenomaan säätä:
   pysäytä sää kuten `tests/boat_test.gd` (`weather.set_process(false)`,
-  puuskat ja tuulikohde nollaan). Siemenlippu ja yhteinen sääapu tulossa (CATCHFISH-171).
+  `TestUtil.calm_weather(main)`.
 - Kynnysarvojen ja syötteiden muutokset sekä mutaation muoto kirjataan
   suunnitelman *Päätöksiin* (`PÄÄTÖS n: …`: miksi, ja toistuuko virhe
   `origin/main`issa), ei vain viestiin. Lue *Päätökset* ennen committia ja ajoa.
@@ -66,7 +67,9 @@ suunnitelmatiedosto ja toteutuksen runko, ei pitkää lukemista ilman muutoksia.
 1. `git fetch && git rebase origin/main`, sitten uusi tai muutettu testi ja
    muutokseen liittyvät testit: `tools/run_tests.sh -q NIMI...`. Jos jokin
    epäonnistuu ja väität sen epäonnistuvan myös mainissa, tarkista se:
-   `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
+   `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`. Jos muutit
+   `tools/run_tests.sh`:ää, aja `tools/run_tests_selftest.sh` kahdesti
+   peräkkäin, jotta ajoitusoletukset paljastuvat jo paikallisesti.
 2. Commit ja `git push --force-with-lease -u origin claude/<aihe>` (rebasen jälkeen).
 3. Ilmoita testaajalle ja työnjohtajalle commit-tunniste
    (`git rev-parse --short HEAD`), haara, työkopion polku, testin OK/VIRHE-
