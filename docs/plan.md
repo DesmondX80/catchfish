@@ -1,7 +1,7 @@
 # Catchfish – suunnitelma ja tilanne
 
-Päivitetty 17.11.2026. Nykyinen versio **0.57.3**
-([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.3)).
+Päivitetty 17.11.2026. Nykyinen versio **0.57.4**
+([release](https://github.com/DesmondX80/catchfish/releases/tag/v0.57.4)).
 
 Catchfish on Godot 4.7 -kalastussimulaattori Raahen Haapajärven tekoaltaalla.
 Järvi on mallinnettu Maanmittauslaitoksen avoimesta aineistosta. Pelaaja soutaa
@@ -1148,3 +1148,14 @@ kriteerien arviointiin.
   `--scratch=POLKU`, läpivienti `NIMI -- LISÄLIPUT` ja fpvtest listassa.
   Julkaisu B (uusinta, `-j N`, `--changed`, `--check`): #183.
   Jatkot: sonartestin tehoton `_pass_sample`-suodin (Backlog).
+- **#183 Testiajuri, julkaisu B – tehty (0.57.4).** Suunnitelma `docs/suunnitelmat/CATCHFISH-183.md`
+  (täydentää #172:n suunnitelmaa). Epäonnistunut testi uusitaan samalla
+  siemenellä (`SATUNNAINEN` → koodi 1, `--no-retry`), rinnakkaisajo `-j N`
+  (suositus 4, koko sarja noin 6,5 min, kestot `.test-logs/kestot.tsv`),
+  `--changed[=REF]` muutoskartalla `tools/test_map.txt` ja `--check`. Ajon
+  alaprosessit merkitään ympäristömuuttujalla `CATCHFISH_AJO` ja lopetetaan
+  ajon jälkeen, aikarajassa ja keskeytyksessä, koska Godot irrottaa
+  alaprosessinsa omaan istuntoonsa; `timeout -k 10`. Itsetesti 425 tarkistusta,
+  mutaatiot PÄÄTÖKSISSÄ 26 ja 29. otherboatstest kestää `-j 4`:ssä 380–430 s
+  (PÄÄTÖS 30). Jatkot Backlogissa: icetest kaatuu siemenellä 2249044800,
+  `--ref`-ajo ei tarkista tuonnin paluukoodia.

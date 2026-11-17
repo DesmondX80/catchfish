@@ -18,7 +18,7 @@ Olet Catchfish-tiimin testaaja. Lue ensin `CLAUDE.md` ja `docs/plan.md`
   commit-tunnistetta. Haara on jäädytetty raporttiisi asti.
 - Ennen jokaista ajoa `git status` on puhdas ja `git log --oneline
   HEAD..origin/main` tyhjä; jos ei, palauta rebasettavaksi (ei lasketa palautuskierrokseksi).
-- Koko sarja `tools/run_tests.sh -q` (noin 15 min) taustalle; valmistuminen
+- Koko sarja `tools/run_tests.sh -q -j 4` (noin 6,5 min; peräkkäin noin 15 min) taustalle; valmistuminen
   näkyy ajurin merkistä `.test-logs/latest.done` (`docs/plan.md`, *Testaus* →
   *Pitkät ajot*). Koneluettavat tulokset: `.test-logs/latest.ajot.tsv` ja
   `latest.rivit.tsv`. Tilapäiset kokeilut: `--scratch=POLKU`.

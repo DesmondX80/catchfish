@@ -60,7 +60,8 @@ suunnitelmatiedosto ja toteutuksen runko, ei pitkää lukemista ilman muutoksia.
 - Et muokkaa tiedostoja oman testiajosi aikana.
 - **Et aja koko testisarjaa.** Sen ajaa testaaja ja työnjohtaja vielä ennen
   julkaisua (noin 15 min). Ajat uuden tai muutetun testin ja muutokseen
-  liittyvät nykyiset testit (`tools/run_tests.sh -q NIMI...`).
+  liittyvät nykyiset testit (`tools/run_tests.sh -q NIMI...`; ehdotus
+  muutoskartasta: `tools/run_tests.sh -q --changed`).
 
 ## Kun olet valmis
 

@@ -244,8 +244,15 @@ Koskevat designeria, koodaajaa ja testaajaa (roolit: `.claude/agents/`).
   mainissa: `tools/run_tests.sh -q --ref=origin/main --repeat=N NIMI`.
   Tunnetusti epävakaat testit: `docs/plan.md`, *Testaus*.
 - Suora Godot-ajo aikarajalla (`timeout 590 ...`). Koko sarja kestää
-  noin 15 min, joten se ajetaan taustalle ja valmistuminen luetaan
-  `.test-logs/latest.done`:sta (`docs/plan.md`, *Pitkät ajot*).
+  noin 15 min peräkkäin ja noin 6,5 min rinnakkain (`tools/run_tests.sh -q -j 4`),
+  joten se ajetaan taustalle ja valmistuminen luetaan
+  `.test-logs/latest.done`:sta (`docs/plan.md`, *Pitkät ajot*). Älä aja kahta
+  `-j 4` -ajoa koneella yhtä aikaa.
+- Epäonnistunut testi uusitaan kerran samalla siemenellä; läpi mennyt uusinta
+  on `SATUNNAINEN` (koodi silti 1). `--no-retry` ja `--repeat` ohittavat uusinnan.
+- Muutokseen liittyvät testit: `tools/run_tests.sh -q --changed` (muutoskartta
+  `tools/test_map.txt`); pikatarkistus, ei korvaa koko sarjaa. Testitaulukon ja
+  ajurin listan yhtenäisyys: `tools/run_tests.sh --check`.
 - Näkyvät varjostin- ja grafiikkamuutokset varmistetaan myös Windowsin ajurilla
   WSL-interopilla (`docs/plan.md`, *Kuvat Windowsin ajurilla*). WSL:n D3D12-kuvat
   eivät yksin riitä: CATCHFISH-120:n korjaus toimi WSL:ssä mutta ei Windowsissa.

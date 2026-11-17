@@ -464,3 +464,11 @@ bonus) → 2 VIRHE-riviä (pisin ensin, lyhin viimeisenä). Mutantti (1)
 ajettiin uudelleen jonomuutoksen jälkeen: 3 VIRHE-riviä. Trapin `wait`
 jätettiin kattamatta (PÄÄTÖS 28). Mutatoimaton itsetesti 425/425 kahdesti
 peräkkäin; oikealla Godotilla `-j 4 --repeat=2` kolmella testillä 6/6 OK.
+
+PÄÄTÖS 30: otherboatstestin kesto `-j 4`:ssä hyväksytään (172/K22:n 400 s:n
+raja). Testaajan puhtaassa `-j 4 --repeat=3` -ajossa kestot olivat 423, 422 ja
+387 s, yksittäisessä `-j 4` -ajossa 381 s ja peräkkäin 336 s. Syy on `-j 4`:n
+yleiskuorma, ei saman testin kopioiden päällekkäisyys, joten PÄÄTÖS 27 ei
+muuttanut kestoa. Aikakatkaisuja ei tullut (marginaali noin 175 s 600 s:n
+rajaan), joten 172/PÄÄTÖS 1:n konelukon ehto ei täyty. otherboatstestin
+nopeutus kuuluu CATCHFISH-175:een. Työnjohtaja 17.11.2026.
