@@ -287,19 +287,20 @@ run -q docktest
 check "vaihtelu: --repeat=1 ei lohkoa" lacks 'Vaihtel'
 check "vaihtelu: paluukoodi ennallaan" test $rc -eq 1
 
-# Koneluettava yhteenveto: .ajot.tsv ja .rivit.tsv.
-run -q luretest speciestest
+# Koneluettava yhteenveto: .ajot.tsv ja .rivit.tsv (uusinta pois, ks. uusinnan
+# tarkistukset alempana; sarake uusinta PÄÄTÖS 19).
+run -q --no-retry luretest speciestest
 ajot="$tmp/.test-logs/latest.ajot.tsv"
 rivit="$tmp/.test-logs/latest.rivit.tsv"
 tab=$'\t'
-check "tsv: ajot-otsikko" test "$(head -n 1 "$ajot")" = "testi${tab}ajo${tab}tulos${tab}koodi${tab}kesto_s${tab}siemen${tab}ok_riveja${tab}virhe_riveja"
-check "tsv: luretest-ajo" grep -qE "^luretest${tab}1${tab}VIRHE${tab}1${tab}[0-9]+${tab}42${tab}1${tab}7\$" "$ajot"
-check "tsv: speciestest-ajo" grep -qE "^speciestest${tab}1${tab}OK${tab}0${tab}[0-9]+${tab}${tab}2${tab}0\$" "$ajot"
-check "tsv: rivit-otsikko" test "$(head -n 1 "$rivit")" = "testi${tab}ajo${tab}tila${tab}rivi${tab}luvut"
+check "tsv: ajot-otsikko" test "$(head -n 1 "$ajot")" = "testi${tab}ajo${tab}tulos${tab}koodi${tab}kesto_s${tab}siemen${tab}ok_riveja${tab}virhe_riveja${tab}uusinta"
+check "tsv: luretest-ajo" grep -qE "^luretest${tab}1${tab}VIRHE${tab}1${tab}[0-9]+${tab}42${tab}1${tab}7${tab}0\$" "$ajot"
+check "tsv: speciestest-ajo" grep -qE "^speciestest${tab}1${tab}OK${tab}0${tab}[0-9]+${tab}${tab}2${tab}0${tab}0\$" "$ajot"
+check "tsv: rivit-otsikko" test "$(head -n 1 "$rivit")" = "testi${tab}ajo${tab}tila${tab}rivi${tab}luvut${tab}uusinta"
 check "tsv: luretestin 8 riviä" test "$(grep -c "^luretest${tab}" "$rivit")" -eq 8
 check "tsv: luretest 1 OK" test "$(grep -c "^luretest${tab}1${tab}OK${tab}" "$rivit")" -eq 1
 check "tsv: luretest 7 VIRHE" test "$(grep -c "^luretest${tab}1${tab}VIRHE${tab}" "$rivit")" -eq 7
-check "tsv: luvut-sarake" grep -qx "luretest${tab}1${tab}VIRHE${tab}uistin 3 syvyys${tab}3" "$rivit"
+check "tsv: luvut-sarake" grep -qx "luretest${tab}1${tab}VIRHE${tab}uistin 3 syvyys${tab}3${tab}0" "$rivit"
 check "tsv: Tarkistusrivit-rivi" has '^Tarkistusrivit: OK 3, VIRHE 7$'
 check "tsv: Tarkistusrivit Läpi-rivin alla" \
 	test "$(grep -A1 '^Läpi' <<<"$out" | tail -n 1)" = "Tarkistusrivit: OK 3, VIRHE 7"
@@ -307,7 +308,7 @@ log="$(sed -n 's/^Loki: //p' <<<"$out")"
 check "tsv: lokin vieressä" test -f "$tmp/$log.ajot.tsv" -a -f "$tmp/$log.rivit.tsv"
 run -q --repeat=3 luretest
 check "tsv: --repeat=3 → 3 ajoriviä" test "$(grep -c "^luretest${tab}[1-3]${tab}VIRHE" "$ajot")" -eq 3
-check "tsv: luvut miinuksella" bash -c "rm -f '$tmp/docktest.n'; GODOT='$fake' '$runner' -q docktest >/dev/null 2>&1; grep -qx 'docktest${tab}1${tab}OK${tab}jalat x -0.38 (raja -0.50)${tab}-0.38 -0.50' '$rivit'"
+check "tsv: luvut miinuksella" bash -c "rm -f '$tmp/docktest.n'; GODOT='$fake' '$runner' -q docktest >/dev/null 2>&1; grep -qx 'docktest${tab}1${tab}OK${tab}jalat x -0.38 (raja -0.50)${tab}-0.38 -0.50${tab}0' '$rivit'"
 
 # Argumenttivihje: Godot väärässä paikassa.
 run -q "$fake" speciestest
