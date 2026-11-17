@@ -179,6 +179,7 @@ Testilippu ja valikko (`scripts/test_flags.gd`):
 - `--scratchtest=POLKU` (`res://…` tai absoluuttinen polku) käynnistää pelin
   kuten testit ja lisää skriptin (`extends Node`) `Main`in lapseksi; skripti
   lopettaa itse (`get_tree().quit(koodi)`) ja näkee autoloadit ja `main`in.
+  Tyhjä `--scratchtest=`: `VIRHE --scratchtest vaatii polun` ja koodi 1.
 
 Siemen: pelin ensimmäinen rivi on aina `Siemen: N (toista: --seed=N)`.
 `--seed=N` kiinnittää kaikki satunnaislukugeneraattorit (`GameSeed`: sää,

@@ -128,10 +128,13 @@ static func skips_menu(args: PackedStringArray) -> bool:
 
 ## Virheilmoitus väärin kirjoitetusta testilipusta, tyhjä jos kaikki liput tunnetaan.
 ## Virhe on paljas --<kirjaimia>-argumentti (ei =-osaa, ei väliviivaa), joka ei ole
-## GAME- tai MENU-lippu, --skipmenu eikä apulippu (HELPERS).
+## GAME- tai MENU-lippu, --skipmenu eikä apulippu (HELPERS), tai --scratchtest=
+## ilman polkua (jäisi muuten valikkoon aikarajaan asti).
 static func unknown_test_flag(args: PackedStringArray) -> String:
 	var pattern := RegEx.create_from_string("^--[a-z]+$")
 	for arg in args:
+		if arg == SCRATCH_PREFIX:
+			return "VIRHE --scratchtest vaatii polun: --scratchtest=POLKU"
 		if pattern.search(arg) == null or GAME.has(arg) or MENU.has(arg) or arg == SKIP_MENU or arg in HELPERS:
 			continue
 		var text := "VIRHE tuntematon testilippu %s" % arg

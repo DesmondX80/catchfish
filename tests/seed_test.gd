@@ -105,6 +105,8 @@ func _flag_checks() -> void:
 		TestFlags.find(PackedStringArray(["--boatshots=x", "--seasonshot=y"])) == "res://tests/season_shot.gd")
 	_check("tuntematon testilippu: --luretst",
 		TestFlags.unknown_test_flag(PackedStringArray(["--day=180", "--luretst"])) == "VIRHE tuntematon testilippu --luretst")
+	_check("tyhjä --scratchtest=: VIRHE",
+		TestFlags.unknown_test_flag(PackedStringArray(["--day=180", "--scratchtest="])) == "VIRHE --scratchtest vaatii polun: --scratchtest=POLKU")
 	_check("valikkotesti ilman kansiota: vihje --menutest=KANSIO",
 		TestFlags.unknown_test_flag(PackedStringArray(["--menutest"])).ends_with("--menutest vaatii kansion: --menutest=KANSIO"))
 	_check("tuntematon paljas lippu: --lurtest ja --skipmenyy",
@@ -170,15 +172,19 @@ func _wait_children(children: Array) -> void:
 		_drain(c)
 
 
-## main.gd:n kytkennät oikealla kutsupolulla: tuntematon testilippu lopettaa
-## heti koodilla 1, ja valikkotesti voittaa pelitestin (PÄÄTÖS 13).
+## main.gd:n kytkennät oikealla kutsupolulla: tuntematon testilippu ja tyhjä
+## --scratchtest= lopettavat heti koodilla 1, ja valikkotesti voittaa
+## pelitestin (PÄÄTÖS 13).
 func _subprocess_checks() -> void:
 	var unknown := _start_child(["--day=180", "--luretst"])
 	var menu_first := _start_child(["--day=180", "--luretest", "--shopbgtest"])
-	_check("alaprosessit käynnistyivät", not unknown.is_empty() and not menu_first.is_empty())
-	await _wait_children([unknown, menu_first])
-	if unknown.is_empty() or menu_first.is_empty():
+	var empty_scratch := _start_child(["--day=180", "--scratchtest="])
+	_check("alaprosessit käynnistyivät", not unknown.is_empty() and not menu_first.is_empty() and not empty_scratch.is_empty())
+	await _wait_children([unknown, menu_first, empty_scratch])
+	if unknown.is_empty() or menu_first.is_empty() or empty_scratch.is_empty():
 		return
+	_check("alaprosessi -- --scratchtest=: koodi %d (odotus 1), aikakatkaisu %s, rivi \"--scratchtest vaatii polun\"" % [empty_scratch["code"], empty_scratch["timed_out"]],
+		empty_scratch["code"] == 1 and "VIRHE --scratchtest vaatii polun" in empty_scratch["out"])
 	_check("alaprosessi -- --luretst: koodi %d (odotus 1), aikakatkaisu %s, rivi \"tuntematon testilippu --luretst\"" % [unknown["code"], unknown["timed_out"]],
 		unknown["code"] == 1 and "VIRHE tuntematon testilippu --luretst" in unknown["out"])
 	_check("alaprosessi -- --luretest --shopbgtest: valikkotesti ajettiin (aikakatkaisu %s)" % menu_first["timed_out"],

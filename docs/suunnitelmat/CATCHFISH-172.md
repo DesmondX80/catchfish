@@ -974,3 +974,12 @@ shopbgtestin rivi `kuvatiedosto on olemassa` ilman aikakatkaisua. Mutantit:
 W1 (`main.gd`: `if unknown != "":` → `if false:`) → seedtest koodi 1, 48 s;
 W2 (valikkotestin tarkistus `skips_menu`n jälkeen) → seedtest koodi 1, 47 s.
 `main.gd`:hen ei koskettu. Seedtestin kesto kasvoi noin 5 s → 9 s.
+
+PÄÄTÖS 18: Palautus 1 täydennys: tyhjä --scratchtest → VIRHE, koodi 1; README- ja
+PUUTTUU-tekstien korjaus (testaajan löydökset 2 ja 5). Toteutus (koodaaja):
+`TestFlags.unknown_test_flag` palauttaa tyhjälle `--scratchtest=`:lle rivin
+`VIRHE --scratchtest vaatii polun: --scratchtest=POLKU`, jolloin `main.gd`:n
+nykyinen kytkentä lopettaa koodilla 1 (`main.gd`:hen ei koskettu); seedtestissä
+tarkistus sekä funktiona että alaprosessina. Ajurin `--ref`-yhteenvedossa
+puuttuva kokeiluskripti omalla rivillään `Puuttuu REF:stä: --scratchtest-lippu
+(scripts/test_flags.gd), scratchtest ei ajettu`; testilistan puutteet kuten ennen.

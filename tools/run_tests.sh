@@ -640,12 +640,21 @@ missing=()
 add_failed() {
 	[[ " ${failed[*]} " == *" $1 "* ]] || failed+=("$1")
 }
+# Kokeiluskripti ei ole REF:n testilistassa vaan REF:stä puuttuu lippu: oma rivi.
+missing_scratch=0
+add_missing() {
+	if [ "$1" = scratchtest ]; then
+		missing_scratch=1
+	else
+		missing+=("$1")
+	fi
+}
 if [ "$repeat" -eq 1 ]; then
 	say "TESTI                 TULOS          KESTO"
 	for ((k = 0; k < ${#r_name[@]}; k++)); do
 		if [ "${r_status[k]}" = "PUUTTUU" ]; then
 			say "$(pad "${r_name[k]}" 22)PUUTTUU"
-			missing+=("${r_name[k]}")
+			add_missing "${r_name[k]}"
 			continue
 		fi
 		runs=$((runs + 1))
@@ -665,7 +674,7 @@ else
 		if [ -n "$prev" ] && { [ $k -eq ${#r_name[@]} ] || [ "${r_name[k]}" != "$prev" ]; }; then
 			if [ "$t_missing" -eq 1 ]; then
 				say "$(pad "$prev" 22)PUUTTUU"
-				missing+=("$prev")
+				add_missing "$prev"
 			else
 				say "$(pad "$prev" 22)$(pad "$t_ok/$t_n" 8)$(printf '%3s    ' "$t_err")$(printf '%4s     ' "$t_to")$(printf '%5s s' $((t_secs / t_n)))"
 				[ "$t_ok" -lt "$t_n" ] && add_failed "$prev"
@@ -705,6 +714,7 @@ say "Läpi $passed/$runs, kesto yhteensä $((total_secs / 60)) min $((total_secs
 say "Tarkistusrivit: OK $checks_ok, VIRHE $checks_err"
 [ ${#failed[@]} -gt 0 ] && say "Epäonnistuneet: ${failed[*]}"
 [ ${#missing[@]} -gt 0 ] && say "Puuttuu $ref:n testilistasta: ${missing[*]}"
+[ $missing_scratch -eq 1 ] && say "Puuttuu $ref:stä: --scratchtest-lippu (scripts/test_flags.gd), scratchtest ei ajettu"
 say "Loki: $log_shown"
 say "============================================================"
 

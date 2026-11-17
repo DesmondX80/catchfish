@@ -323,12 +323,15 @@ testin; pelissä sama lippu on `--scratchtest=POLKU`:
 `godot --headless --fixed-fps 30 -- --day=180 --scratchtest=/tmp/koe.gd`.
 Skripti lisätään pelin lapseksi, ja se lopettaa itse (`get_tree().quit(0)`).
 
-Testilippu ohittaa päävalikon. Pelin voi käynnistää suoraan ilman testiä
-lipulla `--skipmenu`, esim. talvella `godot -- --day=40 --skipmenu`; pelkkä
-`godot -- --day=40` avaa valikon. Komentoriviltä `--`-lipuilla käynnistetty
-peli (myös `--skipmenu`) ei tallenna mitään eikä käytä pelaajan asetuksia,
-uraa eikä kalakirjaa; ennätyslista luetaan, mutta siihen ei tallenneta. Väärin kirjoitettu testilippu (esim. `--luretst`) lopettaa pelin
-heti koodilla 1, samoin testiskripti, joka ei lataudu.
+Pelitestin ja kuvaskriptin lippu ohittaa päävalikon; valikkotestit (esim.
+`--menutest=KANSIO`) ajetaan valikon päällä. Pelin voi käynnistää suoraan
+ilman testiä lipulla `--skipmenu`, esim. talvella `godot -- --day=40 --skipmenu`;
+pelkkä `godot -- --day=40` avaa valikon. Komentoriviltä `--`-lipuilla
+käynnistetty peli (myös `--skipmenu`) ei tallenna mitään eikä käytä pelaajan
+asetuksia, uraa eikä kalakirjaa; ennätyslista luetaan, mutta siihen ei
+tallenneta. Väärin kirjoitettu testilippu (esim. `--luretst`) ja tyhjä
+`--scratchtest=` lopettavat pelin heti koodilla 1, samoin testiskripti, joka
+ei lataudu.
 
 Jokaisen testin käynnistysohje on testitiedoston (`tests/*_test.gd`) alussa.
 Ikkunaa vaativat testit (esim. `--inputtest`, `--pausetest`, `--menutest`)
