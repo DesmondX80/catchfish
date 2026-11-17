@@ -411,4 +411,6 @@ jää odottamaan itsetestin 590 s:n rajaan. K28:n vertailu: `origin/main`in
 jätti `sleep 3171`:n henkiin 3 s ajurin jälkeen, eli virhe toistuu mainissa.
 Lisäksi itsetestiin: `kestot.tsv` päivittyy `-j 1`:llä (vain läpi menneet),
 `-j 2` ilman `.godot/`ia → koodi 2, `-j 5` kahdella ytimellä (valekomento
-`nproc`) → varoitus ja `(rinnakkain 2)`.
+`nproc`) → varoitus ja `(rinnakkain 2)`, sekä TERMiin kuolematon valetesti
+(`trap '' TERM`, `TEST_TIMEOUT=1`) → koodi 137, `AIKAKATKAISU`, ei uusintaa
+(PÄÄTÖS 24, 172/K18 täydennys).

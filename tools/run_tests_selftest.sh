@@ -17,7 +17,8 @@ runner="$tmp/tools/run_tests.sh"
 # docktest.n; FAKE_MANY=1 lisää 25 vaihtelevaa riviä). casttest epäonnistuu
 # parittomilla ja onnistuu parillisilla kerroilla (laskuri casttest.n, siemen 77
 # tai annettu --seed). anchortest ja anglertest käynnistävät alaprosessin omaan
-# istuntoonsa kuten Godot (sleep 3171 / 3172) ja jäävät jumiin. FAKE_DELAY=S
+# istuntoonsa kuten Godot (sleep 3171 / 3172) ja jäävät jumiin. trolltest ei
+# kuole TERMiin (timeout -k pakkolopettaa, koodi 137). FAKE_DELAY=S
 # viivästää jokaista testiä, FAKE_STEPS=N tulostaa N riviä 0,1 s:n välein.
 # Argumentit kaiutetaan lokiin.
 fake="$tmp/fake-godot"
@@ -48,6 +49,7 @@ case " $* " in
 		for i in 1 2 3 4 5 6 7; do echo "VIRHE uistin $i syvyys"; done
 		exit 1 ;;
 	*" --boattest "*) exec sleep 30 ;;
+	*" --trolltest "*) trap '' TERM; exec sleep 30 ;;
 	*" --docktest "*)
 		cnt="$(dirname "$0")/docktest.n"
 		n=$(( $(cat "$cnt" 2>/dev/null || echo 0) + 1 ))
@@ -419,6 +421,10 @@ check "uusinta: ajot.tsv VIRHE ja uusinta" test "$(grep -cE "^luretest${tab}1${t
 TEST_TIMEOUT=1 run -q boattest
 check "uusinta: aikakatkaisua ei uusita" lacks 'UUSINTA'
 check "uusinta: aikakatkaisu yksi ajo" test "$(grep -c '^>> ' <<<"$out")" -eq 1
+TEST_TIMEOUT=1 run -q trolltest
+check "uusinta: TERMiin kuolematon (koodi 137) on AIKAKATKAISU" has '^trolltest +AIKAKATKAISU '
+check "uusinta: koodia 137 ei uusita" lacks 'UUSINTA'
+check "uusinta: koodi 137 ajot.tsv:ssä" grep -qE "^trolltest${tab}1${tab}AIKAKATKAISU${tab}137${tab}" "$tmp/.test-logs/latest.ajot.tsv"
 run -q --no-retry luretest
 check "uusinta: --no-retry ei uusi" lacks 'UUSINTA'
 run -q --repeat=2 luretest
