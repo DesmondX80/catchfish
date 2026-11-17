@@ -14,14 +14,33 @@ runner="$tmp/tools/run_tests.sh"
 
 # Valekomento: speciestest läpi, luretest 7 VIRHE-riviä ja koodi 1 (siemen 42),
 # boattest jää jumiin, docktest vaihtelee ajosta toiseen (laskuri tiedostossa
-# docktest.n; FAKE_MANY=1 lisää 25 vaihtelevaa riviä). FAKE_DELAY=S viivästää
-# jokaista testiä. Argumentit kaiutetaan lokiin.
+# docktest.n; FAKE_MANY=1 lisää 25 vaihtelevaa riviä). casttest epäonnistuu
+# parittomilla ja onnistuu parillisilla kerroilla (laskuri casttest.n, siemen 77
+# tai annettu --seed). anchortest ja anglertest käynnistävät alaprosessin omaan
+# istuntoonsa kuten Godot (sleep 3171 / 3172) ja jäävät jumiin. FAKE_DELAY=S
+# viivästää jokaista testiä, FAKE_STEPS=N tulostaa N riviä 0,1 s:n välein.
+# Argumentit kaiutetaan lokiin.
 fake="$tmp/fake-godot"
 cat >"$fake" <<'EOF'
 #!/usr/bin/env bash
 echo "argumentit: $*"
 [ -n "${FAKE_DELAY:-}" ] && sleep "$FAKE_DELAY"
+if [ -n "${FAKE_STEPS:-}" ]; then
+	for i in $(seq "$FAKE_STEPS"); do echo "rivi $i ${*: -1}"; sleep 0.1; done
+fi
 case " $* " in
+	*" --anchortest "*) setsid sleep 3171 & exec sleep 30 ;;
+	*" --anglertest "*) setsid sleep 3172 & exec sleep 30 ;;
+	*" --casttest "*)
+		cnt="$(dirname "$0")/casttest.n"
+		n=$(( $(cat "$cnt" 2>/dev/null || echo 0) + 1 ))
+		echo "$n" >"$cnt"
+		s=77
+		for a in "$@"; do case "$a" in --seed=*) s="${a#--seed=}" ;; esac; done
+		echo "Siemen: $s"
+		if [ $((n % 2)) -eq 1 ]; then echo "VIRHE heitto $n"; exit 1; fi
+		echo "OK   heitto $n"
+		exit 0 ;;
 	*" --speciestest "*) echo "OK   lajit"; echo "OK   koot"; exit 0 ;;
 	*" --luretest "*)
 		echo "Siemen: 42 (toista: --seed=42)"
@@ -50,8 +69,9 @@ EOF
 chmod +x "$fake"
 
 failures=0
+pass_note=""
 check() { # check KUVAUS EHTO...
-	local desc="$1"
+	local desc="$1$pass_note"
 	shift
 	if "$@"; then
 		echo "OK   $desc"
@@ -68,6 +88,9 @@ run() { # run [ARGUMENTIT...]: tuloste $out, paluukoodi $rc
 has() { grep -qE -- "$1" <<<"$out"; }
 lacks() { ! grep -qE -- "$1" <<<"$out"; }
 
+# Julkaisu A:n tarkistukset; ajetaan kahdesti: sellaisenaan ja -j1-lipulla
+# (kriteeri 20). J1 on -j1-kierroksella komennon lopussa näkyvä " -j1".
+legacy_checks() {
 # Läpi menevä testi, GODOT ympäristömuuttujasta.
 run speciestest
 check "OK-testi: paluukoodi 0" test $rc -eq 0
@@ -182,6 +205,7 @@ cat >"$tmp/bin/date" <<EOF
 exec "$real_date" "\$@"
 EOF
 chmod +x "$tmp/bin/date"
+rm -f "$tmp/.test-logs/20991231-235959"*
 PATH="$tmp/bin:$PATH" run -q speciestest
 check "lokinimi: ensimmäinen ajo" has '^Loki: \.test-logs/20991231-235959\.log$'
 PATH="$tmp/bin:$PATH" run -q luretest
@@ -219,7 +243,7 @@ for _ in $(seq 50); do grep -q "pid=$bgpid " "$tmp/.test-logs/run.lock" 2>/dev/n
 latest_before="$(readlink "$tmp/.test-logs/latest.log")"
 run -q speciestest
 check "lukko: paluukoodi 3" test $rc -eq 3
-check "lukko: ilmoitus ja PID" has "toinen ajo on käynnissä tässä työkopiossa \(pid=$bgpid alkoi=[0-9:]+ komento=\"-q speciestest\"\)"
+check "lukko: ilmoitus ja PID" has "toinen ajo on käynnissä tässä työkopiossa \(pid=$bgpid alkoi=[0-9:]+ komento=\"-q speciestest$J1\"\)"
 check "lukko: odotusohje" has '^Odota: until \[ -f \.test-logs/latest\.done \]'
 check "lukko: latest.log ennallaan" test "$(readlink "$tmp/.test-logs/latest.log")" = "$latest_before"
 check "lukko: latest.done ennallaan (ei olemassa)" test ! -e "$done_f"
@@ -314,7 +338,7 @@ check "tsv: luvut miinuksella" bash -c "rm -f '$tmp/docktest.n'; GODOT='$fake' '
 run -q "$fake" speciestest
 check "vihje: paluukoodi 2" test $rc -eq 2
 check "vihje: tuntematon testi" has "tuntematon testi $fake"
-check "vihje: komento oikeassa järjestyksessä" has "^Vihje: Godot annetaan ensimmäisenä argumenttina: tools/run_tests.sh $fake -q speciestest\$"
+check "vihje: komento oikeassa järjestyksessä" has "^Vihje: Godot annetaan ensimmäisenä argumenttina: tools/run_tests.sh $fake -q speciestest$J1\$"
 run eiolemassa
 check "vihje: ei tavalliselle nimelle" lacks 'Vihje'
 
@@ -339,6 +363,328 @@ run -q --repeat=2 luretest -- --oma=1
 check "läpivienti: toista-rivillä" has '^    toista: tools/run_tests.sh --seed=42 luretest -- --oma=1$'
 run -q -- --oma=1
 check "läpivienti ilman testiä: paluukoodi 2" test $rc -eq 2
+}
+
+J1=""
+legacy_checks
+# Sama -j1-lipulla: kääre lisää lipun ennen --:ta tai loppuun.
+real_runner="$runner"
+runner="$tmp/j1-run_tests.sh"
+cat >"$runner" <<EOF
+#!/usr/bin/env bash
+a=()
+added=0
+for x in "\$@"; do
+	if [ \$added -eq 0 ] && [ "\$x" = "--" ]; then a+=(-j1); added=1; fi
+	a+=("\$x")
+done
+[ \$added -eq 1 ] || a+=(-j1)
+exec "$real_runner" "\${a[@]}"
+EOF
+chmod +x "$runner"
+J1=" -j1"
+pass_note=" (-j1)"
+sleep 1 # ensimmäisen ajon lokinimi ilman saman sekunnin päätettä
+legacy_checks
+runner="$real_runner"
+J1=""
+pass_note=""
+
+# Uusinta (kriteeri 18): epäonnistunut testi ajetaan heti uudelleen samalla siemenellä.
+rm -f "$tmp/casttest.n"
+run casttest
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "uusinta: satunnainen paluukoodi 1" test $rc -eq 1
+check "uusinta: taulukossa SATUNNAINEN" has '^casttest +SATUNNAINEN +[0-9]+ s$'
+check "uusinta: taulukossa ensimmäisen ajon VIRHE-rivi" has '^    VIRHE heitto 1$'
+check "uusinta: tulosrivi" has '^>> UUSINTA OK    casttest  [0-9]+ s \(siemen 77\) -> SATUNNAINEN$'
+check "uusinta: Satunnaiset-rivi" has '^Satunnaiset: casttest$'
+check "uusinta: ei Epäonnistuneet-riviä" lacks '^Epäonnistuneet:'
+check "uusinta: ensimmäisen ajon siemen uusinnan argumenteissa" grep -qE '^argumentit: .* --casttest --seed=77$' "$tmp/$log"
+check "uusinta: lohko [uusinta] lokissa" grep -q '^::group::casttest \[uusinta\]$' "$tmp/$log"
+check "uusinta: valmismerkissä satunnaiset" grep -qE '^exit=1 lapi=0/1 kesto=[0-9]+ loki=[^ ]+ satunnaiset=casttest paattyi=' "$tmp/.test-logs/latest.done"
+check "uusinta: ajot.tsv ensimmäinen ajo SATUNNAINEN" grep -qE "^casttest${tab}1${tab}SATUNNAINEN${tab}1${tab}[0-9]+${tab}77${tab}0${tab}1${tab}0\$" "$tmp/.test-logs/latest.ajot.tsv"
+check "uusinta: ajot.tsv uusinnan rivi" grep -qE "^casttest${tab}1${tab}OK${tab}0${tab}[0-9]+${tab}77${tab}1${tab}0${tab}1\$" "$tmp/.test-logs/latest.ajot.tsv"
+check "uusinta: rivit.tsv molemmat ajot" test "$(grep -cE "^casttest${tab}1${tab}(OK|VIRHE)${tab}heitto [12]${tab}[12]${tab}[01]\$" "$tmp/.test-logs/latest.rivit.tsv")" -eq 2
+check "uusinta: rivit.tsv = lokin ajolohkojen OK/VIRHE-rivit" test "$(($(wc -l <"$tmp/.test-logs/latest.rivit.tsv") - 1))" -eq "$(sed -n '/^::group::/,/^::endgroup::/p' "$tmp/$log" | grep -cE '^[[:space:]]*(OK|VIRHE)')"
+run -q luretest
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "uusinta: toistuva VIRHE (1)" has '^luretest +VIRHE \(1\) +[0-9]+ s$'
+check "uusinta: toistuva tulosrivi" has '^>> UUSINTA VIRHE luretest  [0-9]+ s \(koodi 1, siemen 42\) -> VIRHE$'
+check "uusinta: toistuva Epäonnistuneet-rivillä" has '^Epäonnistuneet: luretest$'
+check "uusinta: toistuva ei Satunnaiset-riviä" lacks '^Satunnaiset'
+check "uusinta: kaksi ajoa lokissa" test "$(grep -c '^::group::luretest' "$tmp/$log")" -eq 2
+check "uusinta: siemen 42 uusinnassa" grep -qE '^argumentit: .* --luretest --seed=42$' "$tmp/$log"
+check "uusinta: ajot.tsv VIRHE ja uusinta" test "$(grep -cE "^luretest${tab}1${tab}VIRHE${tab}1${tab}" "$tmp/.test-logs/latest.ajot.tsv")" -eq 2
+TEST_TIMEOUT=1 run -q boattest
+check "uusinta: aikakatkaisua ei uusita" lacks 'UUSINTA'
+check "uusinta: aikakatkaisu yksi ajo" test "$(grep -c '^>> ' <<<"$out")" -eq 1
+run -q --no-retry luretest
+check "uusinta: --no-retry ei uusi" lacks 'UUSINTA'
+run -q --repeat=2 luretest
+check "uusinta: --repeat=2 ei uusi" lacks 'UUSINTA'
+rm -f "$tmp/casttest.n"
+run -q --seed=5 casttest -- --oma=1
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "uusinta: oma --seed pysyy, lisäliput lopussa" test "$(grep -cE '^argumentit: .* --casttest --seed=5 --oma=1$' "$tmp/$log")" -eq 2
+rm -f "$tmp/casttest.n"
+run -q -- --oma=1 2>/dev/null
+rm -f "$tmp/casttest.n"
+run -q casttest -- --oma=1
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "uusinta: siemen ennen lisälippuja" grep -qE '^argumentit: .* --casttest --seed=77 --oma=1$' "$tmp/$log"
+
+# Rinnakkaisajo -j N (kriteeri 19).
+mkdir -p "$tmp/.godot"
+start_t=$(date +%s%N)
+FAKE_DELAY=2 run -q -j 2 speciestest baittest
+el_ms=$(( ($(date +%s%N) - start_t) / 1000000 ))
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+check "-j 2: kaksi 2 s:n testiä alle 4 s:ssa ($el_ms ms)" test "$el_ms" -lt 4000
+check "-j 2: paluukoodi 0" test $rc -eq 0
+check "-j 2: Rinnakkain-rivi" has '^>> Rinnakkain 2 ajoa\.$'
+check "-j 2: Läpi-rivillä (rinnakkain 2)" has '^Läpi 2/2, kesto yhteensä 0 min [0-9]+ s \(rinnakkain 2\)$'
+check "-j 2: taulukko listan järjestyksessä" \
+	test "$(grep -nE '^(baittest|speciestest) ' <<<"$out" | cut -d' ' -f1 | tr '\n' ' ')" = "$(grep -n '^baittest ' <<<"$out" | cut -d' ' -f1) $(grep -n '^speciestest ' <<<"$out" | cut -d' ' -f1) "
+check "-j 2: kestot.tsv päivittyy" grep -qE "^baittest${tab}[0-9]+\$" "$tmp/.test-logs/kestot.tsv"
+# Lohkot ehjinä: jokaisen ::group::-lohkon rivit ovat sen testin omia.
+FAKE_STEPS=10 run -q -j 3 speciestest baittest sonartest
+log="$(sed -n 's/^Loki: //p' <<<"$out")"
+blocks_ok() {
+	awk '
+		/^::group::/ { g = substr($0, 10); sub(/ .*/, "", g); inb = 1; nb++; next }
+		/^::endgroup::$/ { inb = 0; next }
+		/^rivi / { n++; if (!inb || $3 != "--" g) bad++ }
+		END { exit !(nb == 3 && n == 30 && bad == 0) }' "$1"
+}
+check "-j 3: lokin lohkot ehjiä" blocks_ok "$tmp/$log"
+FAKE_STEPS=10 run -j 3 speciestest baittest sonartest
+check "-j 3 ilman -q:ta: tuloste lohkoina" test "$(grep -c '^::group::' <<<"$out")" -eq 3
+run -q -j 0 speciestest
+check "-j 0: paluukoodi 2" test $rc -eq 2
+run -q -j x speciestest
+check "-j x: paluukoodi 2" test $rc -eq 2
+run -q --jobs=0 speciestest
+check "--jobs=0: paluukoodi 2" test $rc -eq 2
+rm -f "$tmp/docktest.n"
+run -q -j2 --repeat=3 docktest speciestest
+check "-j2 --repeat=3: kolme ajoa testiä kohden" test "$(grep -cE '^>> (OK|VIRHE) +(docktest|speciestest) \[[1-3]/3\]' <<<"$out")" -eq 6
+check "-j2 --repeat=3: vaihteluyhteenveto" has '^   3/3   OK 2, VIRHE 1    jalat x -0\.52…-0\.38 \(raja -0\.50\)$'
+check "-j2 --repeat=3: taulukko" has '^docktest +1/3 +2 +0 +[0-9]+ s$'
+rm -f "$tmp/casttest.n"
+run -q -j 2 casttest speciestest
+check "-j 2: uusinta rinnakkain" has '^casttest +SATUNNAINEN '
+
+# Aikaraja lopettaa testin alaprosessit (kriteeri 28).
+pkill -x -f 'sleep 317[12]' 2>/dev/null
+TEST_TIMEOUT=2 run -q anchortest
+check "aikaraja: AIKAKATKAISU" has '^anchortest +AIKAKATKAISU '
+check "aikaraja: ilmoitus siivotusta prosessista" has '^>> Lopetettiin 1 testin jälkeen jäänyttä prosessia\.$'
+sleep 3
+check "aikaraja: alaprosessi ei ole elossa" bash -c "! pgrep -x -f 'sleep 3171' >/dev/null"
+run -q speciestest
+check "aikaraja: ei siivousriviä, kun ei orpoja" lacks 'Lopetettiin'
+
+# Keskeytys lopettaa alaprosessit (kriteeri 29). set -m: muuten taustaprosessi
+# perii SIGINTin ohitettuna eikä ajuri voi siepata sitä.
+interrupt_check() { # interrupt_check SIGNAALI KUVAUS AJURIN_ARGUMENTIT...
+	local sig="$1" desc="$2" p
+	shift 2
+	pkill -x -f 'sleep 317[12]' 2>/dev/null
+	set -m
+	GODOT="$fake" "$runner" "$@" >"$tmp/bg.out" 2>&1 &
+	bgpid=$!
+	set +m
+	for _ in $(seq 100); do
+		pgrep -x -f 'sleep 3171' >/dev/null && { [ "$*" != "${*/anglertest/}" ] || break; pgrep -x -f 'sleep 3172' >/dev/null && break; }
+		sleep 0.1
+	done
+	kill "-$sig" $bgpid
+	wait $bgpid
+	rc=$?
+	check "$desc: paluukoodi 130" test $rc -eq 130
+	check "$desc: alaprosessit lopetettu" bash -c "! pgrep -x -f 'sleep 317[12]' >/dev/null"
+	check "$desc: ajurilla ei lapsia" bash -c "! pgrep -P $bgpid >/dev/null"
+	check "$desc: merkittyjä prosesseja ei ole" bash -c "! grep -lsz '^CATCHFISH_AJO=$bgpid-' /proc/[0-9]*/environ >/dev/null"
+	check "$desc: latest.done exit=130" grep -q '^exit=130 keskeytetty' "$tmp/.test-logs/latest.done"
+	check "$desc: Keskeytetty-rivi" grep -q '^>> Keskeytetty\.$' "$tmp/bg.out"
+	run -q speciestest
+	check "$desc: lukko vapaa" test $rc -eq 0
+}
+interrupt_check INT "Ctrl+C (INT)" -q anchortest
+interrupt_check TERM "TERM" -q anchortest
+interrupt_check INT "Ctrl+C -j 2" -q -j 2 anchortest anglertest
+interrupt_check INT "Ctrl+C ilman -q:ta" anchortest
+
+# --changed (kriteeri 24): väliaikainen git-repo valetiedostoilla.
+srcroot="$(dirname "$(dirname "$src")")"
+repo="$tmp/repo"
+mkdir -p "$repo/tools" "$repo/scripts/boat" "$repo/scripts/fishing" "$repo/tests" "$repo/docs" "$repo/.godot"
+cp "$src" "$repo/tools/run_tests.sh"
+cp "$srcroot/tools/test_map.txt" "$repo/tools/test_map.txt"
+cp "$srcroot/scripts/test_flags.gd" "$repo/scripts/test_flags.gd"
+for f in "$srcroot"/tests/*.gd; do : >"$repo/tests/$(basename "$f")"; done
+: >"$repo/scripts/boat/boat.gd"
+: >"$repo/scripts/fishing/fishing.gd"
+printf '.test-logs/\n.godot/\n' >"$repo/.gitignore"
+git -C "$repo" init -q
+git -C "$repo" -c user.name=t -c user.email=t@t add -A
+git -C "$repo" -c user.name=t -c user.email=t@t commit -qm alku
+git -C "$repo" update-ref refs/remotes/origin/main HEAD
+crun() { # crun ARGUMENTIT...: ajuri väliaikaisessa repossa, muutokset nollataan jälkeenpäin
+	out="$(cd "$repo" && GODOT="$fake" TEST_TIMEOUT="${TEST_TIMEOUT:-600}" "$repo/tools/run_tests.sh" "$@" 2>&1)"
+	rc=$?
+}
+creset() {
+	git -C "$repo" checkout -q -- .
+	git -C "$repo" clean -fdq
+}
+echo x >>"$repo/tests/lure_test.gd"
+crun -q --changed
+check "--changed: muutettu testi" has '^>>   tests/lure_test\.gd -> luretest$'
+check "--changed: vertailukohta" has '^>> Muutokset verrattuna: origin/main \([0-9a-f]+\), 1 tiedostoa$'
+check "--changed: vain luretest ajetaan" test "$(grep -cE '^>> (OK|VIRHE|AIKAKATKAISU) ' <<<"$out")" -eq 1
+check "--changed: luretest taulukossa" has '^luretest +VIRHE'
+check "--changed: pikatarkistusrivi lopussa" test "$(tail -n 1 <<<"$out")" = ">> Pikatarkistus: koko sarja ajetaan ennen julkaisua."
+git -C "$repo" -c user.name=t -c user.email=t@t commit -qam muutos
+crun -q --changed
+check "--changed: commitoitu muutos mukana" has '^>>   tests/lure_test\.gd -> luretest$'
+git -C "$repo" reset -q --hard origin/main
+echo x >"$repo/docs/x.md"
+crun -q --changed
+check "--changed: docs -> ei testejä" has '^>>   docs/x\.md -> ei testejä$'
+check "--changed: Ei ajettavia testejä" has '^>> Ei ajettavia testejä\.$'
+check "--changed: ei ajettavaa, paluukoodi 0" test $rc -eq 0
+check "--changed: ei ajettavaa, ei taulukkoa" lacks '^TESTI '
+check "--changed: ei ajettavaa, valmismerkki" grep -qE '^exit=0 lapi=0/0 ' "$repo/.test-logs/latest.done"
+creset
+echo x >>"$repo/scripts/boat/boat.gd"
+TEST_TIMEOUT=1 crun -q -j 4 --changed
+check "--changed: kartan testit" has '^>>   scripts/boat/boat\.gd -> anchortest boattest docktest motorspeedtest otherboatstest otherboatstest-talvi proptest$'
+check "--changed: kartan testit ajetaan" has '^>> Ajetaan 7 testiä\.$'
+creset
+echo x >>"$repo/scripts/fishing/fishing.gd"
+TEST_TIMEOUT=1 crun -q -j 8 --no-retry --changed
+check "--changed: kartaton tiedosto -> kaikki" has '^>>   scripts/fishing/fishing\.gd -> kaikki testit$'
+check "--changed: kaikki ajetaan" has "^>> Ajetaan $(grep -c '^	"[a-z-]*|' "$src") testiä\\.\$"
+creset
+: >"$repo/tests/uusi_shots.gd"
+crun -q --changed
+check "--changed: jäljittämätön kuvaskripti" has '^>>   tests/uusi_shots\.gd -> ei ajurin listassa \(aja käsin\)$'
+creset
+echo x >>"$repo/tests/shop_bg_test.gd"
+crun -q --changed
+check "--changed: MENU-lipun testi" has '^>>   tests/shop_bg_test\.gd -> shopbgtest$'
+check "--changed: shopbgtest ajetaan" has '^>> OK +shopbgtest '
+creset
+echo x >>"$repo/tools/test_map.txt"
+crun -q --changed
+check "--changed: kartta -> ei pelitestejä" has '^>>   tools/test_map\.txt -> ei pelitestejä$'
+check "--changed: kartta -> Aja myös --check" has '^>> Aja myös: tools/run_tests\.sh --check$'
+creset
+echo x >>"$repo/tools/run_tests_selftest.sh"
+crun -q --changed
+check "--changed: ajuri -> Aja myös itsetesti" has '^>> Aja myös: tools/run_tests_selftest\.sh$'
+creset
+: >"$repo/tests/lure_test.gd.uid"
+mkdir -p "$repo/export"
+: >"$repo/export/x.exe"
+crun -q --changed
+check "--changed: .gd.uid kuten .gd" has '^>>   tests/lure_test\.gd\.uid -> luretest$'
+check "--changed: export -> ei testejä" has '^>>   export/x\.exe -> ei testejä$'
+creset
+crun -q --changed luretest
+check "--changed + testin nimi: paluukoodi 2" test $rc -eq 2
+crun -q --changed --scratch=x.gd
+check "--changed + --scratch: paluukoodi 2" test $rc -eq 2
+crun -q --changed --ref=HEAD
+check "--changed + --ref: paluukoodi 2" test $rc -eq 2
+crun -q --changed=EIOLE
+check "--changed=EIOLE: paluukoodi 2" test $rc -eq 2
+check "--changed=EIOLE: ilmoitus" has 'vertailukohta ei ratkea: EIOLE'
+crun -q --only-changed
+check "--only-changed: paluukoodi 2 (ei aliasta)" test $rc -eq 2
+crun -q --changed=HEAD
+check "--changed=HEAD: puhdas työkopio" has '^>> Ei ajettavia testejä\.$'
+git -C "$repo" update-ref -d refs/remotes/origin/main
+crun -q --changed
+check "--changed ilman origin/mainia: paluukoodi 2" test $rc -eq 2
+check "--changed ilman origin/mainia: ilmoitus" has 'vertailukohta ei ratkea: origin/main'
+
+# --check (kriteeri 25): jokainen tarkistus kaatuu omalla mutaatiollaan.
+chk="$tmp/chk"
+make_chk() {
+	rm -rf "$chk"
+	mkdir -p "$chk/tools"
+	cp "$src" "$chk/tools/run_tests.sh"
+	cp "$srcroot/tools/test_map.txt" "$chk/tools/"
+	cp -r "$srcroot/scripts" "$srcroot/tests" "$chk/"
+}
+cchk() { out="$("$chk/tools/run_tests.sh" --check 2>&1)"; rc=$?; }
+make_chk
+cchk
+check "--check: kopio läpi" test $rc -eq 0
+check "--check: Tarkistus läpi" has '^Tarkistus läpi\.$'
+check "--check: ei .test-logs-kansiota" test ! -e "$chk/.test-logs"
+: >"$chk/tests/x_test.gd"
+cchk
+check "--check C1: ylimääräinen tests/x_test.gd" has '^VIRHE tests/x_test\.gd ei ole testitaulukossa \(scripts/test_flags\.gd\)$'
+check "--check C1: paluukoodi 1" test $rc -eq 1
+check "--check C1: virheiden määrä" has '^Tarkistus: 1 virhettä$'
+make_chk
+sed -i '/"--luretest": "lure_test",/d' "$chk/scripts/test_flags.gd"
+cchk
+check "--check C1: rivi pois taulukosta" has '^VIRHE tests/lure_test\.gd ei ole testitaulukossa'
+make_chk
+sed -i 's/^\t"--seedtest": "seed_test",/&\n\t"--uusitest": "uusi_test",/' "$chk/scripts/test_flags.gd"
+cchk
+check "--check C2: skripti puuttuu" has '^VIRHE --uusitest: skripti tests/uusi_test\.gd puuttuu$'
+check "--check C3: ei listassa" has '^VIRHE --uusitest ei ole ajurin listassa eikä not_listed-listassa \(tools/run_tests\.sh\)$'
+make_chk
+sed -i '/^\t"luretest|/d' "$chk/tools/run_tests.sh"
+cchk
+check "--check C3: rivi pois ajurin listasta" has '^VIRHE --luretest ei ole ajurin listassa eikä not_listed-listassa'
+check "--check C3: paluukoodi 1" test $rc -eq 1
+make_chk
+sed -i 's/--day=180 --luretest"/--day=180 --luretset"/' "$chk/tools/run_tests.sh"
+cchk
+check "--check C4: kirjoitusvirhe ajurin rivin lipussa" has '^VIRHE ajurin rivi luretest: ei testilippua argumenteissa$'
+make_chk
+sed -i 's/^not_listed=(menutest /not_listed=(flickr menutest /' "$chk/tools/run_tests.sh"
+cchk
+check "--check C5: olematon nimi not_listed-listassa" has '^VIRHE not_listed: flickr ei ole testitaulukossa$'
+make_chk
+sed -i 's/^not_listed=(menutest /not_listed=(luretest menutest /' "$chk/tools/run_tests.sh"
+cchk
+check "--check C3: sekä listassa että not_listed" has '^VIRHE --luretest on sekä ajurin listassa että not_listed-listassa'
+make_chk
+printf 'scripts/boat/bote.gd\tboattest\nscripts/boat/boat.gd\tboattset\nscripts/game_seed.gd seedtest\n' >>"$chk/tools/test_map.txt"
+cchk
+check "--check C6: olematon polku" has '^VIRHE tools/test_map\.txt:[0-9]+: scripts/boat/bote\.gd ei ole olemassa$'
+check "--check C6: olematon testi" has '^VIRHE tools/test_map\.txt:[0-9]+: boattset ei ole ajurin listassa$'
+check "--check C6: toistuva polku" has '^VIRHE tools/test_map\.txt:[0-9]+: scripts/boat/boat\.gd toistuu \(myös rivillä [0-9]+\)$'
+check "--check C6: rivillä ei sarkainta" has '^VIRHE tools/test_map\.txt:[0-9]+: rivillä ei ole sarkainta'
+check "--check C6: paluukoodi 1" test $rc -eq 1
+make_chk
+out="$("$chk/tools/run_tests.sh" --check luretest 2>&1)"
+rc=$?
+check "--check + testin nimi: paluukoodi 2" test $rc -eq 2
+out="$("$chk/tools/run_tests.sh" -q --check 2>&1)"
+rc=$?
+check "-q --check: paluukoodi 2" test $rc -eq 2
+# Ajon aikana (lukko varattu): --check toimii eikä koske valmismerkkiin.
+GODOT="$fake" FAKE_DELAY=3 "$chk/tools/run_tests.sh" -q speciestest >"$tmp/bg.out" 2>&1 &
+bgpid=$!
+for _ in $(seq 50); do grep -q "pid=$bgpid " "$chk/.test-logs/run.lock" 2>/dev/null && break; sleep 0.1; done
+cchk
+check "--check ajon aikana: paluukoodi 0" test $rc -eq 0
+check "--check ajon aikana: latest.done ennallaan (ei olemassa)" test ! -e "$chk/.test-logs/latest.done"
+wait $bgpid
+# Oikea työkopio (alkuperäinen polku): CI vahtii testilistoja.
+out="$("$src" --check 2>&1)"
+rc=$?
+check "--check: oikea työkopio läpi" test $rc -eq 0
+[ $rc -eq 0 ] || echo "$out"
 
 echo
 if [ $failures -gt 0 ]; then
