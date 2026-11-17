@@ -414,3 +414,46 @@ Lisäksi itsetestiin: `kestot.tsv` päivittyy `-j 1`:llä (vain läpi menneet),
 `nproc`) → varoitus ja `(rinnakkain 2)`, sekä TERMiin kuolematon valetesti
 (`trap '' TERM`, `TEST_TIMEOUT=1`) → koodi 137, `AIKAKATKAISU`, ei uusintaa
 (PÄÄTÖS 24, 172/K18 täydennys).
+
+PÄÄTÖS 27: Toistoajon rinnakkaisjärjestys (testaajan K23-havainto, palautus 1).
+`-j 4 --repeat=3` -ajossa otherboatstest kesti 419, 429 ja 431 s, koska
+"pisimmät ensin" käynnisti saman testin kaikki kolme kierrosta yhtä aikaa
+(K22:n 400 s:n raja ylittyi, aikakatkaisuja ei tullut). Jono järjestetään
+toistoajossa kierroksittain: ensin kierros 1 pisimmät ensin, sitten kierros 2
+jne., jolloin saman testin kopiot eivät käynnisty yhtä aikaa. Ilman
+`--repeat`ia järjestys ennallaan. Konelukkoa ei lisätä (172/PÄÄTÖS 1:n ehto
+ei täyttynyt). Itsetestiin tarkistus järjestyksestä (myös "pisimmät ensin",
+testaajan M4). Työnjohtaja 17.11.2026.
+
+PÄÄTÖS 28: Testaajan elävät mutantit katetaan itsetestillä (palautus 1).
+M2 merkin ankkuri (`run_tests.sh:235`, `pat+='$'`): paikan 1 siivous ei saa
+tappaa paikan 1x ajoa (vähintään 10 paikkaa, paikka 1 päättyy ensin). M8
+keskeytyksen etuliite (`:273`, `"$$-"`): toisen ajurin merkki
+`CATCHFISH_AJO=<pid>9-1` jää henkiin. M3 KILL-eskalaatio (`:253`): TERMiin
+kuolematon orpo (`trap '' TERM`) on kuollut ajon jälkeen. M1 (`:1091`): koodi
+137 ennen aikarajaa on VIRHE (137) ja uusitaan. M4 katetaan PÄÄTÖS 27:n
+tarkistuksella. M6 (trapin `wait`) jätetään kattamatta. Jokainen uusi
+tarkistus todistetaan ajamalla vastaava mutantti. Työnjohtaja 17.11.2026.
+
+PÄÄTÖS 27: Palautus 1 (testaajan elävät mutantit), korjaus itsetestiin;
+ajuriin ei koskettu. Mutaatiot kuten PÄÄTÖKSESSÄ 26 (koko itsetesti
+väliaikaiskopiossa, ajettu peräkkäin, koska rinnakkaiset itsetestit näkevät
+toistensa `sleep 317x` -prosessit). (1) `kill_marked`in ankkuri pois
+(`[ "${2:-}" = etuliite ] || pat+='$'` → `:`): uusi tarkistus `-j 11`
+yhdellätoista valetestillä (valekomento `nproc` = 16, `FAKE_DELAY=1`,
+paikka 10 motorspeedtest `FAKE_SLOW` +3 s) → paikan 1 siivous tappaisi
+paikat 10 ja 11; mutantilla 3 VIRHE-riviä (motorspeedtest ei OK). (2) Trapin
+etuliite ilman viivaa (`kill_marked "$$-"` → `"$$"`): keskeytyskokeeseen
+toisen ajurin valeprosessi `env CATCHFISH_AJO=<ajurin pid>9-1 sleep 3173`,
+jonka pitää olla elossa; mutantilla 8 VIRHE-riviä. (3) KILL-eskalaatio pois
+(`kill -KILL "${alive[@]}"` → `:`): valetesti paddletest jättää orvon, joka
+ohittaa TERMin (`setsid bash -c "trap '' TERM; exec sleep 3174"`); mutantilla
+1 VIRHE-rivi (orpo elossa). Itsetesti siivoaa tämän orvon `pkill -KILL`illä,
+koska TERM ei sitä lopeta. (4) Koodi 137 aina aikakatkaisuksi (kestoehto
+pois): valetesti proptest kuolee heti KILLiin isolla aikarajalla → odotus
+`VIRHE (137)` ja `UUSINTA`; mutantilla 2 VIRHE-riviä. (5, testaajan
+bonus) Jono lyhimmästä pisimpään (`sort -k1,1nr` → `-k1,1n`): valmis
+`kestot.tsv` ja `FAKE_ORDER`-aloitusjärjestys `-j 2`:lla neljällä testillä
+(kestoton ja pisin ensin, lyhin viimeisenä); mutantilla 2 VIRHE-riviä.
+Trapin `wait` jätettiin ilman tarkistusta testaajan luvalla. Mutatoimaton
+itsetesti 422/422 kahdesti peräkkäin.

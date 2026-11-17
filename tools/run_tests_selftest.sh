@@ -18,14 +18,19 @@ runner="$tmp/tools/run_tests.sh"
 # parittomilla ja onnistuu parillisilla kerroilla (laskuri casttest.n, siemen 77
 # tai annettu --seed). anchortest ja anglertest käynnistävät alaprosessin omaan
 # istuntoonsa kuten Godot (sleep 3171 / 3172) ja jäävät jumiin. trolltest ei
-# kuole TERMiin (timeout -k pakkolopettaa, koodi 137). FAKE_DELAY=S
-# viivästää jokaista testiä, FAKE_STEPS=N tulostaa N riviä 0,1 s:n välein.
-# Argumentit kaiutetaan lokiin.
+# kuole TERMiin (timeout -k pakkolopettaa, koodi 137). paddletest jättää orvon,
+# joka ei kuole TERMiin (sleep 3174), ja päättyy OK. proptest kuolee heti
+# KILLiin (koodi 137 ennen aikarajaa). FAKE_DELAY=S viivästää jokaista testiä,
+# FAKE_SLOW=LIPPU viivästää lisäksi 3 s testiä, jonka lippu on LIPPU,
+# FAKE_STEPS=N tulostaa N riviä 0,1 s:n välein, FAKE_ORDER=TIEDOSTO kirjaa
+# testien aloitusjärjestyksen (viimeinen argumentti). Argumentit kaiutetaan lokiin.
 fake="$tmp/fake-godot"
 cat >"$fake" <<'EOF'
 #!/usr/bin/env bash
 echo "argumentit: $*"
+[ -n "${FAKE_ORDER:-}" ] && echo "${*: -1}" >>"$FAKE_ORDER"
 [ -n "${FAKE_DELAY:-}" ] && sleep "$FAKE_DELAY"
+[ -n "${FAKE_SLOW:-}" ] && [[ " $* " == *" $FAKE_SLOW "* ]] && sleep 3
 if [ -n "${FAKE_STEPS:-}" ]; then
 	for i in $(seq "$FAKE_STEPS"); do echo "rivi $i ${*: -1}"; sleep 0.1; done
 fi
@@ -50,6 +55,12 @@ case " $* " in
 		exit 1 ;;
 	*" --boattest "*) exec sleep 30 ;;
 	*" --trolltest "*) trap '' TERM; exec sleep 30 ;;
+	*" --paddletest "*)
+		setsid bash -c "trap '' TERM; exec sleep 3174" &
+		sleep 0.5
+		echo "OK   orpo jätetty"
+		exit 0 ;;
+	*" --proptest "*) kill -KILL $$ ;;
 	*" --docktest "*)
 		cnt="$(dirname "$0")/docktest.n"
 		n=$(( $(cat "$cnt" 2>/dev/null || echo 0) + 1 ))
@@ -425,6 +436,10 @@ TEST_TIMEOUT=1 run -q trolltest
 check "uusinta: TERMiin kuolematon (koodi 137) on AIKAKATKAISU" has '^trolltest +AIKAKATKAISU '
 check "uusinta: koodia 137 ei uusita" lacks 'UUSINTA'
 check "uusinta: koodi 137 ajot.tsv:ssä" grep -qE "^trolltest${tab}1${tab}AIKAKATKAISU${tab}137${tab}" "$tmp/.test-logs/latest.ajot.tsv"
+# Koodi 137 ennen aikarajaa (esim. muistin loppuminen) on VIRHE ja uusitaan.
+run -q proptest
+check "uusinta: koodi 137 ennen aikarajaa on VIRHE (137)" has '^proptest +VIRHE \(137\) '
+check "uusinta: koodi 137 ennen aikarajaa uusitaan" has '^>> UUSINTA VIRHE proptest '
 run -q --no-retry luretest
 check "uusinta: --no-retry ei uusi" lacks 'UUSINTA'
 run -q --repeat=2 luretest
@@ -466,6 +481,22 @@ FAKE_DELAY=2 run -q -j 2 speciestest baittest sonartest birdtest
 el_ms=$(( ($(date +%s%N) - start_t) / 1000000 ))
 check "-j 2: enintään kaksi yhtä aikaa (neljä 2 s:n testiä $el_ms ms >= 4000)" test "$el_ms" -ge 4000
 check "-j 2: neljä testiä läpi" test $rc -eq 0
+# Jono: kestottomat ensin, sitten pisimmästä lyhimpään (kestot.tsv).
+printf 'speciestest\t5\nbaittest\t50\nsonartest\t20\n' >"$tmp/.test-logs/kestot.tsv"
+rm -f "$tmp/order.txt"
+FAKE_ORDER="$tmp/order.txt" FAKE_DELAY=1 run -q -j 2 speciestest baittest sonartest birdtest
+check "-j 2: kestoton ja pisin aloitetaan ensin" test "$(head -n 2 "$tmp/order.txt" | sort | tr '\n' ' ')" = "--baittest --birdtest "
+check "-j 2: lyhin aloitetaan viimeisenä" test "$(tail -n 1 "$tmp/order.txt")" = "--speciestest"
+# Paikan siivous ei osu muihin paikkoihin: paikka 1 päättyy, paikat 10 ja 11
+# (merkit PID-10, PID-11 alkavat PID-1:llä) ovat vielä käynnissä ja menevät läpi.
+mkdir -p "$tmp/bin-nproc16"
+printf '#!/bin/sh\necho 16\n' >"$tmp/bin-nproc16/nproc"
+chmod +x "$tmp/bin-nproc16/nproc"
+PATH="$tmp/bin-nproc16:$PATH" FAKE_DELAY=1 FAKE_SLOW=--motorspeedtest run -q -j 11 \
+	baittest birdsoundtest birdtest booktest channeltest fightdepthtest fpvtest headwindtest icetest motorspeedtest nettest
+check "-j 11: paikka 10 (motorspeedtest) läpi paikan 1 siivouksen jälkeen" has '^motorspeedtest +OK '
+check "-j 11: kaikki läpi" test $rc -eq 0
+check "-j 11: ei siivousrivejä" lacks 'Lopetettiin'
 # N > ytimet: varoitus ja ytimien määrä (valekomento nproc = 2).
 mkdir -p "$tmp/bin-nproc"
 printf '#!/bin/sh\necho 2\n' >"$tmp/bin-nproc/nproc"
@@ -510,6 +541,13 @@ sleep 3
 check "aikaraja: alaprosessi ei ole elossa" bash -c "! pgrep -x -f 'sleep 3171' >/dev/null"
 run -q speciestest
 check "aikaraja: ei siivousriviä, kun ei orpoja" lacks 'Lopetettiin'
+# TERMiin kuolematon orpo lopetetaan KILLillä.
+pkill -KILL -x -f 'sleep 3174' 2>/dev/null
+run -q paddletest
+check "KILL-eskalaatio: testi OK" has '^paddletest +OK '
+check "KILL-eskalaatio: ilmoitus" has '^>> Lopetettiin 1 testin jälkeen jäänyttä prosessia\.$'
+check "KILL-eskalaatio: TERMiin kuolematon orpo ei ole elossa" bash -c "! pgrep -x -f 'sleep 3174' >/dev/null"
+pkill -KILL -x -f 'sleep 3174' 2>/dev/null
 
 # Keskeytys lopettaa alaprosessit (kriteeri 29). set -m: muuten taustaprosessi
 # perii SIGINTin ohitettuna eikä ajuri voi siepata sitä.
@@ -525,6 +563,9 @@ interrupt_check() { # interrupt_check SIGNAALI KUVAUS AJURIN_ARGUMENTIT...
 		pgrep -x -f 'sleep 3171' >/dev/null && { [ "$*" != "${*/anglertest/}" ] || break; pgrep -x -f 'sleep 3172' >/dev/null && break; }
 		sleep 0.1
 	done
+	# Toisen ajurin prosessi, jonka pid alkaa samoilla numeroilla: ei saa kuolla.
+	env CATCHFISH_AJO="${bgpid}9-1" sleep 3173 &
+	decoy=$!
 	t0=$(date +%s%N)
 	kill "-$sig" $bgpid
 	# Aikaraja 15 s: jumiin jäänyt ajuri (esim. tee orvon alaprosessin putkessa)
@@ -549,6 +590,9 @@ interrupt_check() { # interrupt_check SIGNAALI KUVAUS AJURIN_ARGUMENTIT...
 	check "$desc: Keskeytetty-rivi" grep -q '^>> Keskeytetty\.$' "$tmp/bg.out"
 	check "$desc: siivottujen määrä" grep -q "^>> Lopetettiin $n_orphans testin jälkeen jäänyttä prosessia\.\$" "$tmp/bg.out"
 	run -q speciestest
+	check "$desc: toisen ajurin prosessi (merkki ${bgpid}9-1) elossa" kill -0 $decoy
+	kill $decoy 2>/dev/null
+	wait $decoy 2>/dev/null
 	check "$desc: lukko vapaa" test $rc -eq 0
 }
 n_orphans=1
